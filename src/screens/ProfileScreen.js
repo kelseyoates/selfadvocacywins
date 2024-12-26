@@ -43,10 +43,13 @@ const ProfileScreen = ({ navigation }) => {
   const [selectedState, setSelectedState] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [userDocId, setUserDocId] = useState(null);
-  const [winDates, setWinDates] = useState({});
+  const [winDates, setWinDates] = useState({
+    '2024-12-25': { marked: true, dotColor: '#24269B' }  // Test mark
+  });
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateWins, setSelectedDateWins] = useState([]);
   const [showWinsModal, setShowWinsModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const questions = [
     {
@@ -232,6 +235,22 @@ const ProfileScreen = ({ navigation }) => {
     )[0];
   };
 
+  const formatDateString = (dateStr) => {
+    try {
+      // Handle different date formats
+      if (dateStr.includes(',')) {
+        // Format: "12/25/2024, 9:24:21 PM"
+        dateStr = dateStr.split(',')[0];
+      }
+      
+      const [month, day, year] = dateStr.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    } catch (error) {
+      console.error('Error formatting date:', dateStr, error);
+      return null;
+    }
+  };
+
   const fetchUserWins = async () => {
     try {
       const winsQuery = query(
@@ -240,39 +259,45 @@ const ProfileScreen = ({ navigation }) => {
       );
       
       const querySnapshot = await getDocs(winsQuery);
-      const dates = {};
+      console.log(`Found ${querySnapshot.size} wins`);
+      
+      // Create new object for marked dates
+      const newMarkedDates = {};
       
       querySnapshot.docs.forEach(doc => {
         const win = doc.data();
-        let localDate;
-
+        console.log('Processing win:', win);
+        
+        // Get date from localTimestamp
         if (win.localTimestamp?.date) {
-          // Parse the MM/DD/YYYY format into YYYY-MM-DD
           const [month, day, year] = win.localTimestamp.date.split('/');
-          localDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        } else {
-          localDate = new Date(win.createdAt).toLocaleDateString('en-CA');
+          const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          
+          console.log('Adding mark for date:', formattedDate);
+          newMarkedDates[formattedDate] = {
+            marked: true,
+            dotColor: '#24269B'
+          };
         }
-
-        console.log('Processing win date:', {
-          originalDate: win.localTimestamp?.date || win.createdAt,
-          mappedDate: localDate
-        });
-
-        dates[localDate] = { marked: true, dotColor: '#24269B' };
       });
+
+      console.log('New marked dates:', newMarkedDates);
       
-      console.log('Marked dates:', dates);
-      setWinDates(dates);
+      // Force update with new object
+      setWinDates(newMarkedDates);
+
     } catch (error) {
       console.error('Error fetching wins:', error);
     }
   };
 
+  const handleDayPress = (day) => {
+    console.log('Day pressed:', day);
+    fetchWinsForDate(day.dateString);
+  };
+
   const fetchWinsForDate = async (date) => {
     try {
-      console.log('Fetching wins for date:', date);
-      
       const winsQuery = query(
         collection(db, 'wins'),
         where('userId', '==', auth.currentUser.uid.toLowerCase())
@@ -285,33 +310,15 @@ const ProfileScreen = ({ navigation }) => {
           ...doc.data()
         }))
         .filter(win => {
-          let winDate;
           if (win.localTimestamp?.date) {
-            // Parse the MM/DD/YYYY format into YYYY-MM-DD
             const [month, day, year] = win.localTimestamp.date.split('/');
-            winDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          } else {
-            winDate = new Date(win.createdAt).toLocaleDateString('en-CA');
+            const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            return formattedDate === date;
           }
-          
-          console.log('Comparing dates:', {
-            winDate: winDate,
-            selectedDate: date,
-            matches: winDate === date
-          });
-          
-          return winDate === date;
+          return false;
         });
       
-      console.log('Found wins for date:', {
-        date: date,
-        count: wins.length,
-        wins: wins.map(w => ({
-          date: w.localTimestamp?.date,
-          createdAt: w.createdAt
-        }))
-      });
-      
+      console.log(`Found ${wins.length} wins for date:`, date);
       setSelectedDateWins(wins);
       setSelectedDate(date);
       setShowWinsModal(true);
@@ -417,6 +424,25 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
+  useEffect(() => {
+    fetchUserWins();
+  }, [refreshKey]);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      query(
+        collection(db, 'wins'),
+        where('userId', '==', auth.currentUser.uid.toLowerCase())
+      ),
+      (snapshot) => {
+        console.log('Wins collection updated');
+        setRefreshKey(prev => prev + 1);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
@@ -486,14 +512,35 @@ const ProfileScreen = ({ navigation }) => {
 
       <View style={styles.calendarContainer}>
         <Text style={styles.sectionTitle}>🏆 Win History</Text>
+        {/* <Text style={styles.debug}>
+          Marked ddddjio: {JSON.stringify(winDates, null, 2)}
+        </Text> */}
         <Calendar
+          style={styles.calendar}
+          current={new Date().toISOString().split('T')[0]}
+          minDate={'2024-01-01'}
+          maxDate={'2024-12-31'}
+          onDayPress={(day) => {
+            console.log('Day pressed:', day);
+            console.log('Current marks:', winDates);
+            fetchWinsForDate(day.dateString);
+          }}
           markedDates={winDates}
-          onDayPress={day => fetchWinsForDate(day.dateString)}
+          markingType="dot"
           theme={{
+            backgroundColor: '#ffffff',
+            calendarBackground: '#ffffff',
+            textSectionTitleColor: '#24269B',
             selectedDayBackgroundColor: '#24269B',
+            selectedDayTextColor: '#ffffff',
             todayTextColor: '#24269B',
+            dayTextColor: '#2d4150',
+            textDisabledColor: '#d9e1e8',
             dotColor: '#24269B',
+            selectedDotColor: '#ffffff',
             arrowColor: '#24269B',
+            monthTextColor: '#24269B',
+            indicatorColor: '#24269B'
           }}
         />
       </View>
@@ -730,6 +777,14 @@ const styles = StyleSheet.create({
   winsList: {
     padding: 10,
   },
+  calendar: {
+    marginBottom: 10,
+  },
+  debug: {
+    padding: 10,
+    fontSize: 12,
+    color: '#666',
+  }
 });
 
 export default ProfileScreen;

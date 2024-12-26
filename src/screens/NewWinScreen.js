@@ -15,26 +15,86 @@ import * as ImagePicker from 'expo-image-picker';
 import { auth, db, storage } from '../config/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useNavigation } from '@react-navigation/native';
 
-const NewWinScreen = ({ navigation }) => {
-  const [mode, setMode] = useState('text');
+const NewWinScreen = () => {
   const [text, setText] = useState('');
-  const [media, setMedia] = useState(null);
+  const [image, setImage] = useState(null);
+  const [video, setVideo] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaType, setMediaType] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const navigation = useNavigation();
 
-  // Clear form when component mounts
-  useEffect(() => {
+  const clearForm = () => {
     setText('');
-    setMedia(null);
+    setImage(null);
+    setVideo(null);
     setMediaType(null);
-    return () => {
-      // Clear form when component unmounts
-      setText('');
-      setMedia(null);
-      setMediaType(null);
-    };
-  }, []);
+    setIsSubmitting(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!text.trim() && !image && !video) {
+      Alert.alert('Error', 'Please enter text or add media to share your win.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      let mediaUrl = null;
+
+      if (image || video) {
+        const file = image || video;
+        const extension = file.uri.split('.').pop();
+        const fileName = `${auth.currentUser.uid}_${Date.now()}.${extension}`;
+        const mediaRef = ref(storage, `media/${fileName}`);
+        
+        const response = await fetch(file.uri);
+        const blob = await response.blob();
+        await uploadBytes(mediaRef, blob);
+        mediaUrl = await getDownloadURL(mediaRef);
+      }
+
+      const win = {
+        userId: auth.currentUser.uid.toLowerCase(),
+        text: text.trim(),
+        mediaUrl,
+        mediaType: mediaType,
+        createdAt: new Date().toISOString(),
+        localTimestamp: {
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          timestamp: new Date().getTime()
+        },
+        cheers: 0
+      };
+
+      const docRef = await addDoc(collection(db, 'wins'), win);
+      console.log('Win added with ID:', docRef.id);
+
+      // Clear form
+      clearForm();
+      
+      // Navigate back
+      navigation.goBack();
+
+    } catch (error) {
+      console.error('Error adding win:', error);
+      Alert.alert('Error', 'Failed to share your win. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
+  // Clear form when screen is focused
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      clearForm();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const pickMedia = async (type) => {
     try {
@@ -47,7 +107,7 @@ const NewWinScreen = ({ navigation }) => {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setMedia(result.assets[0].uri);
+        setImage(result.assets[0]);
         setMediaType(type);
       }
     } catch (error) {
@@ -56,96 +116,17 @@ const NewWinScreen = ({ navigation }) => {
     }
   };
 
-  const uploadMedia = async (uri) => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      
-      const extension = mediaType === 'photo' ? 'jpg' : 'mp4';
-      const filename = `wins/${auth.currentUser.uid.toLowerCase()}/${Date.now()}.${extension}`;
-      console.log('Uploading to:', filename);
-      
-      const storageRef = ref(storage, filename);
-      
-      console.log('Starting upload...');
-      const uploadResult = await uploadBytes(storageRef, blob);
-      console.log('Upload completed:', uploadResult);
-      
-      const downloadURL = await getDownloadURL(storageRef);
-      console.log('Download URL:', downloadURL);
-      
-      return downloadURL;
-    } catch (error) {
-      console.error('Detailed upload error:', error);
-      throw new Error(`Failed to upload media: ${error.message}`);
-    }
-  };
-
-  const shareWin = async () => {
-    if (!text && !media) {
-      Alert.alert('Error', 'Please add some text or media to share your win');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      let mediaUrl = null;
-      if (media) {
-        mediaUrl = await uploadMedia(media);
-      }
-
-      // Create date in local timezone
-      const now = new Date();
-      const timezoneOffset = now.getTimezoneOffset() * 60000; // offset in milliseconds
-      const localDate = new Date(now.getTime() - timezoneOffset);
-      const createdAt = localDate.toISOString();
-
-      console.log('Creating win:', {
-        localDate: now.toLocaleString(),
-        createdAt: createdAt,
-        timezoneOffset: timezoneOffset,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      });
-
-      const win = {
-        userId: auth.currentUser.uid.toLowerCase(),
-        text: text,
-        mediaUrl: mediaUrl,
-        mediaType: mediaType,
-        createdAt: createdAt,
-        localTimestamp: {
-          date: now.toLocaleDateString(),
-          time: now.toLocaleTimeString(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          timestamp: now.getTime()
-        },
-        cheers: 0,
-      };
-
-      const docRef = await addDoc(collection(db, 'wins'), win);
-      console.log('Win added with ID:', docRef.id);
-
-      Alert.alert('Success', 'Your win has been shared!');
-      navigation.goBack();
-    } catch (error) {
-      console.error('Detailed sharing error:', error);
-      Alert.alert('Error', error.message || 'Failed to share your win');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const renderMedia = () => {
-    if (!media) return null;
+    if (!image && !video) return null;
 
     if (mediaType === 'photo') {
       return (
         <View style={styles.mediaContainer}>
-          <Image source={{ uri: media }} style={styles.media} />
+          <Image source={{ uri: image.uri }} style={styles.media} />
           <TouchableOpacity 
             style={styles.removeButton}
             onPress={() => {
-              setMedia(null);
+              setImage(null);
               setMediaType(null);
             }}
           >
@@ -159,7 +140,7 @@ const NewWinScreen = ({ navigation }) => {
       return (
         <View style={styles.mediaContainer}>
           <Video
-            source={{ uri: media }}
+            source={{ uri: video.uri }}
             style={styles.media}
             useNativeControls
             resizeMode="contain"
@@ -168,7 +149,7 @@ const NewWinScreen = ({ navigation }) => {
           <TouchableOpacity 
             style={styles.removeButton}
             onPress={() => {
-              setMedia(null);
+              setVideo(null);
               setMediaType(null);
             }}
           >
@@ -212,12 +193,12 @@ const NewWinScreen = ({ navigation }) => {
         </View>
 
         <TouchableOpacity 
-          style={[styles.shareButton, uploading && styles.shareButtonDisabled]}
-          onPress={shareWin}
-          disabled={uploading}
+          style={[styles.shareButton, isSubmitting && styles.shareButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
         >
           <Text style={styles.shareButtonText}>
-            {uploading ? 'Sharing...' : 'Share Win'}
+            {isSubmitting ? 'Sharing...' : 'Share Win'}
           </Text>
         </TouchableOpacity>
       </View>

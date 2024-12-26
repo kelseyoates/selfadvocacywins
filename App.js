@@ -6,6 +6,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import ChatConversationScreen from './src/screens/ChatConversationScreen';
+import { CommentModalProvider } from './src/context/CommentModalContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,28 +30,30 @@ initCometChat();
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen 
-          name="Login" 
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="SignUp" 
-          component={SignUpScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Main"
-          component={TabNavigator}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ChatConversation"
-          component={ChatConversationScreen}
-          options={{ title: '' }}
-        />
-      </Stack.Navigator>
+      <CommentModalProvider>
+        <Stack.Navigator initialRouteName="Login">
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="SignUp" 
+            component={SignUpScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Main"
+            component={TabNavigator}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ChatConversation"
+            component={ChatConversationScreen}
+            options={{ title: '' }}
+          />
+        </Stack.Navigator>
+      </CommentModalProvider>
     </NavigationContainer>
   );
 }

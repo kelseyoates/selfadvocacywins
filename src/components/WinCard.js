@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
+  TouchableWithoutFeedback,
+  Alert,
+  SafeAreaView,
+  Button,
 } from 'react-native';
 import { Video } from 'expo-av';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,6 +24,7 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useCommentModal } from '../context/CommentModalContext';
 
 const CommentModal = ({ visible, onClose, options, onSelect }) => {
   if (!visible) return null;
@@ -68,6 +73,7 @@ const WinCard = ({ win }) => {
   const cheerScale = useSharedValue(0);
   const cheerOpacity = useSharedValue(0);
   const [showAllComments, setShowAllComments] = useState(false);
+  const { openCommentModal } = useCommentModal();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -189,46 +195,27 @@ const WinCard = ({ win }) => {
   };
 
   const handleShowCommentOptions = () => {
-    const options = getRandomComments(3);
-    console.log('Opening modal with options:', options);
-    setCommentOptions(options);
-    setShowCommentModal(true);
+    openCommentModal(handleAddComment);
   };
 
   const handleAddComment = async (commentText) => {
     try {
       const winRef = doc(db, 'wins', win.id);
-      const currentUser = auth.currentUser;
-      console.log('Adding comment with user:', {
-        uid: currentUser.uid,
-        email: currentUser.email
-      });
-
-      const comment = {
+      const newComment = {
         text: commentText,
-        userId: currentUser.uid.toLowerCase(),
-        createdAt: new Date().toISOString(),
-        localTimestamp: {
-          date: new Date().toLocaleDateString(),
-          time: new Date().toLocaleTimeString(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          timestamp: new Date().getTime()
-        }
+        userId: auth.currentUser.uid,
+        timestamp: new Date().toISOString()
       };
-
-      // Get current comments array
-      const winDoc = await getDoc(winRef);
-      const currentComments = winDoc.data().comments || [];
       
-      // Update with new comment
+      const updatedComments = [...comments, newComment];
       await updateDoc(winRef, {
-        comments: [...currentComments, comment]
+        comments: updatedComments
       });
-
-      setComments([...currentComments, comment]);
-      setShowCommentModal(false);
+      
+      setComments(updatedComments);
     } catch (error) {
       console.error('Error adding comment:', error);
+      Alert.alert('Error', 'Failed to add comment. Please try again.');
     }
   };
 
@@ -298,72 +285,50 @@ const WinCard = ({ win }) => {
   };
 
   return (
-    <>
-      <View style={styles.card}>
-        <View style={styles.header}>
-          {renderProfilePicture()}
-          <View style={styles.headerText}>
-            <Text style={styles.username}>{userData?.username || 'User'}</Text>
-            <Text style={styles.time}>{timeAgo}</Text>
-          </View>
+    <View style={styles.card}>
+      <View style={styles.header}>
+        {renderProfilePicture()}
+        <View style={styles.headerText}>
+          <Text style={styles.username}>{userData?.username || 'User'}</Text>
+          <Text style={styles.time}>{timeAgo}</Text>
         </View>
-
-        {win.text && <Text style={styles.text}>{win.text}</Text>}
-        {renderMedia()}
-
-        <Animated.View style={[styles.cheerOverlay, cheerAnimatedStyle]}>
-          <Text style={styles.bigCheerEmoji}>👏</Text>
-        </Animated.View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.cheerButton, isUpdating && styles.cheerButtonDisabled]}
-            onPress={handleCheer}
-            disabled={isUpdating}
-          >
-            <Text style={styles.cheerEmoji}>👏</Text>
-            <Text style={styles.cheerCount}>{cheerCount}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.commentButton}
-            onPress={handleShowCommentOptions}
-          >
-            <MaterialCommunityIcons name="comment-outline" size={24} color="#666" />
-          </TouchableOpacity>
-        </View>
-
-        {renderComments()}
       </View>
 
+      {win.text && <Text style={styles.text}>{win.text}</Text>}
+      {renderMedia()}
+
+      <Animated.View style={[styles.cheerOverlay, cheerAnimatedStyle]}>
+        <Text style={styles.bigCheerEmoji}>👏</Text>
+      </Animated.View>
+
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={[styles.cheerButton, isUpdating && styles.cheerButtonDisabled]}
+          onPress={handleCheer}
+          disabled={isUpdating}
+        >
+          <Text style={styles.cheerEmoji}>👏</Text>
+          <Text style={styles.cheerCount}>{cheerCount}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.commentButton}
+          onPress={handleShowCommentOptions}
+        >
+          <MaterialCommunityIcons name="comment-outline" size={24} color="#666" />
+        </TouchableOpacity>
+      </View>
+
+      {renderComments()}
+
       {showCommentModal && (
-        <View style={StyleSheet.absoluteFill}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Choose a comment</Text>
-              {commentOptions.map((comment, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.commentOption}
-                  onPress={() => {
-                    handleAddComment(comment);
-                    setShowCommentModal(false);
-                  }}
-                >
-                  <Text style={styles.commentOptionText}>{comment}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowCommentModal(false)}
-              >
-                <Text style={styles.closeButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <CommentOptionsModal
+          visible={showCommentModal}
+          onClose={() => setShowCommentModal(false)}
+          onSelectComment={handleAddComment}
+        />
       )}
-    </>
+    </View>
   );
 };
 
@@ -515,47 +480,41 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   modalContent: {
     backgroundColor: 'white',
-    width: '90%',
-    maxWidth: 400,
     borderRadius: 15,
     padding: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    width: '80%',
+    maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#24269B',
-    marginBottom: 15,
     textAlign: 'center',
+    marginBottom: 20,
   },
   commentOption: {
-    padding: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
     borderRadius: 10,
     backgroundColor: '#f8f8f8',
     marginBottom: 10,
   },
-  commentOptionText: {
+  commentText: {
     fontSize: 16,
     color: '#333',
+    textAlign: 'center',
   },
   closeButton: {
     marginTop: 10,
-    padding: 15,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   closeButtonText: {
-    color: '#666',
     fontSize: 16,
+    color: '#666',
     fontWeight: '500',
   },
   commentsSection: {
@@ -618,6 +577,45 @@ const styles = StyleSheet.create({
     color: '#24269B',
     fontSize: 14,
     fontWeight: '500',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#24269B',
+  },
+  commentButton: {
+    backgroundColor: '#f8f8f8',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  commentButtonText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#333',
+  },
+  cancelButton: {
+    padding: 15,
+    marginTop: 10,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
   },
 });
 
