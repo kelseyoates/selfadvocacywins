@@ -19,6 +19,22 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import * as ImagePicker from 'expo-image-picker';
 
+const containsProfanity = (text) => {
+  const profanityList = [
+    'shit', 'fuck', 'damn', 'ass', 'bitch', 'crap', 'piss', 'dick', 'pussy', 'cock',
+    'bastard', 'hell', 'whore', 'slut', 'asshole', 'cunt', 'fucker', 'fucking',
+    // Add more words as needed
+  ];
+
+  const words = text.toLowerCase().split(/\s+/);
+  return words.some(word => 
+    profanityList.some(profanity => 
+      word.includes(profanity) || 
+      word.replace(/[^a-zA-Z]/g, '').includes(profanity)
+    )
+  );
+};
+
 const ChatConversationScreen = ({ route, navigation }) => {
   const { uid, name } = route.params;
   const [messages, setMessages] = useState([]);
@@ -127,6 +143,17 @@ const ChatConversationScreen = ({ route, navigation }) => {
     if (!inputText.trim() || !currentUser) return;
 
     const messageText = inputText.trim();
+
+    // Check for profanity first
+    if (containsProfanity(messageText)) {
+      Alert.alert(
+        'Message Blocked',
+        'Your message contains inappropriate language and cannot be sent.'
+      );
+      setInputText('');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -136,23 +163,46 @@ const ChatConversationScreen = ({ route, navigation }) => {
         CometChat.RECEIVER_TYPE.USER
       );
 
+      // Add both types of moderation metadata
       textMessage.setMetadata({
-        "extensions": {
-          "moderation": {
-            "enabled": true,
-            "profanity": {
-              "enabled": true,
-              "action": "block",
-              "severity": "high"
+        moderator: {
+          enable: true,
+          profanity: {
+            severity: "high",
+            filterType: "block"
+          }
+        },
+        "@injected": {
+          extensions: {
+            profanity: {
+              enabled: true,
+              filterType: "block",
+              severity: "high"
             }
           }
         }
       });
 
-      console.log("Attempting to send message:", messageText);
+      console.log("Sending message with moderation:", {
+        text: messageText,
+        metadata: textMessage.metadata
+      });
+
+      // Additional client-side check before sending
+      if (containsProfanity(messageText)) {
+        throw new Error("PROFANITY_DETECTED");
+      }
 
       const sentMessage = await CometChat.sendMessage(textMessage);
       console.log("Message response:", sentMessage);
+
+      // Check server response for moderation
+      if (sentMessage.metadata?.moderator?.blocked || 
+          sentMessage.metadata?.["@injected"]?.extensions?.profanity?.blocked) {
+        Alert.alert('Message Blocked', 'This message contains inappropriate content.');
+        setInputText(messageText);
+        return;
+      }
 
       setInputText('');
       setMessages(prev => {
@@ -165,29 +215,19 @@ const ChatConversationScreen = ({ route, navigation }) => {
         return newMessages;
       });
     } catch (error) {
-      console.log("Message error details:", error);
+      console.log("Message error:", error);
       
-      // More specific error handling
-      if (error.code === "ERR_CONTENT_MODERATED" || 
-          error.code === "MESSAGE_MODERATED" ||
-          error.message?.includes("moderated") ||
-          error.message?.includes("profanity")) {
+      if (error.message === "PROFANITY_DETECTED" || 
+          error.code === "ERR_CONTENT_MODERATED" || 
+          error.code === "MESSAGE_MODERATED") {
         Alert.alert(
-          'Message Not Sent',
-          'This message contains inappropriate language and cannot be sent. Please revise your message.'
-        );
-      } else if (error.code === "ERR_CONNECTION_ERROR") {
-        Alert.alert(
-          'Connection Error',
-          'Please check your internet connection and try again.'
+          'Message Blocked', 
+          'This message contains inappropriate content and cannot be sent.'
         );
       } else {
-        Alert.alert(
-          'Error',
-          'Unable to send message. Please try again.'
-        );
+        Alert.alert('Error', 'Failed to send message');
       }
-      setInputText(messageText); // Keep the text in the input
+      setInputText(messageText);
     } finally {
       setIsLoading(false);
     }
@@ -206,23 +246,21 @@ const ChatConversationScreen = ({ route, navigation }) => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.7,
         allowsEditing: true,
-        base64: true,
       });
 
       if (!result.canceled) {
         setIsUploading(true);
         const asset = result.assets[0];
-        console.log("Selected media type:", asset.type);
+        console.log("Selected media:", asset);
 
         try {
-          // Create file object
           const file = {
-            name: `${Date.now()}.jpg`,
-            type: 'image/jpeg',
+            name: asset.fileName || `image_${Date.now()}.jpg`,
+            type: asset.mimeType || 'image/jpeg',
             uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+            size: asset.fileSize
           };
 
-          // Create media message with file object
           const mediaMessage = new CometChat.MediaMessage(
             uid,
             file,
@@ -230,26 +268,35 @@ const ChatConversationScreen = ({ route, navigation }) => {
             CometChat.RECEIVER_TYPE.USER
           );
 
-          console.log("Sending media message...");
-          
-          // Add metadata
           mediaMessage.setMetadata({
-            type: 'image',
-            size: asset.fileSize,
-            dimensions: {
-              width: asset.width,
-              height: asset.height
+            "extensions": {
+              "moderation": {
+                "enabled": true,
+                "image": {
+                  "enabled": true,
+                  "action": "block",
+                  "severity": "high"
+                }
+              }
             }
           });
 
-          // Send the message
+          console.log("Attempting to send media message:", {
+            file: file,
+            metadata: mediaMessage.metadata
+          });
+
           const sentMessage = await CometChat.sendMediaMessage(mediaMessage);
-          console.log("Media message sent successfully:", sentMessage);
-          
-          // Update messages state
+          console.log("Media message response:", sentMessage);
+
+          // Check moderation response
+          if (sentMessage.metadata?.moderation?.blocked || 
+              sentMessage.metadata?.["@injected"]?.extensions?.moderation?.blocked) {
+            throw new Error("INAPPROPRIATE_CONTENT");
+          }
+
           setMessages(prev => {
             const newMessages = [...prev, sentMessage];
-            // Scroll after update
             requestAnimationFrame(() => {
               if (flatListRef.current) {
                 flatListRef.current.scrollToEnd({ animated: true });
@@ -257,20 +304,42 @@ const ChatConversationScreen = ({ route, navigation }) => {
             });
             return newMessages;
           });
-
         } catch (error) {
-          console.error("Media send error details:", error);
-          Alert.alert(
-            'Upload Error', 
-            'Failed to send media. Please try a different image or try again later.'
-          );
+          console.log("Media send error details:", error);
+          
+          // More specific error handling
+          if (error.message === "INAPPROPRIATE_CONTENT" ||
+              error.code === "ERR_CONTENT_MODERATED" ||
+              error.code === "MESSAGE_MODERATED" ||
+              error.message?.toLowerCase().includes('moderation') ||
+              error.message?.toLowerCase().includes('inappropriate')) {
+            Alert.alert(
+              'Inappropriate Content',
+              'This image appears to contain inappropriate or explicit content and cannot be sent. Please choose a different image that follows community guidelines.'
+            );
+          } else if (error.code === "ERR_FILE_SIZE_TOO_LARGE") {
+            Alert.alert(
+              'File Too Large',
+              'The image file is too large. Please choose a smaller image or compress this one.'
+            );
+          } else if (error.code === "ERR_INVALID_MEDIA_MESSAGE") {
+            Alert.alert(
+              'Invalid Image',
+              'The selected image could not be processed. Please try a different image.'
+            );
+          } else {
+            Alert.alert(
+              'Upload Error',
+              'There was a problem sending your image. Please try again.'
+            );
+          }
         }
       }
     } catch (error) {
-      console.error("Media picker error details:", error);
+      console.log("Media picker error:", error);
       Alert.alert(
-        'Media Error', 
-        'Failed to access media. Please check app permissions and try again.'
+        'Error',
+        'Failed to process the image. Please try again.'
       );
     } finally {
       setIsUploading(false);
