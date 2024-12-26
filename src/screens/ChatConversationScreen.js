@@ -136,24 +136,23 @@ const ChatConversationScreen = ({ route, navigation }) => {
         CometChat.RECEIVER_TYPE.USER
       );
 
-      // Simplified metadata for moderation
       textMessage.setMetadata({
-        moderator: {
-          enable: true,
-          profanity: {
-            severity: "high",
-            filterType: "block"
+        "extensions": {
+          "moderation": {
+            "enabled": true,
+            "profanity": {
+              "enabled": true,
+              "action": "block",
+              "severity": "high"
+            }
           }
         }
       });
 
-      console.log("Attempting to send message:", {
-        text: messageText,
-        metadata: textMessage.metadata
-      });
+      console.log("Attempting to send message:", messageText);
 
       const sentMessage = await CometChat.sendMessage(textMessage);
-      console.log("Message sent successfully:", sentMessage);
+      console.log("Message response:", sentMessage);
 
       setInputText('');
       setMessages(prev => {
@@ -166,17 +165,29 @@ const ChatConversationScreen = ({ route, navigation }) => {
         return newMessages;
       });
     } catch (error) {
-      console.log("Message sending failed:", error);
+      console.log("Message error details:", error);
       
-      // Keep the input text if the message was blocked
-      setInputText(messageText);
-      
+      // More specific error handling
       if (error.code === "ERR_CONTENT_MODERATED" || 
-          error.code === "MESSAGE_MODERATED") {
-        Alert.alert('Content Warning', 'This message was blocked due to inappropriate content.');
+          error.code === "MESSAGE_MODERATED" ||
+          error.message?.includes("moderated") ||
+          error.message?.includes("profanity")) {
+        Alert.alert(
+          'Message Not Sent',
+          'This message contains inappropriate language and cannot be sent. Please revise your message.'
+        );
+      } else if (error.code === "ERR_CONNECTION_ERROR") {
+        Alert.alert(
+          'Connection Error',
+          'Please check your internet connection and try again.'
+        );
       } else {
-        Alert.alert('Error', 'Failed to send message');
+        Alert.alert(
+          'Error',
+          'Unable to send message. Please try again.'
+        );
       }
+      setInputText(messageText); // Keep the text in the input
     } finally {
       setIsLoading(false);
     }
