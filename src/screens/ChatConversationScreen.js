@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -20,209 +20,315 @@ import { db } from '../config/firebase';
 import * as ImagePicker from 'expo-image-picker';
 
 const ChatConversationScreen = ({ route, navigation }) => {
-  const { uid, name, conversationType } = route.params;
+  const { uid, name } = route.params;
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [userAvatar, setUserAvatar] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const flatListRef = useRef();
-  const [listHeight, setListHeight] = useState(0);
-  const [contentHeight, setContentHeight] = useState(0);
-  const screenHeight = Dimensions.get('window').height;
+  const [isLoading, setIsLoading] = useState(false);
+  const { height: screenHeight } = Dimensions.get('window');
+  const [isUploading, setIsUploading] = useState(false);
 
-  const scrollToBottom = (animated = true) => {
-    if (flatListRef.current && contentHeight > listHeight) {
-      flatListRef.current.scrollToOffset({ 
-        offset: contentHeight - listHeight,
-        animated 
+  // Fetch initial messages
+  const fetchMessages = useCallback(async () => {
+    try {
+      console.log("Fetching messages for:", uid);
+      const messagesRequest = new CometChat.MessagesRequestBuilder()
+        .setUID(uid)
+        .setLimit(50)
+        .build();
+
+      const fetchedMessages = await messagesRequest.fetchPrevious();
+      console.log("Fetched messages count:", fetchedMessages.length);
+      
+      // Filter out action and system messages
+      const validMessages = fetchedMessages.filter(msg => 
+        msg.category !== 'action' && 
+        msg.category !== 'system' && 
+        msg.senderId !== 'app_system'
+      );
+      
+      console.log("Valid messages count:", validMessages.length);
+      setMessages(validMessages);
+      
+      // Scroll to bottom after fetching
+      requestAnimationFrame(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToEnd({ animated: false });
+        }
       });
+    } catch (error) {
+      console.log("Error fetching messages:", error);
     }
-  };
+  }, [uid]);
 
+  // Get current user and fetch messages on mount
   useEffect(() => {
-    const getCurrentUser = async () => {
-      const user = await CometChat.getLoggedinUser();
-      setCurrentUser(user);
+    console.log("Component mounted");
+    
+    const initializeChat = async () => {
+      try {
+        const user = await CometChat.getLoggedinUser();
+        console.log("Current user:", user?.uid);
+        setCurrentUser(user);
+        await fetchMessages();
+      } catch (error) {
+        console.log("Initialization error:", error);
+      }
     };
-    getCurrentUser();
 
-    navigation.setOptions({
-      headerTitle: () => (
-        <View style={styles.headerContainer}>
-          <Image
-            source={{ 
-              uri: userAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
-            }}
-            style={styles.headerAvatar}
-          />
-          <Text style={styles.headerTitle}>{name}</Text>
-        </View>
-      ),
-      headerRight: () => (
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('VideoCall', { uid, name })}
-          style={styles.headerButton}
-        >
-          <MaterialCommunityIcons name="video" size={24} color="#24269B" />
-        </TouchableOpacity>
-      ),
+    initializeChat();
+
+    // Set up message listener
+    const messageListener = new CometChat.MessageListener({
+      onTextMessageReceived: message => {
+        console.log("New message received:", message);
+        if (message.sender.uid === uid || message.receiver.uid === uid) {
+          setMessages(prev => [...prev, message]);
+        }
+      }
     });
 
-    const fetchUserData = async () => {
-      try {
-        const userDoc = await getDoc(doc(db, 'users', uid.toLowerCase()));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          if (userData.profilePicture) {
-            setUserAvatar(userData.profilePicture);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-
-    fetchUserData();
-
-    let messagesRequest = new CometChat.MessagesRequestBuilder()
-      .setUID(uid)
-      .setLimit(50)
-      .build();
-
-    messagesRequest.fetchPrevious().then(
-      fetchedMessages => {
-        console.log("Message list fetched:", fetchedMessages);
-        setMessages(fetchedMessages);
-      },
-      error => {
-        console.log("Message fetching failed:", error);
-      }
+    CometChat.addMessageListener(
+      'CHAT_SCREEN_MESSAGE_LISTENER',
+      messageListener
     );
 
+    return () => {
+      CometChat.removeMessageListener('CHAT_SCREEN_MESSAGE_LISTENER');
+    };
+  }, [uid, fetchMessages]);
+
+  // Initialize message moderation
+  useEffect(() => {
+    // Set up message listener with moderation
+    const listenerID = "MODERATION_LISTENER_" + Date.now();
+    
     CometChat.addMessageListener(
-      'CHAT_CONVERSATION_SCREEN_MESSAGE_LISTENER',
+      listenerID,
       new CometChat.MessageListener({
         onTextMessageReceived: message => {
-          if (message.sender.uid === uid || message.receiver.uid === uid) {
-            setMessages(prevMessages => [...prevMessages, message]);
-          }
+          console.log("Message received:", message);
         },
-        onMediaMessageReceived: message => {
-          if (message.sender.uid === uid || message.receiver.uid === uid) {
-            setMessages(prevMessages => [...prevMessages, message]);
-          }
+        onMessageDeleted: message => {
+          console.log("Message deleted:", message);
+          // Remove deleted message from state
+          setMessages(prev => prev.filter(m => m.id !== message.id));
         }
       })
     );
 
     return () => {
-      CometChat.removeMessageListener('CHAT_CONVERSATION_SCREEN_MESSAGE_LISTENER');
+      CometChat.removeMessageListener(listenerID);
     };
-  }, [uid, name, navigation, userAvatar]);
+  }, []);
 
-  // Add effect to scroll when messages change
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => scrollToBottom(false), 100);
+  const sendMessage = async () => {
+    if (!inputText.trim() || !currentUser) return;
+
+    const messageText = inputText.trim();
+    setIsLoading(true);
+
+    try {
+      const textMessage = new CometChat.TextMessage(
+        uid,
+        messageText,
+        CometChat.RECEIVER_TYPE.USER
+      );
+
+      // Simplified metadata for moderation
+      textMessage.setMetadata({
+        moderator: {
+          enable: true,
+          profanity: {
+            severity: "high",
+            filterType: "block"
+          }
+        }
+      });
+
+      console.log("Attempting to send message:", {
+        text: messageText,
+        metadata: textMessage.metadata
+      });
+
+      const sentMessage = await CometChat.sendMessage(textMessage);
+      console.log("Message sent successfully:", sentMessage);
+
+      setInputText('');
+      setMessages(prev => {
+        const newMessages = [...prev, sentMessage];
+        requestAnimationFrame(() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({ animated: true });
+          }
+        });
+        return newMessages;
+      });
+    } catch (error) {
+      console.log("Message sending failed:", error);
+      
+      // Keep the input text if the message was blocked
+      setInputText(messageText);
+      
+      if (error.code === "ERR_CONTENT_MODERATED" || 
+          error.code === "MESSAGE_MODERATED") {
+        Alert.alert('Content Warning', 'This message was blocked due to inappropriate content.');
+      } else {
+        Alert.alert('Error', 'Failed to send message');
+      }
+    } finally {
+      setIsLoading(false);
     }
-  }, [messages, contentHeight, listHeight]);
+  };
 
-  const handleImagePicker = async () => {
+  const handleMediaPicker = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+        Alert.alert('Permission needed', 'Please grant media library permissions to attach media.');
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 1,
+        quality: 0.7,
         allowsEditing: true,
-        aspect: [4, 3],
+        base64: true,
       });
 
       if (!result.canceled) {
-        const imageUri = result.assets[0].uri;
-        sendMediaMessage(imageUri);
+        setIsUploading(true);
+        const asset = result.assets[0];
+        console.log("Selected media type:", asset.type);
+
+        try {
+          // Create file object
+          const file = {
+            name: `${Date.now()}.jpg`,
+            type: 'image/jpeg',
+            uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+          };
+
+          // Create media message with file object
+          const mediaMessage = new CometChat.MediaMessage(
+            uid,
+            file,
+            CometChat.MESSAGE_TYPE.IMAGE,
+            CometChat.RECEIVER_TYPE.USER
+          );
+
+          console.log("Sending media message...");
+          
+          // Add metadata
+          mediaMessage.setMetadata({
+            type: 'image',
+            size: asset.fileSize,
+            dimensions: {
+              width: asset.width,
+              height: asset.height
+            }
+          });
+
+          // Send the message
+          const sentMessage = await CometChat.sendMediaMessage(mediaMessage);
+          console.log("Media message sent successfully:", sentMessage);
+          
+          // Update messages state
+          setMessages(prev => {
+            const newMessages = [...prev, sentMessage];
+            // Scroll after update
+            requestAnimationFrame(() => {
+              if (flatListRef.current) {
+                flatListRef.current.scrollToEnd({ animated: true });
+              }
+            });
+            return newMessages;
+          });
+
+        } catch (error) {
+          console.error("Media send error details:", error);
+          Alert.alert(
+            'Upload Error', 
+            'Failed to send media. Please try a different image or try again later.'
+          );
+        }
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      console.error("Media picker error details:", error);
+      Alert.alert(
+        'Media Error', 
+        'Failed to access media. Please check app permissions and try again.'
+      );
+    } finally {
+      setIsUploading(false);
     }
-  };
-
-  const sendMediaMessage = async (uri) => {
-    const file = {
-      uri: uri,
-      type: 'image/jpeg',
-      name: uri.split('/').pop(),
-    };
-
-    const mediaMessage = new CometChat.MediaMessage(
-      uid,
-      file,
-      CometChat.MESSAGE_TYPE.IMAGE,
-      CometChat.RECEIVER_TYPE.USER
-    );
-
-    try {
-      const sentMessage = await CometChat.sendMessage(mediaMessage);
-      console.log('Media message sent successfully:', sentMessage);
-      setMessages(prevMessages => [...prevMessages, sentMessage]);
-    } catch (error) {
-      console.error('Error sending media message:', error);
-      Alert.alert('Error', 'Failed to send image');
-    }
-  };
-
-  const sendMessage = () => {
-    if (!inputText.trim()) return;
-
-    const textMessage = new CometChat.TextMessage(
-      uid,
-      inputText,
-      CometChat.RECEIVER_TYPE.USER
-    );
-
-    CometChat.sendMessage(textMessage).then(
-      message => {
-        console.log("Message sent successfully:", message);
-        setMessages(prevMessages => [...prevMessages, message]);
-        setInputText('');
-        scrollToBottom();
-      },
-      error => {
-        console.log("Message sending failed:", error);
-      }
-    );
   };
 
   const renderMessage = ({ item }) => {
-    const isMyMessage = currentUser && item.sender?.uid === currentUser.uid;
+    // Skip action and system messages
+    if (item.category === 'action' || 
+        item.senderId === 'app_system' || 
+        item.category === 'system') {
+      return null;
+    }
 
+    const isMyMessage = item.sender?.uid === currentUser?.uid;
+    
+    console.log("Rendering valid message:", {
+      type: item.type,
+      category: item.category,
+      senderId: item.sender?.uid,
+      url: item.type === 'image' ? item.data?.url : undefined
+    });
+    
     return (
       <View style={[
         styles.messageContainer,
         isMyMessage ? styles.myMessage : styles.theirMessage
       ]}>
-        {item.type === CometChat.MESSAGE_TYPE.TEXT ? (
+        {!isMyMessage && (
+          <Text style={styles.senderName}>
+            {item.sender?.name || 'Other User'}
+          </Text>
+        )}
+        
+        {item.type === 'text' ? (
           <Text style={[
             styles.messageText,
             isMyMessage ? styles.myMessageText : styles.theirMessageText
           ]}>
             {item.text}
           </Text>
-        ) : item.type === CometChat.MESSAGE_TYPE.IMAGE ? (
-          <Image
-            source={{ uri: item.data.url }}
-            style={styles.messageImage}
-            resizeMode="contain"
-          />
+        ) : item.type === 'image' ? (
+          <View>
+            <Image
+              source={{ 
+                uri: item.data?.url,
+                cache: 'force-cache'
+              }}
+              style={styles.messageImage}
+              resizeMode="contain"
+              onError={(error) => console.log("Image load error:", error)}
+            />
+          </View>
         ) : null}
+
+        <Text style={[
+          styles.timestamp,
+          isMyMessage ? styles.myTimestamp : styles.theirTimestamp
+        ]}>
+          {new Date(item.sentAt * 1000).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}
+        </Text>
       </View>
     );
   };
+
+  console.log("Rendering with messages count:", messages.length);
 
   return (
     <KeyboardAvoidingView 
@@ -235,32 +341,27 @@ const ChatConversationScreen = ({ route, navigation }) => {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={item => item.id.toString()}
-        contentContainerStyle={[
-          styles.messageList,
-          { flexGrow: 1, justifyContent: 'flex-end' }
-        ]}
-        onLayout={(event) => {
-          setListHeight(event.nativeEvent.layout.height);
+        contentContainerStyle={styles.messageList}
+        onContentSizeChange={() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({ animated: false });
+          }
         }}
-        onContentSizeChange={(width, height) => {
-          setContentHeight(height);
-          scrollToBottom(false);
-        }}
-        showsVerticalScrollIndicator={true}
-        removeClippedSubviews={false}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-        style={{ flex: 1 }}
+        ListEmptyComponent={() => (
+          <Text style={styles.emptyText}>No messages yet</Text>
+        )}
       />
-      <View style={[
-        styles.inputContainer,
-        Platform.OS === 'ios' && { marginBottom: 20 }
-      ]}>
+      <View style={styles.inputContainer}>
         <TouchableOpacity 
-          style={styles.attachButton}
-          onPress={handleImagePicker}
+          style={styles.attachButton} 
+          onPress={handleMediaPicker}
+          disabled={isUploading || isLoading}
         >
-          <MaterialCommunityIcons name="image" size={24} color="#666" />
+          <MaterialCommunityIcons 
+            name="attachment" 
+            size={24} 
+            color={isUploading || isLoading ? "#999" : "#24269B"} 
+          />
         </TouchableOpacity>
         <TextInput
           style={styles.input}
@@ -268,22 +369,17 @@ const ChatConversationScreen = ({ route, navigation }) => {
           onChangeText={setInputText}
           placeholder="Type a message..."
           multiline
-          numberOfLines={4}
-          maxLength={1000}
-          textAlignVertical="top"
-          onFocus={() => {
-            setTimeout(() => scrollToBottom(true), 100);
-          }}
+          editable={!isLoading && !isUploading}
         />
         <TouchableOpacity 
           style={styles.sendButton} 
           onPress={sendMessage}
-          disabled={!inputText.trim()}
+          disabled={isLoading || isUploading || !inputText.trim()}
         >
           <MaterialCommunityIcons 
             name="send" 
             size={24} 
-            color={inputText.trim() ? "#24269B" : "#999"} 
+            color={(isLoading || isUploading || !inputText.trim()) ? "#999" : "#24269B"} 
           />
         </TouchableOpacity>
       </View>
@@ -297,7 +393,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   messageList: {
-    paddingVertical: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -319,63 +416,81 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     padding: 10,
-    marginVertical: 5,
-    marginHorizontal: 10,
+    marginVertical: 2,
     maxWidth: '80%',
     borderRadius: 15,
   },
   myMessage: {
     alignSelf: 'flex-end',
     backgroundColor: '#24269B',
+    borderBottomRightRadius: 5,
   },
   theirMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#E8E8E8',
+    borderBottomLeftRadius: 5,
   },
   messageText: {
     fontSize: 16,
+    marginBottom: 4,
   },
   myMessageText: {
-    color: '#fff',
+    color: '#FFFFFF',
   },
   theirMessageText: {
-    color: '#000',
+    color: '#000000',
   },
   messageImage: {
     width: 200,
     height: 200,
     borderRadius: 10,
+    marginBottom: 4,
+    backgroundColor: '#f0f0f0',
   },
   inputContainer: {
     flexDirection: 'row',
     padding: 10,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    alignItems: 'flex-end',
+    borderTopColor: '#E8E8E8',
     backgroundColor: '#fff',
-    paddingBottom: Platform.OS === 'ios' ? 35 : 10,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginRight: 10,
-    minHeight: 40,
-    maxHeight: 100,
-    fontSize: 16,
+    alignItems: 'flex-end',
   },
   attachButton: {
     padding: 10,
+    marginRight: 5,
+  },
+  input: {
+    flex: 1,
+    marginRight: 10,
+    padding: 10,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 20,
+    maxHeight: 100,
   },
   sendButton: {
     padding: 10,
+  },
+  emptyText: {
+    textAlign: 'center',
+    padding: 20,
+    color: '#999',
+  },
+  senderName: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  timestamp: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  myTimestamp: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    alignSelf: 'flex-end',
+  },
+  theirTimestamp: {
+    color: '#666',
+    alignSelf: 'flex-start',
   },
 });
 

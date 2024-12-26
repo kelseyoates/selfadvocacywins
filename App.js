@@ -9,21 +9,22 @@ import ChatConversationScreen from './src/screens/ChatConversationScreen';
 
 const Stack = createNativeStackNavigator();
 
+const appSettings = new CometChat.AppSettingsBuilder()
+  .subscribePresenceForAllUsers()
+  .setRegion(COMETCHAT_CONSTANTS.REGION)
+  .build();
+
 // Initialize CometChat
 const initCometChat = async () => {
   try {
-    const appSettings = new CometChat.AppSettingsBuilder()
-      .subscribePresenceForAllUsers()
-      .setRegion(COMETCHAT_CONSTANTS.REGION)
-      .build();
-
-    await CometChat.init(COMETCHAT_CONSTANTS.APP_ID, appSettings);
-    console.log('CometChat initialized successfully');
+    const response = await CometChat.init(COMETCHAT_CONSTANTS.APP_ID, appSettings);
+    console.log("CometChat initialization successful:", response);
   } catch (error) {
-    console.error('CometChat initialization failed:', error);
+    console.log("CometChat initialization failed:", error);
   }
 };
 
+// Call initialization
 initCometChat();
 
 export default function App() {
