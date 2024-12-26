@@ -8,6 +8,7 @@ import ChatMainScreen from '../screens/ChatMainScreen';
 import NewWinScreen from '../screens/NewWinScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
+import NewChatScreen from '../screens/NewChatScreen';
 
 const Tab = createBottomTabNavigator();
 

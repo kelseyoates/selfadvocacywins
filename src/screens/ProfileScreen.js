@@ -20,8 +20,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
 import { Calendar } from 'react-native-calendars';
-import WinCard from '../components/WinCard';
-import HistoryWinCard from '../components/HistoryWinCard';
+import WinHistoryCard from '../components/WinHistoryCard';
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
@@ -337,6 +336,24 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const formatSelectedDate = (dateString) => {
+    if (!dateString) return '';
+    
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    try {
+      // Assuming dateString is in format "2024-12-26"
+      const [year, month, day] = dateString.split('-');
+      return `${months[parseInt(month) - 1]} ${parseInt(day)}, ${year}`;
+    } catch (error) {
+      console.log("Date formatting error:", error, "for date:", dateString);
+      return dateString;
+    }
+  };
+
   const renderWinsModal = () => (
     <Modal
       visible={showWinsModal}
@@ -344,24 +361,24 @@ const ProfileScreen = ({ navigation }) => {
       transparent={true}
       onRequestClose={() => setShowWinsModal(false)}
     >
-      <View style={styles.modalOverlay}>
+      <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Wins on {selectedDate}</Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowWinsModal(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {selectedDateWins.map((win) => (
-            <HistoryWinCard 
-              key={win.id} 
-              win={win}
-            />
-          ))}
+          <Text style={styles.modalTitle}>Wins on {formatSelectedDate(selectedDate)}</Text>
+          <ScrollView style={styles.scrollView}>
+            {selectedDateWins.map((win) => (
+              <WinHistoryCard
+                key={win.id}
+                win={win}
+                onPress={() => {/* handle press */}}
+              />
+            ))}
+          </ScrollView>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowWinsModal(false)}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -807,6 +824,42 @@ const styles = StyleSheet.create({
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    height: '80%', // Make modal take up most of the screen
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  scrollView: {
+    width: '100%',
+    flex: 1, // This allows the ScrollView to take up available space
+  },
+  closeButton: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#24269B',
+    borderRadius: 8,
+    width: '100%',
+  },
+  closeButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -8,8 +8,9 @@ import {
   Alert,
   ScrollView,
   Image,
+  Dimensions,
 } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db, storage } from '../config/firebase';
@@ -17,13 +18,14 @@ import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigation } from '@react-navigation/native';
 
-const NewWinScreen = () => {
+const NewWinScreen = ({ navigation }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState(null);
   const [video, setVideo] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaType, setMediaType] = useState(null);
-  const navigation = useNavigation();
+  const [imageHeight, setImageHeight] = useState(0);
+  const screenWidth = Dimensions.get('window').width - 40;
 
   const clearForm = () => {
     setText('');
@@ -160,48 +162,58 @@ const NewWinScreen = () => {
     }
   };
 
+  useEffect(() => {
+    if (image) {
+      Image.getSize(image.uri, (width, height) => {
+        const scaledHeight = (height / width) * screenWidth;
+        setImageHeight(scaledHeight);
+      });
+    }
+  }, [image]);
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <TextInput
-          style={styles.input}
-          placeholder="Share your win..."
-          value={text}
-          onChangeText={setText}
-          multiline
-          numberOfLines={4}
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
+      <TextInput
+        style={styles.input}
+        placeholder="What's your win?"
+        value={text}
+        onChangeText={setText}
+        multiline
+      />
+      
+      {image && (
+        <Image
+          source={{ uri: image.uri }}
+          style={styles.previewImage}
+          resizeMode="contain"
         />
+      )}
 
-        {renderMedia()}
+      <View style={styles.mediaButtonContainer}>
+        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('photo')}>
+          <MaterialCommunityIcons name="camera" size={24} color="white" />
+          <Text style={styles.buttonText}>Photo</Text>
+        </TouchableOpacity>
 
-        <View style={styles.mediaButtons}>
-          <TouchableOpacity 
-            style={styles.mediaButton}
-            onPress={() => pickMedia('photo')}
-          >
-            <MaterialCommunityIcons name="image" size={24} color="#24269B" />
-            <Text style={styles.mediaButtonText}>Add Photo</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.mediaButton}
-            onPress={() => pickMedia('video')}
-          >
-            <MaterialCommunityIcons name="video" size={24} color="#24269B" />
-            <Text style={styles.mediaButtonText}>Add Video</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity 
-          style={[styles.shareButton, isSubmitting && styles.shareButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.shareButtonText}>
-            {isSubmitting ? 'Sharing...' : 'Share Win'}
-          </Text>
+        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('video')}>
+          <MaterialCommunityIcons name="video" size={24} color="white" />
+          <Text style={styles.buttonText}>Video</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity 
+        style={styles.submitButton} 
+        onPress={handleSubmit}
+        disabled={isSubmitting}
+      >
+        <Text style={styles.buttonText}>
+          {isSubmitting ? 'Posting...' : 'Post Win'}
+        </Text>
+        <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -209,23 +221,60 @@ const NewWinScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
-  content: {
-    padding: 15,
+  contentContainer: {
+    padding: 20,
   },
   input: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
     padding: 15,
-    minHeight: 100,
     fontSize: 16,
-    marginBottom: 15,
+    minHeight: 100,
     textAlignVertical: 'top',
+    marginBottom: 20,
+  },
+  previewImage: {
+    width: Dimensions.get('window').width - 40,
+    height: Dimensions.get('window').width - 40,
+    marginBottom: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  mediaButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  mediaButton: {
+    backgroundColor: '#24269B',
+    padding: 10,
+    borderRadius: 8,
+    flex: 0.45,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  submitButton: {
+    backgroundColor: '#4CAF50',
+    padding: 15,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  buttonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
   },
   mediaContainer: {
     width: '100%',
-    aspectRatio: 16/9,
+    height: '100%',
     backgroundColor: '#ddd',
     borderRadius: 10,
     marginBottom: 15,
@@ -243,43 +292,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 5,
   },
-  mediaButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-  },
-  mediaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  mediaButtonText: {
-    marginLeft: 8,
-    color: '#24269B',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  shareButton: {
-    backgroundColor: '#24269B',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  shareButtonDisabled: {
-    opacity: 0.5,
-  },
-  shareButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
 });
 
 export default NewWinScreen;
+

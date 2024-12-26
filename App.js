@@ -6,6 +6,10 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import ChatConversationScreen from './src/screens/ChatConversationScreen';
+import NewChatScreen from './src/screens/NewChatScreen';
+import UserSearchScreen from './src/screens/UserSearchScreen';
+import GroupChatSetupScreen from './src/screens/GroupChatSetupScreen';
+import { AuthProvider } from './src/contexts/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,31 +33,48 @@ initCometChat();
 
 export default function App() {
   return (
-    <NavigationContainer>
-      
-        <Stack.Navigator initialRouteName="Login">
-          <Stack.Screen 
-            name="Login" 
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="SignUp" 
-            component={SignUpScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Main"
-            component={TabNavigator}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ChatConversation"
-            component={ChatConversationScreen}
-            options={{ title: '' }}
-          />
-        </Stack.Navigator>
-     
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer>
+        
+          <Stack.Navigator initialRouteName="Login">
+            <Stack.Screen 
+              name="Login" 
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="SignUp" 
+              component={SignUpScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Main"
+              component={TabNavigator}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ChatConversation"
+              component={ChatConversationScreen}
+              options={{ title: '' }}
+            />
+            <Stack.Screen
+              name="NewChat"
+              component={NewChatScreen}
+              options={{ title: '' }}
+            />
+            <Stack.Screen
+              name="UserSearch"
+              component={UserSearchScreen}
+              options={{ title: '' }}
+            />
+            <Stack.Screen
+              name="GroupChatSetup"
+              component={GroupChatSetupScreen}
+              options={{ title: '' }}
+            />
+          </Stack.Navigator>
+       
+      </NavigationContainer>
+    </AuthProvider>
   );
 }

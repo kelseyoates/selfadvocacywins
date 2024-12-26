@@ -9,8 +9,9 @@ import {
 import { db } from '../config/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import WinCard from '../components/WinCard';
+import { useFocusEffect } from '@react-navigation/native';
 
-const MainScreen = () => {
+const MainScreen = ({ navigation }) => {
   const [wins, setWins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,6 +47,12 @@ const MainScreen = () => {
     setRefreshing(true);
     fetchWins();
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchWins();
+    }, [])
+  );
 
   if (loading) {
     return (
