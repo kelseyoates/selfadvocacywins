@@ -143,17 +143,6 @@ const ChatConversationScreen = ({ route, navigation }) => {
     if (!inputText.trim() || !currentUser) return;
 
     const messageText = inputText.trim();
-
-    // Check for profanity first
-    if (containsProfanity(messageText)) {
-      Alert.alert(
-        'Message Blocked',
-        'Your message contains inappropriate language and cannot be sent.'
-      );
-      setInputText('');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -163,44 +152,41 @@ const ChatConversationScreen = ({ route, navigation }) => {
         CometChat.RECEIVER_TYPE.USER
       );
 
-      // Add both types of moderation metadata
       textMessage.setMetadata({
-        moderator: {
-          enable: true,
-          profanity: {
-            severity: "high",
-            filterType: "block"
-          }
-        },
-        "@injected": {
-          extensions: {
-            profanity: {
-              enabled: true,
-              filterType: "block",
-              severity: "high"
+        "extensions": {
+          "data-masking": {
+            "enabled": true,
+            "maskingType": "text",
+            "maskWith": "***"
+          },
+          "moderation": {
+            "enabled": true,
+            "profanity": {
+              "enabled": true,
+              "action": "mask",
+              "severity": "medium"
             }
           }
         }
       });
 
-      console.log("Sending message with moderation:", {
+      console.log("Attempting to send message:", {
         text: messageText,
         metadata: textMessage.metadata
       });
 
-      // Additional client-side check before sending
-      if (containsProfanity(messageText)) {
-        throw new Error("PROFANITY_DETECTED");
-      }
-
       const sentMessage = await CometChat.sendMessage(textMessage);
-      console.log("Message response:", sentMessage);
+      console.log("Server response:", sentMessage);
 
-      // Check server response for moderation
-      if (sentMessage.metadata?.moderator?.blocked || 
-          sentMessage.metadata?.["@injected"]?.extensions?.profanity?.blocked) {
-        Alert.alert('Message Blocked', 'This message contains inappropriate content.');
-        setInputText(messageText);
+      // Check response metadata for masking or moderation
+      const metadata = sentMessage.metadata;
+      console.log("Message metadata:", metadata);
+
+      if (metadata?.["@injected"]?.extensions?.["data-masking"]?.masked) {
+        Alert.alert(
+          'Cannot Send Personal Information',
+          'Your message contains personal information (like phone numbers or email addresses) which cannot be shared.'
+        );
         return;
       }
 
@@ -215,17 +201,45 @@ const ChatConversationScreen = ({ route, navigation }) => {
         return newMessages;
       });
     } catch (error) {
-      console.log("Message error:", error);
+      console.log("Detailed error information:", {
+        code: error.code,
+        message: error.message,
+        details: error.details || {},
+        metadata: error.metadata || {}
+      });
       
-      if (error.message === "PROFANITY_DETECTED" || 
-          error.code === "ERR_CONTENT_MODERATED" || 
-          error.code === "MESSAGE_MODERATED") {
+      // More specific error handling
+      if (error.code === "ERR_DATA_MASKING" || 
+          error.message?.includes("data-masking") ||
+          error.message?.includes("personal information")) {
         Alert.alert(
-          'Message Blocked', 
-          'This message contains inappropriate content and cannot be sent.'
+          'Cannot Send Personal Information',
+          'Your message contains personal information (like phone numbers or email addresses) which cannot be shared.'
+        );
+      } else if (error.code === "ERR_PROFANITY_FOUND" || 
+                 error.message?.includes("profanity")) {
+        Alert.alert(
+          'Inappropriate Language',
+          'Your message contains inappropriate language and cannot be sent.'
+        );
+      } else if (error.code === "ERR_CONTENT_MODERATED" || 
+                 error.message?.includes("moderated")) {
+        Alert.alert(
+          'Cannot Send Personal Information',
+          'Your message contains personal information which cannot be shared.'
+        );
+      } else if (error.code === "ERR_CONNECTION_ERROR") {
+        Alert.alert(
+          'Connection Error',
+          'Please check your internet connection and try again.'
         );
       } else {
-        Alert.alert('Error', 'Failed to send message');
+        // If we get here, log the complete error for debugging
+        console.log("Unhandled error type:", error);
+        Alert.alert(
+          'Cannot Send Personal Information',
+          'Your message contains personal information which cannot be shared.'
+        );
       }
       setInputText(messageText);
     } finally {
