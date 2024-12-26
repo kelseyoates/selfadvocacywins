@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
 import { Calendar } from 'react-native-calendars';
 import WinCard from '../components/WinCard';
+import HistoryWinCard from '../components/HistoryWinCard';
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
@@ -346,12 +347,12 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           
-          <FlatList
-            data={selectedDateWins}
-            renderItem={({ item }) => <WinCard win={item} />}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.winsList}
-          />
+          {selectedDateWins.map((win) => (
+            <HistoryWinCard 
+              key={win.id} 
+              win={win}
+            />
+          ))}
         </View>
       </View>
     </Modal>

@@ -7,13 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { db } from '../config/firebase';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
-  onSnapshot 
-} from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import WinCard from '../components/WinCard';
 
 const MainScreen = () => {
@@ -21,35 +15,36 @@ const MainScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const winsQuery = query(
-      collection(db, 'wins'),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
-
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(winsQuery, (snapshot) => {
-      const winsData = snapshot.docs.map(doc => ({
+  const fetchWins = async () => {
+    try {
+      const winsQuery = query(
+        collection(db, 'wins'),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+      
+      const querySnapshot = await getDocs(winsQuery);
+      const winsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
       setWins(winsData);
-      setLoading(false);
-      setRefreshing(false);
-    }, (error) => {
+    } catch (error) {
       console.error('Error fetching wins:', error);
+    } finally {
       setLoading(false);
       setRefreshing(false);
-    });
+    }
+  };
 
-    // Cleanup listener on unmount
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchWins();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    // The onSnapshot listener will automatically update the data
+    fetchWins();
   };
 
   if (loading) {

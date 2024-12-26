@@ -52,7 +52,8 @@ const styles = StyleSheet.create({
     bottom: -windowHeight,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
-    zIndex: 1000,
+    zIndex: 9999,
+    elevation: 9999,
   },
   sheet: {
     backgroundColor: 'white',
@@ -61,6 +62,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     maxHeight: windowHeight * 0.9,
     marginBottom: windowHeight,
+    zIndex: 10000,
+    elevation: 10000,
   },
   content: {
     padding: 20,
