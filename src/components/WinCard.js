@@ -6,8 +6,6 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
-  Modal,
-  TouchableWithoutFeedback,
   Alert,
   SafeAreaView,
   Button,
@@ -24,41 +22,19 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useCommentModal } from '../context/CommentModalContext';
 
-const CommentModal = ({ visible, onClose, options, onSelect }) => {
-  if (!visible) return null;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Choose a comment</Text>
-          {options.map((comment, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.commentOption}
-              onPress={() => onSelect(comment)}
-            >
-              <Text style={styles.commentOptionText}>{comment}</Text>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-          >
-            <Text style={styles.closeButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
+const PRESET_COMMENTS = [
+  "That's amazing! Keep it up! 🌟",
+  "You should be so proud! 🎉",
+  "What a great accomplishment! 👏",
+  "This is inspiring! 💫",
+  "Way to advocate for yourself! 💪",
+  "You're crushing it! 🔥",
+  "This is what success looks like! ⭐",
+  "Keep shining! ✨",
+  "You're doing great! 🌈",
+  "This makes me so happy! 😊"
+];
 
 const WinCard = ({ win }) => {
   const [userData, setUserData] = useState(null);
@@ -66,14 +42,15 @@ const WinCard = ({ win }) => {
   const [imageHeight, setImageHeight] = useState(300);
   const [cheerCount, setCheerCount] = useState(win.cheers || 0);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showCommentModal, setShowCommentModal] = useState(false);
-  const [commentOptions, setCommentOptions] = useState([]);
+  const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState(win.comments || []);
-  const [lastTap, setLastTap] = useState(null);
   const cheerScale = useSharedValue(0);
   const cheerOpacity = useSharedValue(0);
   const [showAllComments, setShowAllComments] = useState(false);
-  const { openCommentModal } = useCommentModal();
+  const [randomComments] = useState(() => 
+    [...PRESET_COMMENTS].sort(() => 0.5 - Math.random()).slice(0, 3)
+  );
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -124,7 +101,16 @@ const WinCard = ({ win }) => {
       });
     }
 
-    return () => clearInterval(timer);
+    // Check auth state when component mounts
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      setCurrentUser(user);
+      console.log('Auth state changed:', user?.uid); // Debug log
+    });
+
+    return () => {
+      clearInterval(timer);
+      unsubscribe();
+    };
   }, [win]);
 
   const renderMedia = () => {
@@ -187,6 +173,7 @@ const WinCard = ({ win }) => {
       });
       
       setCheerCount(newCheerCount);
+      animateCheer();
     } catch (error) {
       console.error('Error updating cheers:', error);
     } finally {
@@ -195,42 +182,37 @@ const WinCard = ({ win }) => {
   };
 
   const handleShowCommentOptions = () => {
-    openCommentModal(handleAddComment);
+    setShowComments(!showComments);
   };
 
   const handleAddComment = async (commentText) => {
     try {
+      if (!auth.currentUser) {
+        console.log('No user found:', auth.currentUser);
+        Alert.alert('Error', 'You must be logged in to comment');
+        return;
+      }
+
+      console.log('Adding comment with user:', auth.currentUser.uid);
+      
       const winRef = doc(db, 'wins', win.id);
       const newComment = {
         text: commentText,
         userId: auth.currentUser.uid,
         timestamp: new Date().toISOString()
       };
-      
-      const updatedComments = [...comments, newComment];
+
+      // Use arrayUnion to add the comment to the array
       await updateDoc(winRef, {
-        comments: updatedComments
+        comments: arrayUnion(newComment)
       });
       
-      setComments(updatedComments);
+      setComments(prev => [...prev, newComment]);
+      setShowComments(false);
     } catch (error) {
       console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Failed to add comment. Please try again.');
+      Alert.alert('Error', `Failed to add comment: ${error.message}`);
     }
-  };
-
-  const handleDoubleTap = async (event) => {
-    const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
-    
-    if (lastTap && (now - lastTap) < DOUBLE_TAP_DELAY) {
-      // Double tap detected
-      if (!isUpdating) {
-        await handleCheer();
-        animateCheer();
-      }
-    }
-    setLastTap(now);
   };
 
   const animateCheer = () => {
@@ -319,15 +301,21 @@ const WinCard = ({ win }) => {
         </TouchableOpacity>
       </View>
 
-      {renderComments()}
-
-      {showCommentModal && (
-        <CommentOptionsModal
-          visible={showCommentModal}
-          onClose={() => setShowCommentModal(false)}
-          onSelectComment={handleAddComment}
-        />
+      {showComments && (
+        <View style={styles.commentOptions}>
+          {randomComments.map((comment, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.commentOption}
+              onPress={() => handleAddComment(comment)}
+            >
+              <Text style={styles.commentOptionText}>{comment}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       )}
+
+      {renderComments()}
     </View>
   );
 };
@@ -475,48 +463,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 20,
-    width: '80%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#24269B',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  commentOption: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    backgroundColor: '#f8f8f8',
-    marginBottom: 10,
-  },
-  commentText: {
-    fontSize: 16,
-    color: '#333',
-    textAlign: 'center',
-  },
-  closeButton: {
-    marginTop: 10,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
-  },
   commentsSection: {
     marginTop: 10,
     borderTopWidth: 1,
@@ -578,44 +524,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#24269B',
-  },
-  commentButton: {
-    backgroundColor: '#f8f8f8',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  commentButtonText: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: '#333',
-  },
-  cancelButton: {
-    padding: 15,
+  commentOptions: {
     marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 10,
   },
-  cancelButtonText: {
-    fontSize: 16,
+  commentOption: {
+    backgroundColor: '#f8f8f8',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  commentOptionText: {
+    fontSize: 14,
+    color: '#333',
     textAlign: 'center',
-    color: '#666',
   },
 });
 

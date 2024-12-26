@@ -6,7 +6,6 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import ChatConversationScreen from './src/screens/ChatConversationScreen';
-import { CommentModalProvider } from './src/context/CommentModalContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,7 +29,7 @@ initCometChat();
 export default function App() {
   return (
     <NavigationContainer>
-      <CommentModalProvider>
+      
         <Stack.Navigator initialRouteName="Login">
           <Stack.Screen 
             name="Login" 
@@ -53,7 +52,7 @@ export default function App() {
             options={{ title: '' }}
           />
         </Stack.Navigator>
-      </CommentModalProvider>
+     
     </NavigationContainer>
   );
 }

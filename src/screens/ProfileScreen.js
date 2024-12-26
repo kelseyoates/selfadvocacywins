@@ -51,6 +51,7 @@ const ProfileScreen = ({ navigation }) => {
   const [selectedDateWins, setSelectedDateWins] = useState([]);
   const [showWinsModal, setShowWinsModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   const questions = [
     {
@@ -81,25 +82,33 @@ const ProfileScreen = ({ navigation }) => {
   ];
 
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
-    const userRef = doc(db, 'users', currentUser.uid.toLowerCase());
-    
-    // Real-time listener for user data including answers
-    const unsubscribe = onSnapshot(userRef, (doc) => {
-      if (doc.exists()) {
-        const data = doc.data();
-        setUserData(data);
-        setAnswers(data.questionAnswers || []);
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (!user) {
+        // User is not logged in, redirect to login
+        navigation.replace('Login');
+        return;
       }
-    }, (error) => {
-      console.error("Error fetching user data:", error);
-      Alert.alert('Error', 'Failed to load your profile data');
+      
+      setIsLoading(false);
+      
+      // Now we can safely access user data
+      const userRef = doc(db, 'users', user.uid.toLowerCase());
+      const docUnsubscribe = onSnapshot(userRef, (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          setUserData(data);
+          setAnswers(data.questionAnswers || []);
+        }
+      }, (error) => {
+        console.error("Error fetching user data:", error);
+        Alert.alert('Error', 'Failed to load your profile data');
+      });
+
+      return () => docUnsubscribe();
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [navigation]);
 
   useEffect(() => {
     const findUserDocument = async () => {
@@ -444,6 +453,15 @@ const ProfileScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, []);
 
+  // Wrap the render in a loading check
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
@@ -785,7 +803,11 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 12,
     color: '#666',
-  }
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
 
 export default ProfileScreen;

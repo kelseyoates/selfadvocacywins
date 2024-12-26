@@ -7,30 +7,49 @@ import MainScreen from '../screens/MainScreen';
 import ChatMainScreen from '../screens/ChatMainScreen';
 import NewWinScreen from '../screens/NewWinScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import LoginScreen from '../screens/LoginScreen';
 
 const Tab = createBottomTabNavigator();
 
-const TabNavigator = () => {
+const TabNavigator = ({ navigation }) => {
   const [profilePicture, setProfilePicture] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const fetchProfilePicture = async () => {
-      try {
-        const uid = auth.currentUser?.uid.toLowerCase();
-        if (uid) {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      console.log('TabNavigator auth state:', user ? 'logged in' : 'logged out');
+      setIsAuthenticated(!!user);
+      
+      if (!user) {
+        // If no user, navigate to Login
+        navigation.replace('Login');
+        return;
+      }
+
+      // Fetch profile picture only if authenticated
+      const fetchProfilePicture = async () => {
+        try {
+          const uid = user.uid.toLowerCase();
           const userDoc = await getDoc(doc(db, 'users', uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             setProfilePicture(userData.profilePicture);
           }
+        } catch (error) {
+          console.error('Error fetching profile picture:', error);
         }
-      } catch (error) {
-        console.error('Error fetching profile picture:', error);
-      }
-    };
+      };
 
-    fetchProfilePicture();
-  }, []);
+      fetchProfilePicture();
+    });
+
+    return () => unsubscribe();
+  }, [navigation]);
+
+  // If not authenticated, return null (navigation to Login will happen in useEffect)
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Tab.Navigator
