@@ -30,6 +30,36 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer }) => {
     }
   }, [existingAnswer]);
 
+  const handleLocationSubmit = async () => {
+    try {
+      await updateFirestore({ location });
+      Alert.alert('Success', 'Location saved successfully');
+    } catch (error) {
+      console.error('Error saving location:', error);
+      Alert.alert('Error', 'Failed to save location');
+    }
+  };
+
+  const renderLocation = () => {
+    return (
+      <View style={styles.locationContainer}>
+        <TextInput
+          style={styles.locationInput}
+          placeholder="Enter your location"
+          value={location}
+          onChangeText={setLocation}
+        />
+        <TouchableOpacity 
+          style={styles.locationButton}
+          onPress={handleLocationSubmit}
+        >
+          <MaterialCommunityIcons name="map-marker" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Save Location</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   const pickVideo = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -367,6 +397,31 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 12,
+  },
+  locationContainer: {
+    marginVertical: 10,
+    padding: 10,
+  },
+  locationInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 8,
+    marginBottom: 10,
+    fontSize: 14,
+  },
+  locationButton: {
+    backgroundColor: '#24269B',
+    padding: 10,
+    borderRadius: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    marginLeft: 5,
   },
 });
 

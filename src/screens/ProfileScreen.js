@@ -6,20 +6,47 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  ScrollView
+  ScrollView,
+  TextInput,
+  Modal,
+  FlatList
 } from 'react-native';
 import { auth, db, storage } from '../config/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import globalStyles from '../styles/styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
+import { Calendar } from 'react-native-calendars';
+import WinCard from '../components/WinCard';
+
+const US_STATES = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
+  'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia',
+  'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
+  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland',
+  'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri',
+  'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey',
+  'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina',
+  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
+  'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+];
 
 const ProfileScreen = ({ navigation }) => {
   const [userData, setUserData] = useState(null);
   const [answers, setAnswers] = useState([]);
+  const [location, setLocation] = useState('');
+  const [locationError, setLocationError] = useState(null);
+  const [selectedState, setSelectedState] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [userDocId, setUserDocId] = useState(null);
+  const [winDates, setWinDates] = useState({});
+  const [selectedDateWins, setSelectedDateWins] = useState([]);
+  const [showWinsModal, setShowWinsModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
 
   const questions = [
     {
@@ -69,6 +96,55 @@ const ProfileScreen = ({ navigation }) => {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const findUserDocument = async () => {
+      try {
+        // Try to find the user document with either case of the UID
+        const usersRef = collection(db, 'users');
+        const q = query(
+          usersRef, 
+          where('uid', 'in', [
+            auth.currentUser.uid,
+            auth.currentUser.uid.toLowerCase()
+          ])
+        );
+        
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          setUserDocId(userDoc.id);
+          if (userDoc.data().state) {
+            setSelectedState(userDoc.data().state);
+          }
+        } else {
+          console.error('User document not found');
+        }
+      } catch (error) {
+        console.error('Error finding user document:', error);
+      }
+    };
+
+    findUserDocument();
+  }, []);
+
+  const saveState = async () => {
+    if (!userDocId) {
+      Alert.alert('Error', 'User document not found');
+      return;
+    }
+
+    try {
+      const userRef = doc(db, 'users', userDocId);
+      await updateDoc(userRef, {
+        state: selectedState,
+      });
+      Alert.alert('Success', 'State saved successfully');
+    } catch (error) {
+      console.error('Error saving state:', error);
+      Alert.alert('Error', 'Failed to save state');
+    }
+  };
 
   const handleImagePicker = async () => {
     try {
@@ -156,6 +232,191 @@ const ProfileScreen = ({ navigation }) => {
     )[0];
   };
 
+  const fetchUserWins = async () => {
+    try {
+      const winsQuery = query(
+        collection(db, 'wins'),
+        where('userId', '==', auth.currentUser.uid.toLowerCase())
+      );
+      
+      const querySnapshot = await getDocs(winsQuery);
+      const dates = {};
+      
+      querySnapshot.docs.forEach(doc => {
+        const win = doc.data();
+        let localDate;
+
+        if (win.localTimestamp?.date) {
+          // Parse the MM/DD/YYYY format into YYYY-MM-DD
+          const [month, day, year] = win.localTimestamp.date.split('/');
+          localDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        } else {
+          localDate = new Date(win.createdAt).toLocaleDateString('en-CA');
+        }
+
+        console.log('Processing win date:', {
+          originalDate: win.localTimestamp?.date || win.createdAt,
+          mappedDate: localDate
+        });
+
+        dates[localDate] = { marked: true, dotColor: '#24269B' };
+      });
+      
+      console.log('Marked dates:', dates);
+      setWinDates(dates);
+    } catch (error) {
+      console.error('Error fetching wins:', error);
+    }
+  };
+
+  const fetchWinsForDate = async (date) => {
+    try {
+      console.log('Fetching wins for date:', date);
+      
+      const winsQuery = query(
+        collection(db, 'wins'),
+        where('userId', '==', auth.currentUser.uid.toLowerCase())
+      );
+      
+      const querySnapshot = await getDocs(winsQuery);
+      const wins = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter(win => {
+          let winDate;
+          if (win.localTimestamp?.date) {
+            // Parse the MM/DD/YYYY format into YYYY-MM-DD
+            const [month, day, year] = win.localTimestamp.date.split('/');
+            winDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          } else {
+            winDate = new Date(win.createdAt).toLocaleDateString('en-CA');
+          }
+          
+          console.log('Comparing dates:', {
+            winDate: winDate,
+            selectedDate: date,
+            matches: winDate === date
+          });
+          
+          return winDate === date;
+        });
+      
+      console.log('Found wins for date:', {
+        date: date,
+        count: wins.length,
+        wins: wins.map(w => ({
+          date: w.localTimestamp?.date,
+          createdAt: w.createdAt
+        }))
+      });
+      
+      setSelectedDateWins(wins);
+      setSelectedDate(date);
+      setShowWinsModal(true);
+    } catch (error) {
+      console.error('Error fetching wins for date:', error);
+    }
+  };
+
+  const renderWinsModal = () => (
+    <Modal
+      visible={showWinsModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowWinsModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Wins on {selectedDate}</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowWinsModal(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={selectedDateWins}
+            renderItem={({ item }) => <WinCard win={item} />}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.winsList}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderStateSelector = () => {
+    return (
+      <View style={styles.stateContainer}>
+        <Text style={styles.stateLabel}>📍 Your State</Text>
+        
+        <TouchableOpacity 
+          style={styles.stateButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Text style={styles.stateButtonText}>
+            {selectedState || 'Select your state'}
+          </Text>
+        </TouchableOpacity>
+
+        {selectedState && (
+          <TouchableOpacity 
+            style={styles.saveButton}
+            onPress={saveState}
+          >
+            <Text style={styles.buttonText}>Save State</Text>
+          </TouchableOpacity>
+        )}
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalView}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Your State</Text>
+              <ScrollView>
+                {US_STATES.map((state) => (
+                  <TouchableOpacity
+                    key={state}
+                    style={[
+                      styles.stateOption,
+                      selectedState === state && styles.selectedStateOption
+                    ]}
+                    onPress={() => {
+                      setSelectedState(state);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.stateOptionText,
+                      selectedState === state && styles.selectedStateOptionText
+                    ]}>
+                      {state}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
@@ -173,8 +434,10 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
         <Text style={styles.username}>{userData?.username || 'Loading...'}</Text>
-        <Text style={styles.email}>{auth.currentUser?.email}</Text>
+       
       </View>
+
+      {renderStateSelector()}
 
       <View style={styles.menuSection}>
         <TouchableOpacity 
@@ -220,6 +483,22 @@ const ProfileScreen = ({ navigation }) => {
           );
         })}
       </View>
+
+      <View style={styles.calendarContainer}>
+        <Text style={styles.sectionTitle}>🏆 Win History</Text>
+        <Calendar
+          markedDates={winDates}
+          onDayPress={day => fetchWinsForDate(day.dateString)}
+          theme={{
+            selectedDayBackgroundColor: '#24269B',
+            todayTextColor: '#24269B',
+            dotColor: '#24269B',
+            arrowColor: '#24269B',
+          }}
+        />
+      </View>
+
+      {renderWinsModal()}
     </ScrollView>
   );
 };
@@ -325,6 +604,132 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
   },
   ...additionalStyles,
+  stateContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  stateLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#24269B',
+    marginBottom: 10,
+  },
+  stateButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    marginBottom: 10,
+  },
+  stateButtonText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  saveButton: {
+    backgroundColor: '#24269B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modalView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#24269B',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  stateOption: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedStateOption: {
+    backgroundColor: '#24269B',
+  },
+  stateOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedStateOptionText: {
+    color: '#fff',
+  },
+  closeButton: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  calendarContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    margin: 10,
+    padding: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#24269B',
+  },
+  winsList: {
+    padding: 10,
+  },
 });
 
 export default ProfileScreen;
