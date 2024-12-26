@@ -44,6 +44,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { height: screenHeight } = Dimensions.get('window');
   const [isUploading, setIsUploading] = useState(false);
+  const [reportedUsers, setReportedUsers] = useState(new Set());
 
   // Fetch initial messages
   const fetchMessages = useCallback(async () => {
@@ -157,14 +158,20 @@ const ChatConversationScreen = ({ route, navigation }) => {
           "data-masking": {
             "enabled": true,
             "maskingType": "text",
-            "maskWith": "***"
+            "maskWith": "***",
+            "patterns": {
+              "email": true,
+              "phone": true,
+              "credit-card": true,
+              "ssn": true
+            }
           },
           "moderation": {
             "enabled": true,
             "profanity": {
               "enabled": true,
               "action": "mask",
-              "severity": "medium"
+              "severity": "high"
             }
           }
         }
@@ -178,15 +185,15 @@ const ChatConversationScreen = ({ route, navigation }) => {
       const sentMessage = await CometChat.sendMessage(textMessage);
       console.log("Server response:", sentMessage);
 
-      // Check response metadata for masking or moderation
-      const metadata = sentMessage.metadata;
-      console.log("Message metadata:", metadata);
-
-      if (metadata?.["@injected"]?.extensions?.["data-masking"]?.masked) {
+      // Only show alert if actually masked
+      if (sentMessage.text !== messageText && 
+          (sentMessage.text.includes('***') || 
+           sentMessage.metadata?.["@injected"]?.extensions?.["data-masking"]?.masked)) {
         Alert.alert(
           'Cannot Send Personal Information',
           'Your message contains personal information (like phone numbers or email addresses) which cannot be shared.'
         );
+        setInputText(messageText);
         return;
       }
 
@@ -208,7 +215,6 @@ const ChatConversationScreen = ({ route, navigation }) => {
         metadata: error.metadata || {}
       });
       
-      // More specific error handling
       if (error.code === "ERR_DATA_MASKING" || 
           error.message?.includes("data-masking") ||
           error.message?.includes("personal information")) {
@@ -222,26 +228,36 @@ const ChatConversationScreen = ({ route, navigation }) => {
           'Inappropriate Language',
           'Your message contains inappropriate language and cannot be sent.'
         );
-      } else if (error.code === "ERR_CONTENT_MODERATED" || 
-                 error.message?.includes("moderated")) {
-        Alert.alert(
-          'Cannot Send Personal Information',
-          'Your message contains personal information which cannot be shared.'
-        );
       } else if (error.code === "ERR_CONNECTION_ERROR") {
         Alert.alert(
           'Connection Error',
           'Please check your internet connection and try again.'
         );
       } else {
-        // If we get here, log the complete error for debugging
-        console.log("Unhandled error type:", error);
-        Alert.alert(
-          'Cannot Send Personal Information',
-          'Your message contains personal information which cannot be shared.'
-        );
+        // Create a new message object for unknown errors
+        const newMessage = {
+          id: Date.now().toString(),
+          text: messageText,
+          sender: { 
+            uid: currentUser.uid 
+          },
+          category: "message",
+          type: "text",
+          receiverId: uid,
+          sentAt: Date.now()
+        };
+
+        setMessages(prev => {
+          const newMessages = [...prev, newMessage];
+          requestAnimationFrame(() => {
+            if (flatListRef.current) {
+              flatListRef.current.scrollToEnd({ animated: true });
+            }
+          });
+          return newMessages;
+        });
+        setInputText('');
       }
-      setInputText(messageText);
     } finally {
       setIsLoading(false);
     }
@@ -360,6 +376,82 @@ const ChatConversationScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleReportUser = async (userId, messageId, reason) => {
+    try {
+      const reportData = {
+        reportedUid: userId,
+        messageId: messageId,
+        reason: reason
+      };
+
+      await CometChat.reportUser(reportData);
+      
+      // Add user to reported set to prevent multiple reports
+      setReportedUsers(prev => new Set(prev).add(userId));
+      
+      Alert.alert(
+        'User Reported',
+        'Thank you for helping keep our community safe. This user has been reported for review.'
+      );
+    } catch (error) {
+      console.log("Report user error:", error);
+      Alert.alert(
+        'Report Failed',
+        'Unable to submit report. Please try again later.'
+      );
+    }
+  };
+
+  const handleMessageLongPress = (message) => {
+    // Don't show report option for own messages
+    if (message.sender.uid === currentUser.uid) return;
+
+    // Don't show report option if user already reported
+    if (reportedUsers.has(message.sender.uid)) {
+      Alert.alert('Already Reported', 'You have already reported this user.');
+      return;
+    }
+
+    Alert.alert(
+      'Report Message',
+      'Would you like to report this message for inappropriate content?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Report',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Report Reason',
+              'Why are you reporting this message?',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel'
+                },
+                {
+                  text: 'Inappropriate Content',
+                  onPress: () => handleReportUser(message.sender.uid, message.id, 'inappropriate_content')
+                },
+                {
+                  text: 'Personal Information',
+                  onPress: () => handleReportUser(message.sender.uid, message.id, 'personal_information')
+                },
+                {
+                  text: 'Harassment',
+                  onPress: () => handleReportUser(message.sender.uid, message.id, 'harassment')
+                }
+              ]
+            );
+          }
+        }
+      ]
+    );
+  };
+
   const renderMessage = ({ item }) => {
     // Skip action and system messages
     if (item.category === 'action' || 
@@ -423,6 +515,44 @@ const ChatConversationScreen = ({ route, navigation }) => {
   };
 
   console.log("Rendering with messages count:", messages.length);
+
+  useEffect(() => {
+    const setNavigationHeader = async () => {
+      try {
+        // First get user data from Firestore
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        const userData = userDoc.data();
+        
+        // Then get CometChat user data
+        const cometChatUser = await CometChat.getUser(uid);
+        
+        navigation.setOptions({
+          headerTitle: () => (
+            <View style={styles.headerContainer}>
+              <Image 
+                source={{ 
+                  uri: userData?.profilePicture || 
+                       'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' 
+                }} 
+                style={styles.headerAvatar} 
+              />
+              <Text style={styles.headerTitle}>
+                {userData?.name || cometChatUser.name || name || 'Chat'}
+              </Text>
+            </View>
+          ),
+        });
+      } catch (error) {
+        console.log("Error fetching user details:", error);
+        // Fallback to using name from route params
+        navigation.setOptions({
+          headerTitle: name || 'Chat',
+        });
+      }
+    };
+
+    setNavigationHeader();
+  }, [navigation, uid, name]);
 
   return (
     <KeyboardAvoidingView 
@@ -495,13 +625,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#000',
   },
