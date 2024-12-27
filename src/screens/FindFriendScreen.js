@@ -99,20 +99,17 @@ const FindFriendScreen = ({ navigation }) => {
       const currentUserId = auth.currentUser.uid;
       console.log('DEBUG: Current user ID:', currentUserId);
 
-      // Get win topics
-      const winTopics = searchCriteria.winTopics
-        .toLowerCase()
-        .split(',')
-        .map(topic => topic.trim())
-        .filter(topic => topic.length > 0);
-      
-      // Get selected words from state and flatten them
+      // Get selected words and text answers from all questions
       const selectedWordsList = Object.values(selectedWords || {})
         .flat()
         .filter(word => word);
       
-      console.log('DEBUG: Searching for winTopics:', winTopics);
+      // Get text answers from searchCriteria
+      const textAnswers = Object.values(searchCriteria.answers || {})
+        .filter(text => text && text.trim());
+
       console.log('DEBUG: Searching for selectedWords:', selectedWordsList);
+      console.log('DEBUG: Searching for textAnswers:', textAnswers);
 
       // Build search query
       let searchParams = {
@@ -120,42 +117,30 @@ const FindFriendScreen = ({ navigation }) => {
         hitsPerPage: 50
       };
 
+      // Add facet filters for selected words
       let facetFilters = [];
-      
-      // Add win topics condition if any exist
-      if (winTopics.length > 0) {
-        const topicsFilter = winTopics.map(topic => 
-          `winTopics:${topic}`
-        );
-        facetFilters.push(topicsFilter);
-      }
-
-      // Add selected words condition if any exist
       if (selectedWordsList.length > 0) {
         selectedWordsList.forEach(word => {
-          // Add each word as a separate facet filter
           facetFilters.push([`questionAnswers.selectedWords:${word}`]);
         });
       }
 
-      // Add state filter if needed
-      if (!searchCriteria.searchAnywhere && searchCriteria.states.length > 0) {
-        facetFilters.push([`state:${searchCriteria.states[0]}`]);
+      // Add text search if there are any text answers
+      if (textAnswers.length > 0) {
+        searchParams.query = textAnswers.join(' '); // Combine all text answers
+        searchParams.restrictSearchableAttributes = ['questionAnswers.textAnswer'];
       }
 
       if (facetFilters.length > 0) {
         searchParams.facetFilters = facetFilters;
       }
 
-      // Let's also try searching in the text
-      if (selectedWordsList.length > 0) {
-        searchParams.query = selectedWordsList.join(' ');
-        searchParams.restrictSearchableAttributes = ['questionAnswers.selectedWords'];
-      }
-
       console.log('DEBUG: Full search params:', JSON.stringify(searchParams, null, 2));
 
-      const { hits } = await searchIndex.search('', searchParams);
+      const { hits } = await searchIndex.search(
+        textAnswers.length > 0 ? searchParams.query : '',
+        searchParams
+      );
       console.log('DEBUG: Raw hits:', JSON.stringify(hits, null, 2));
       console.log('DEBUG: Search hits:', hits.length);
       
@@ -191,6 +176,7 @@ const FindFriendScreen = ({ navigation }) => {
         searchableAttributes: [
           'winTopics',
           'questionAnswers.selectedWords',
+          'questionAnswers.textAnswer',
           'username',
           'state'
         ],
