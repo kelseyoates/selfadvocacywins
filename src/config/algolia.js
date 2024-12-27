@@ -34,4 +34,25 @@ try {
   throw error;
 }
 
+const updateAlgoliaSettings = async () => {
+  try {
+    await adminIndex.setSettings({
+      searchableAttributes: [
+        'winTopics',
+        'questionAnswers',
+        'username',
+        'state'
+      ],
+      attributesForFaceting: [
+        'state',
+        'winTopics',
+        'questionAnswers'
+      ]
+    });
+    console.log('Algolia settings updated successfully');
+  } catch (error) {
+    console.error('Error updating Algolia settings:', error);
+  }
+};
+
 export { searchIndex, adminIndex }; 

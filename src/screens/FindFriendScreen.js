@@ -106,45 +106,63 @@ const FindFriendScreen = ({ navigation }) => {
         .map(topic => topic.trim())
         .filter(topic => topic.length > 0);
       
+      // Get selected words from state and flatten them
+      const selectedWordsList = Object.values(selectedWords || {})
+        .flat()
+        .filter(word => word);
+      
       console.log('DEBUG: Searching for winTopics:', winTopics);
+      console.log('DEBUG: Searching for selectedWords:', selectedWordsList);
 
       // Build search query
       let searchParams = {
-        // Remove the filter from Algolia query since objectIDs might not match
-        attributesToRetrieve: [
-          'objectID',
-          'username',
-          'state',
-          'age',
-          'profilePicture',
-          'winTopics',
-          'path'  // Add this to get the Firebase path
-        ],
+        attributesToRetrieve: ['*'],
         hitsPerPage: 50
       };
 
-      // Add state filter if needed
-      if (!searchCriteria.searchAnywhere && searchCriteria.states.length > 0) {
-        searchParams.facetFilters = [`state:${searchCriteria.states[0]}`];
+      let facetFilters = [];
+      
+      // Add win topics condition if any exist
+      if (winTopics.length > 0) {
+        const topicsFilter = winTopics.map(topic => 
+          `winTopics:${topic}`
+        );
+        facetFilters.push(topicsFilter);
       }
 
-      // Add win topics to search query
-      if (winTopics.length > 0) {
-        searchParams.query = winTopics.join(' OR ');
-        searchParams.restrictSearchableAttributes = ['winTopics'];
+      // Add selected words condition if any exist
+      if (selectedWordsList.length > 0) {
+        selectedWordsList.forEach(word => {
+          // Add each word as a separate facet filter
+          facetFilters.push([`questionAnswers.selectedWords:${word}`]);
+        });
+      }
+
+      // Add state filter if needed
+      if (!searchCriteria.searchAnywhere && searchCriteria.states.length > 0) {
+        facetFilters.push([`state:${searchCriteria.states[0]}`]);
+      }
+
+      if (facetFilters.length > 0) {
+        searchParams.facetFilters = facetFilters;
+      }
+
+      // Let's also try searching in the text
+      if (selectedWordsList.length > 0) {
+        searchParams.query = selectedWordsList.join(' ');
+        searchParams.restrictSearchableAttributes = ['questionAnswers.selectedWords'];
       }
 
       console.log('DEBUG: Full search params:', JSON.stringify(searchParams, null, 2));
 
-      const { hits } = await searchIndex.search(searchParams.query || '', searchParams);
+      const { hits } = await searchIndex.search('', searchParams);
+      console.log('DEBUG: Raw hits:', JSON.stringify(hits, null, 2));
       console.log('DEBUG: Search hits:', hits.length);
       
-      // Filter out current user using the path field which contains the Firebase UID
+      // Filter out current user and apply age filter
       const filteredHits = hits
         .filter(hit => {
-          // Extract UID from path (format: "users/UID")
           const hitUserId = hit.path?.split('/')?.[1];
-          console.log('DEBUG: Comparing hit user ID:', hitUserId, 'with current user:', currentUserId);
           return hitUserId?.toLowerCase() !== currentUserId?.toLowerCase();
         })
         .filter(hit => {
@@ -154,10 +172,6 @@ const FindFriendScreen = ({ navigation }) => {
         });
 
       console.log('Final filtered results:', filteredHits.length);
-      console.log('DEBUG: Filtered hits:', JSON.stringify(filteredHits.map(h => ({
-        username: h.username,
-        path: h.path
-      })), null, 2));
 
       navigation.navigate('FriendResults', { matches: filteredHits });
 
@@ -176,12 +190,15 @@ const FindFriendScreen = ({ navigation }) => {
       await adminIndex.setSettings({
         searchableAttributes: [
           'winTopics',
+          'questionAnswers.selectedWords',
           'username',
-          'state',
-          'questionAnswers.textAnswer',
-          'questionAnswers.selectedWords'
+          'state'
         ],
-        attributesForFaceting: ['state']
+        attributesForFaceting: [
+          'searchable(questionAnswers.selectedWords)',
+          'searchable(winTopics)',
+          'state'
+        ]
       });
       console.log('Algolia settings updated successfully');
     } catch (error) {
@@ -223,6 +240,35 @@ const FindFriendScreen = ({ navigation }) => {
     };
 
     debugAlgoliaIndex();
+  }, []);
+
+  useEffect(() => {
+    const debugAlgoliaData = async () => {
+      try {
+        // Get all records
+        const { hits } = await searchIndex.search('', {
+          attributesToRetrieve: ['*'],
+          hitsPerPage: 100
+        });
+        
+        console.log('DEBUG: All records in Algolia:', JSON.stringify(hits, null, 2));
+        
+        // Check questionAnswers structure
+        hits.forEach((hit, index) => {
+          console.log(`\nRecord ${index + 1}:`);
+          console.log('questionAnswers:', hit.questionAnswers);
+          if (hit.questionAnswers) {
+            hit.questionAnswers.forEach((qa, i) => {
+              console.log(`Question ${i}:`, qa.selectedWords);
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Debug error:', error);
+      }
+    };
+
+    debugAlgoliaData();
   }, []);
 
   return (
