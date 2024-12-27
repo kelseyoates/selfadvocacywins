@@ -14,7 +14,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db, storage } from '../config/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, serverTimestamp, runTransaction, setDoc, updateDoc, arrayUnion, getDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigation } from '@react-navigation/native';
 
@@ -25,6 +25,7 @@ const NewWinScreen = ({ navigation }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaType, setMediaType] = useState(null);
   const [imageHeight, setImageHeight] = useState(0);
+  const [media, setMedia] = useState([]);
   const screenWidth = Dimensions.get('window').width - 40;
 
   const clearForm = () => {
@@ -36,55 +37,79 @@ const NewWinScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    if (!text.trim() && !image && !video) {
-      Alert.alert('Error', 'Please enter text or add media to share your win.');
+    if (!text.trim()) {
+      Alert.alert('Error', 'Please enter some text about your win');
       return;
     }
 
     setIsSubmitting(true);
+    const lowerCaseUid = auth.currentUser.uid.toLowerCase();
+    console.log('Starting win submission...');
 
     try {
-      let mediaUrl = null;
-
-      if (image || video) {
-        const file = image || video;
-        const extension = file.uri.split('.').pop();
-        const fileName = `${auth.currentUser.uid}_${Date.now()}.${extension}`;
-        const mediaRef = ref(storage, `media/${fileName}`);
-        
-        const response = await fetch(file.uri);
-        const blob = await response.blob();
-        await uploadBytes(mediaRef, blob);
-        mediaUrl = await getDownloadURL(mediaRef);
-      }
-
-      const win = {
-        userId: auth.currentUser.uid.toLowerCase(),
-        text: text.trim(),
-        mediaUrl,
-        mediaType: mediaType,
-        createdAt: new Date().toISOString(),
-        localTimestamp: {
-          date: new Date().toLocaleDateString(),
-          time: new Date().toLocaleTimeString(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          timestamp: new Date().getTime()
-        },
-        cheers: 0
+      const userRef = doc(db, 'users', lowerCaseUid);
+      const winRef = doc(collection(db, 'wins'));
+      
+      // Check if user exists and get current winTopics
+      const userDoc = await getDoc(userRef);
+      console.log('User document exists:', userDoc.exists());
+      
+      // Get current timestamp
+      const now = new Date();
+      const localTimestamp = {
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        timestamp: now.getTime(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
 
-      const docRef = await addDoc(collection(db, 'wins'), win);
-      console.log('Win added with ID:', docRef.id);
+      // Create win data to match existing structure
+      const winData = {
+        text: text,
+        createdAt: now.toISOString(),
+        localTimestamp,
+        userId: lowerCaseUid,
+        username: userDoc.data().username,
+        profilePicture: userDoc.data().profilePicture,
+        cheers: 0,
+        mediaType: null,
+        mediaUrl: null
+      };
 
-      // Clear form
-      clearForm();
+      // Extract topics
+      const topics = text.toLowerCase()
+        .split(/[\s,.-]+/)
+        .filter(word => word.length > 3)
+        .filter(word => !['this', 'that', 'with', 'from', 'what', 'have', 'and', 'the'].includes(word));
+
+      console.log('About to save win with topics:', topics);
+
+      // Initialize or update winTopics array
+      const currentTopics = userDoc.data().winTopics || [];
+      const newTopics = Array.from(new Set([...currentTopics, ...topics]));
+
+      // Save win and update user's topics in a batch
+      const batch = writeBatch(db);
+      batch.set(winRef, winData);
+      batch.update(userRef, {
+        winTopics: newTopics, // Use the merged array instead of arrayUnion
+        lastModified: serverTimestamp()
+      });
+
+      await batch.commit();
+      console.log('Win saved successfully:', winRef.id);
       
-      // Navigate back
       navigation.goBack();
 
     } catch (error) {
-      console.error('Error adding win:', error);
-      Alert.alert('Error', 'Failed to share your win. Please try again.');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      console.error('Error saving win:', {
+        message: errorMessage,
+        code: error.code,
+        stack: error.stack
+      });
+      Alert.alert('Error', `Failed to save win: ${errorMessage}`);
+    } finally {
       setIsSubmitting(false);
     }
   };

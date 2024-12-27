@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,9 +11,9 @@ import {
 } from 'react-native';
 import { states } from '../constants/states'; // We'll need to create this
 import { questions } from '../constants/questions'; // Import your existing questions
-import { searchIndex } from '../config/algolia';
+import { searchIndex, adminIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
-import { getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc, getDocs, collection, collectionGroup, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const FindFriendScreen = ({ navigation }) => {
@@ -21,7 +21,8 @@ const FindFriendScreen = ({ navigation }) => {
     states: [],
     searchAnywhere: false,
     ageRange: { min: '18', max: '100' },  // Changed to strings for TextInput
-    answers: {}
+    answers: {},
+    winTopics: ''
   });
 
   const [selectedWords, setSelectedWords] = useState({});
@@ -95,139 +96,68 @@ const FindFriendScreen = ({ navigation }) => {
 
   const handleSearch = async () => {
     try {
-      // Get all selected words from all questions
-      const allSelectedWords = Object.values(selectedWords)
-        .flat()
-        .filter(word => word);
-        
-      // Get all text answers and split them into keywords
-      const textAnswers = Object.values(searchCriteria.answers || {})
-        .filter(answer => answer && answer.length > 0)
-        .map(answer => answer.toLowerCase());
-      
-      console.log('Searching for words:', allSelectedWords);
-      console.log('Searching text answers:', textAnswers);
+      const currentUserId = auth.currentUser.uid;
+      console.log('DEBUG: Current user ID:', currentUserId);
 
+      // Get win topics
+      const winTopics = searchCriteria.winTopics
+        .toLowerCase()
+        .split(',')
+        .map(topic => topic.trim())
+        .filter(topic => topic.length > 0);
+      
+      console.log('DEBUG: Searching for winTopics:', winTopics);
+
+      // Build search query
       let searchParams = {
-        query: '',
-        filters: `NOT objectID:${auth.currentUser.uid.toLowerCase()}`,
+        // Remove the filter from Algolia query since objectIDs might not match
         attributesToRetrieve: [
           'objectID',
           'username',
-          'profilePicture',
           'state',
-          'age'
+          'age',
+          'profilePicture',
+          'winTopics',
+          'path'  // Add this to get the Firebase path
         ],
         hitsPerPage: 50
       };
 
+      // Add state filter if needed
       if (!searchCriteria.searchAnywhere && searchCriteria.states.length > 0) {
-        searchParams.query = searchCriteria.states[0];
-        searchParams.restrictSearchableAttributes = ['state'];
+        searchParams.facetFilters = [`state:${searchCriteria.states[0]}`];
       }
 
-      const { hits } = await searchIndex.search(searchParams.query, searchParams);
-      console.log('Initial hits from Algolia:', hits.length);
+      // Add win topics to search query
+      if (winTopics.length > 0) {
+        searchParams.query = winTopics.join(' OR ');
+        searchParams.restrictSearchableAttributes = ['winTopics'];
+      }
 
-      const enrichedHits = await Promise.all(hits.map(async (hit) => {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', hit.objectID));
-          if (userDoc.exists()) {
-            return {
-              ...hit,
-              questionAnswers: userDoc.data().questionAnswers || []
-            };
-          }
-          return hit;
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          return hit;
-        }
-      }));
+      console.log('DEBUG: Full search params:', JSON.stringify(searchParams, null, 2));
 
-      // Filter results based on selected words and text matches
-      let filteredHits = enrichedHits;
+      const { hits } = await searchIndex.search(searchParams.query || '', searchParams);
+      console.log('DEBUG: Search hits:', hits.length);
       
-      if (allSelectedWords.length > 0 || textAnswers.length > 0) {
-        filteredHits = enrichedHits.filter(hit => {
-          console.log(`\nChecking user ${hit.username}:`);
-          
-          if (!hit.questionAnswers) {
-            console.log(`- No questionAnswers found`);
-            return false;
-          }
-
-          // Check for word matches
-          const hasMatchingWord = allSelectedWords.length === 0 || hit.questionAnswers.some(answer => {
-            if (!answer.selectedWords) return false;
-            const matches = allSelectedWords.some(searchWord => 
-              answer.selectedWords.includes(searchWord)
-            );
-            if (matches) {
-              console.log(`- Word match found in ${answer.question}:`, 
-                answer.selectedWords.filter(word => allSelectedWords.includes(word))
-              );
-            }
-            return matches;
-          });
-
-          // Check for text matches
-          const hasMatchingText = textAnswers.length === 0 || hit.questionAnswers.some(answer => {
-            if (!answer.textAnswer) return false;
-            
-            const userAnswer = answer.textAnswer.toLowerCase();
-            const foundMatch = textAnswers.some(searchText => {
-              // Split search text into keywords
-              const keywords = searchText.split(' ')
-                .filter(word => word.length > 3); // Ignore small words
-              
-              // Check if any keyword matches
-              if (keywords.some(keyword => userAnswer.includes(keyword))) {
-                console.log(`- Text match found in ${answer.question}:`, 
-                  `Search: "${searchText}", Answer: "${userAnswer}"`);
-                return true;
-              }
-              return false;
-            });
-
-            return foundMatch;
-          });
-
-          // Determine if this is a match based on search criteria
-          const isMatch = (allSelectedWords.length === 0 || hasMatchingWord) && 
-                         (textAnswers.length === 0 || hasMatchingText);
-
-          if (isMatch) {
-            console.log(`- Match found for ${hit.username}:`, {
-              wordMatch: hasMatchingWord,
-              textMatch: hasMatchingText
-            });
-          } else {
-            console.log(`- No match for ${hit.username}:`, {
-              wordMatch: hasMatchingWord,
-              textMatch: hasMatchingText
-            });
-          }
-
-          return isMatch;
+      // Filter out current user using the path field which contains the Firebase UID
+      const filteredHits = hits
+        .filter(hit => {
+          // Extract UID from path (format: "users/UID")
+          const hitUserId = hit.path?.split('/')?.[1];
+          console.log('DEBUG: Comparing hit user ID:', hitUserId, 'with current user:', currentUserId);
+          return hitUserId?.toLowerCase() !== currentUserId?.toLowerCase();
+        })
+        .filter(hit => {
+          const age = hit.age || 0;
+          return age >= parseInt(searchCriteria.ageRange.min) && 
+                 age <= parseInt(searchCriteria.ageRange.max);
         });
-      }
 
-      // Apply age filter
-      const minAge = parseInt(searchCriteria.ageRange.min);
-      const maxAge = parseInt(searchCriteria.ageRange.max);
-      
-      filteredHits = filteredHits.filter(hit => {
-        const age = hit.age || 0;
-        return age >= minAge && age <= maxAge;
-      });
-
-      console.log('\nFiltering summary:');
-      console.log('Initial results:', hits.length);
-      console.log('Selected words:', allSelectedWords);
-      console.log('Text answers:', textAnswers);
-      console.log('After filtering:', filteredHits.length);
-      console.log('Final filtered results:', JSON.stringify(filteredHits, null, 2));
+      console.log('Final filtered results:', filteredHits.length);
+      console.log('DEBUG: Filtered hits:', JSON.stringify(filteredHits.map(h => ({
+        username: h.username,
+        path: h.path
+      })), null, 2));
 
       navigation.navigate('FriendResults', { matches: filteredHits });
 
@@ -240,6 +170,60 @@ const FindFriendScreen = ({ navigation }) => {
       );
     }
   };
+
+  const updateAlgoliaSettings = async () => {
+    try {
+      await adminIndex.setSettings({
+        searchableAttributes: [
+          'winTopics',
+          'username',
+          'state',
+          'questionAnswers.textAnswer',
+          'questionAnswers.selectedWords'
+        ],
+        attributesForFaceting: ['state']
+      });
+      console.log('Algolia settings updated successfully');
+    } catch (error) {
+      console.error('Error updating Algolia settings:', error);
+    }
+  };
+
+  useEffect(() => {
+    updateAlgoliaSettings();
+  }, []);
+
+  useEffect(() => {
+    const debugAlgoliaIndex = async () => {
+      console.log('Starting Algolia debug...');
+      try {
+        // First check if we can connect to Algolia
+        const indexName = searchIndex.indexName;
+        console.log('Connected to Algolia index:', indexName);
+
+        // Get all records
+        const { hits } = await searchIndex.search('');
+        console.log('Total records in Algolia:', hits.length);
+        
+        // Log the first record as a sample
+        if (hits.length > 0) {
+          console.log('Sample record structure:', JSON.stringify(hits[0], null, 2));
+        } else {
+          console.log('No records found in Algolia index');
+        }
+
+        // Check settings
+        const settings = await adminIndex.getSettings();
+        console.log('Current Algolia settings:', settings);
+
+      } catch (error) {
+        console.error('Debug error:', error);
+        console.error('Error stack:', error.stack);
+      }
+    };
+
+    debugAlgoliaIndex();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -318,6 +302,23 @@ const FindFriendScreen = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>What are you looking for in friends?</Text>
             {questions.map(renderQuestion)}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Search by Topics</Text>
+            <Text style={styles.sectionDescription}>
+              Enter topics you're interested in (e.g., baseball, cooking, music) to find friends who post about these topics
+            </Text>
+            <TextInput
+              style={styles.topicsInput}
+              placeholder="Enter topics separated by commas (e.g., baseball, cooking)"
+              value={searchCriteria.winTopics}
+              onChangeText={(text) => setSearchCriteria(prev => ({
+                ...prev,
+                winTopics: text
+              }))}
+              multiline
+            />
           </View>
 
           <View style={styles.bottomSpacer} />
@@ -473,6 +474,20 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 90,
   },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  topicsInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+    minHeight: 80,
+    textAlignVertical: 'top'
+  }
 });
 
 export default FindFriendScreen; 
