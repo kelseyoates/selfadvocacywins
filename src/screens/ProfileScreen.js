@@ -689,6 +689,29 @@ const ProfileScreen = ({ navigation }) => {
     loadProfile();
   }, []);
 
+  // Add this useEffect to load the birthdate
+  useEffect(() => {
+    const loadBirthdate = async () => {
+      try {
+        const uid = auth.currentUser.uid.toLowerCase();
+        const userRef = doc(db, 'users', uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists() && userDoc.data().birthdate) {
+          const birthdate = new Date(userDoc.data().birthdate);
+          setMonth(months[birthdate.getMonth()]);
+          setDay(birthdate.getDate().toString());
+          setYear(birthdate.getFullYear().toString());
+          console.log('Loaded birthdate:', userDoc.data().birthdate);
+        }
+      } catch (error) {
+        console.error('Error loading birthdate:', error);
+      }
+    };
+
+    loadBirthdate();
+  }, []);
+
   // Wrap the render in a loading check
   if (isLoading) {
     return (
