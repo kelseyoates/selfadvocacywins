@@ -9,6 +9,7 @@ import NewWinScreen from '../screens/NewWinScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
 import NewChatScreen from '../screens/NewChatScreen';
+import FindScreen from '../screens/FindScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -109,6 +110,22 @@ const TabNavigator = ({ navigation }) => {
           ),
         }}
       />
+
+<Tab.Screen
+        name="Find"
+        component={FindScreen}
+         options={{
+          tabBarIcon: ({ focused }) => (
+            <Image
+            source={focused ? require('../../assets/bottom-nav-images/find-active.png')
+                          : require('../../assets/bottom-nav-images/find-inactive.png')}
+            style={{ width: 24, height: 24 }}
+            resizeMode="contain"
+          />
+          ),
+        }}
+      />
+
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -132,6 +149,7 @@ const TabNavigator = ({ navigation }) => {
           ),
         }}
       />
+     
     </Tab.Navigator>
   );
 };

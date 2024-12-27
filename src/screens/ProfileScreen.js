@@ -51,6 +51,14 @@ const ProfileScreen = ({ navigation }) => {
   const [showWinsModal, setShowWinsModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [birthdate, setBirthdate] = useState('');
+  const [month, setMonth] = useState('');
+  const [day, setDay] = useState('');
+  const [year, setYear] = useState('');
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [showDayPicker, setShowDayPicker] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
 
   const questions = [
     {
@@ -78,7 +86,141 @@ const ProfileScreen = ({ navigation }) => {
       question: "What I'm most proud of 🔥:",
       presetWords: ["finishing school", "playing sports", "making friends", "getting a job", "trying new things", "dating", "traveling", "being a good friend", "being in my family", "helping people", "my art"]
     },
+    {
+      id: 6,
+      question: "What I would do if I won the lottery 💰:",
+      presetWords: ["travel the world", "buy a house", "buy a car", "buy a boat", "start a business", "buy my friends gifts", "buy my family gifts", "give to charity", "own a sports team", "buy a hot tub", "fly first class"]
+    },
   ];
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+  const years = Array.from(
+    { length: 100 }, // Increased length to cover more years
+    (_, i) => (2023 - i).toString()
+  ).filter(year => year >= 1924);
+
+  const saveBirthdate = async (newMonth, newDay, newYear) => {
+    try {
+      if (!newMonth || !newDay || !newYear) {
+        return; // Don't save until we have all parts of the date
+      }
+
+      const monthIndex = months.indexOf(newMonth) + 1;
+      const formattedDate = `${newYear}-${monthIndex.toString().padStart(2, '0')}-${newDay.padStart(2, '0')}`;
+      
+      // Calculate age
+      const birthDate = new Date(formattedDate);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
+      // Convert UID to lowercase
+      const uid = auth.currentUser.uid.toLowerCase();
+      const userRef = doc(db, 'users', uid);
+      
+      await setDoc(userRef, {
+        birthdate: formattedDate,
+        age: age
+      }, { merge: true });
+
+      console.log('Birthdate saved successfully');
+    } catch (error) {
+      console.error('Error saving birthdate:', error);
+    }
+  };
+
+  const renderPicker = (data, selectedValue, onSelect, onClose) => (
+    <Modal
+      visible={true}
+      transparent={true}
+      animationType="slide"
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.pickerContainer}>
+          <FlatList
+            data={data}
+            keyExtractor={item => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.pickerItem,
+                  selectedValue === item && styles.selectedPickerItem
+                ]}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                  
+                  // Determine which value was updated and save if we have all three
+                  let newMonth = month;
+                  let newDay = day;
+                  let newYear = year;
+                  
+                  if (data === months) newMonth = item;
+                  if (data === days) newDay = item;
+                  if (data === years) newYear = item;
+                  
+                  saveBirthdate(newMonth, newDay, newYear);
+                }}
+              >
+                <Text style={[
+                  styles.pickerItemText,
+                  selectedValue === item && styles.selectedPickerItemText
+                ]}>
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderBirthdateSelectors = () => (
+    <View style={styles.birthdateContainer}>
+      <Text style={styles.label}>Birthdate</Text>
+      <View style={styles.datePickersRow}>
+        <TouchableOpacity 
+          style={styles.datePickerButton}
+          onPress={() => setShowMonthPicker(true)}
+        >
+          <Text style={styles.datePickerButtonText}>
+            {month || 'Month'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.datePickerButton}
+          onPress={() => setShowDayPicker(true)}
+        >
+          <Text style={styles.datePickerButtonText}>
+            {day || 'Day'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.datePickerButton}
+          onPress={() => setShowYearPicker(true)}
+        >
+          <Text style={styles.datePickerButtonText}>
+            {year || 'Year'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showMonthPicker && renderPicker(months, month, setMonth, () => setShowMonthPicker(false))}
+      {showDayPicker && renderPicker(days, day, setDay, () => setShowDayPicker(false))}
+      {showYearPicker && renderPicker(years, year, setYear, () => setShowYearPicker(false))}
+    </View>
+  );
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -470,6 +612,83 @@ const ProfileScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, []);
 
+  const renderPersonalInfo = () => (
+    <View style={styles.personalInfoContainer}>
+      {renderBirthdateSelectors()}
+      </View>
+  );
+
+  const handleSave = async () => {
+    try {
+      console.log('Starting save...'); // Debug log
+
+      if (!month || !day || !year) {
+        Alert.alert('Missing Information', 'Please select your complete birthdate');
+        return;
+      }
+
+      const monthIndex = months.indexOf(month) + 1;
+      const formattedDate = `${year}-${monthIndex.toString().padStart(2, '0')}-${day.padStart(2, '0')}`;
+      
+      // Calculate age
+      const birthDate = new Date(formattedDate);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
+      console.log('Current user:', auth.currentUser?.uid); // Debug log
+      console.log('Saving birthdate:', formattedDate); // Debug log
+      console.log('Calculated age:', age); // Debug log
+
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      
+      const userData = {
+        birthdate: formattedDate,
+        age: age,
+        // Include all other fields you're currently saving
+        username,
+        state,
+        questionAnswers,
+      };
+
+      console.log('Saving user data:', userData); // Debug log
+
+      await updateDoc(userRef, userData);
+      console.log('Save completed successfully'); // Debug log
+
+      Alert.alert('Success', 'Profile updated successfully!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', `Failed to update profile: ${error.message}`);
+    }
+  };
+
+  // When loading the profile data, add:
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          // ... your existing data loading ...
+          if (data.birthdate) {
+            const date = new Date(data.birthdate);
+            setYear(date.getFullYear().toString());
+            setMonth(months[date.getMonth()]);
+            setDay(date.getDate().toString().padStart(2, '0'));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    };
+
+    loadProfile();
+  }, []);
+
   // Wrap the render in a loading check
   if (isLoading) {
     return (
@@ -500,6 +719,7 @@ const ProfileScreen = ({ navigation }) => {
       </View>
 
       {renderStateSelector()}
+      {renderPersonalInfo()}
 
       <View style={styles.menuSection}>
         <TouchableOpacity 
@@ -582,6 +802,8 @@ const ProfileScreen = ({ navigation }) => {
       </View>
 
       {renderWinsModal()}
+
+      
     </ScrollView>
   );
 };
@@ -686,7 +908,7 @@ const styles = StyleSheet.create({
   signOutText: {
     color: '#FF3B30',
   },
-  ...additionalStyles,
+  
   stateContainer: {
     backgroundColor: '#fff',
     padding: 15,
@@ -716,6 +938,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
+
+
+  birthdateContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  birthdateLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#24269B',
+    marginBottom: 10,
+  },
+
   saveButton: {
     backgroundColor: '#24269B',
     paddingHorizontal: 20,
@@ -723,6 +966,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: 'center',
   },
+
+
+
+
+
   buttonText: {
     color: '#ffffff',
     fontSize: 14,
@@ -860,6 +1108,97 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
+  },
+  birthdateContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  birthdateButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  birthdateText: {
+    fontSize: 16,
+  },
+  webDateInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    width: '100%',
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    width: '100%',
+    marginBottom: 10,
+  },
+  personalInfoContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  datePickersRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  datePickerButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    marginHorizontal: 5,
+    backgroundColor: '#fff',
+  },
+  datePickerButtonText: {
+    textAlign: 'center',
+    color: '#000',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    maxHeight: '50%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  pickerItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedPickerItem: {
+    backgroundColor: '#f0f0f0',
+  },
+  pickerItemText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  selectedPickerItemText: {
+    color: '#24269B',
+    fontWeight: 'bold',
   },
 });
 

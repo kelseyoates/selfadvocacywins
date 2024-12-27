@@ -9,6 +9,9 @@ import ChatConversationScreen from './src/screens/ChatConversationScreen';
 import NewChatScreen from './src/screens/NewChatScreen';
 import UserSearchScreen from './src/screens/UserSearchScreen';
 import GroupChatSetupScreen from './src/screens/GroupChatSetupScreen';
+import FindFriendScreen from './src/screens/FindFriendScreen';
+import FriendResultsScreen from './src/screens/FriendResultsScreen';
+import MainNavigator from './src/navigation/MainNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
 
 const Stack = createNativeStackNavigator();
@@ -72,6 +75,24 @@ export default function App() {
               component={GroupChatSetupScreen}
               options={{ title: '' }}
             />
+            <Stack.Screen
+              name="MainNavigator"
+              component={MainNavigator}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="FindFriend"
+              component={FindFriendScreen}
+              options={{ title: 'Find a Friend' }}
+            />
+            <Stack.Screen
+              name="FriendResults"
+              component={FriendResultsScreen}
+              options={{ title: 'Potential Friends' }}
+            />
+
+
+
           </Stack.Navigator>
        
       </NavigationContainer>
