@@ -100,9 +100,14 @@ const FindFriendScreen = ({ navigation }) => {
         .flat()
         .filter(word => word);
         
+      // Get all text answers and split them into keywords
+      const textAnswers = Object.values(searchCriteria.answers || {})
+        .filter(answer => answer && answer.length > 0)
+        .map(answer => answer.toLowerCase());
+      
       console.log('Searching for words:', allSelectedWords);
+      console.log('Searching text answers:', textAnswers);
 
-      // First get basic user data from Algolia
       let searchParams = {
         query: '',
         filters: `NOT objectID:${auth.currentUser.uid.toLowerCase()}`,
@@ -116,7 +121,6 @@ const FindFriendScreen = ({ navigation }) => {
         hitsPerPage: 50
       };
 
-      // Add state filter if not searching anywhere
       if (!searchCriteria.searchAnywhere && searchCriteria.states.length > 0) {
         searchParams.query = searchCriteria.states[0];
         searchParams.restrictSearchableAttributes = ['state'];
@@ -125,7 +129,6 @@ const FindFriendScreen = ({ navigation }) => {
       const { hits } = await searchIndex.search(searchParams.query, searchParams);
       console.log('Initial hits from Algolia:', hits.length);
 
-      // Now fetch full user data from Firestore for each hit
       const enrichedHits = await Promise.all(hits.map(async (hit) => {
         try {
           const userDoc = await getDoc(doc(db, 'users', hit.objectID));
@@ -142,10 +145,10 @@ const FindFriendScreen = ({ navigation }) => {
         }
       }));
 
-      // Filter results based on selected words
+      // Filter results based on selected words and text matches
       let filteredHits = enrichedHits;
       
-      if (allSelectedWords.length > 0) {
+      if (allSelectedWords.length > 0 || textAnswers.length > 0) {
         filteredHits = enrichedHits.filter(hit => {
           console.log(`\nChecking user ${hit.username}:`);
           
@@ -154,27 +157,59 @@ const FindFriendScreen = ({ navigation }) => {
             return false;
           }
 
-          const hasMatchingWord = hit.questionAnswers.some(answer => {
-            if (!answer.selectedWords) {
-              return false;
-            }
-            
-            // Check if any of the search words match any of the user's selected words
-            const matchFound = allSelectedWords.some(searchWord => 
+          // Check for word matches
+          const hasMatchingWord = allSelectedWords.length === 0 || hit.questionAnswers.some(answer => {
+            if (!answer.selectedWords) return false;
+            const matches = allSelectedWords.some(searchWord => 
               answer.selectedWords.includes(searchWord)
             );
-            
-            if (matchFound) {
-              console.log(`- Match found in ${answer.question}:`, 
+            if (matches) {
+              console.log(`- Word match found in ${answer.question}:`, 
                 answer.selectedWords.filter(word => allSelectedWords.includes(word))
               );
             }
-            
-            return matchFound;
+            return matches;
           });
 
-          console.log(`- Final match for ${hit.username}:`, hasMatchingWord);
-          return hasMatchingWord;
+          // Check for text matches
+          const hasMatchingText = textAnswers.length === 0 || hit.questionAnswers.some(answer => {
+            if (!answer.textAnswer) return false;
+            
+            const userAnswer = answer.textAnswer.toLowerCase();
+            const foundMatch = textAnswers.some(searchText => {
+              // Split search text into keywords
+              const keywords = searchText.split(' ')
+                .filter(word => word.length > 3); // Ignore small words
+              
+              // Check if any keyword matches
+              if (keywords.some(keyword => userAnswer.includes(keyword))) {
+                console.log(`- Text match found in ${answer.question}:`, 
+                  `Search: "${searchText}", Answer: "${userAnswer}"`);
+                return true;
+              }
+              return false;
+            });
+
+            return foundMatch;
+          });
+
+          // Determine if this is a match based on search criteria
+          const isMatch = (allSelectedWords.length === 0 || hasMatchingWord) && 
+                         (textAnswers.length === 0 || hasMatchingText);
+
+          if (isMatch) {
+            console.log(`- Match found for ${hit.username}:`, {
+              wordMatch: hasMatchingWord,
+              textMatch: hasMatchingText
+            });
+          } else {
+            console.log(`- No match for ${hit.username}:`, {
+              wordMatch: hasMatchingWord,
+              textMatch: hasMatchingText
+            });
+          }
+
+          return isMatch;
         });
       }
 
@@ -190,7 +225,8 @@ const FindFriendScreen = ({ navigation }) => {
       console.log('\nFiltering summary:');
       console.log('Initial results:', hits.length);
       console.log('Selected words:', allSelectedWords);
-      console.log('After word filtering:', filteredHits.length);
+      console.log('Text answers:', textAnswers);
+      console.log('After filtering:', filteredHits.length);
       console.log('Final filtered results:', JSON.stringify(filteredHits, null, 2));
 
       navigation.navigate('FriendResults', { matches: filteredHits });
