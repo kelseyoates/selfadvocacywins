@@ -1,25 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Button } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 
 const FindScreen = ({ navigation }) => {
-  const navigateToFindFriend = () => {
-    console.log('Attempting to navigate to FindFriend');
-    navigation.dispatch(
-      CommonActions.navigate({
-        name: 'FindFriend',
-      })
-    );
-  };
-
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={styles.button}
-        onPress={navigateToFindFriend}
-      >
-        <Text style={styles.buttonText}>Find a Friend</Text>
-      </TouchableOpacity>
+      <Button
+        title="Find Friend"
+        onPress={() => navigation.navigate('FindFriend')}
+        buttonStyle={styles.button}
+      />
+      <Button
+        title="Find Your Friends"
+        onPress={() => navigation.navigate('FindYourFriends')}
+        buttonStyle={styles.button}
+      />
     </View>
   );
 };

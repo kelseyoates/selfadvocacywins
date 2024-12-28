@@ -15,28 +15,20 @@ import { searchIndex, adminIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
 import { getDoc, doc, getDocs, collection, collectionGroup, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import StateDropdown from '../components/StateDropdown';
 
 const FindFriendScreen = ({ navigation }) => {
-  const [searchCriteria, setSearchCriteria] = useState({
-    states: [],
-    searchAnywhere: false,
-    ageRange: { min: '18', max: '100' },  // Changed to strings for TextInput
-    answers: {},
-    winTopics: ''
-  });
-
-  const [selectedWords, setSelectedWords] = useState({});
+  const [selectedWords, setSelectedWords] = useState([]);
+  const [selectedState, setSelectedState] = useState(null);
+  const [ageRange, setAgeRange] = useState({ min: '18', max: '100' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [users, setUsers] = useState([]);
 
   const handleAgeChange = (type, value) => {
-    // Only allow numbers
-    const numericValue = value.replace(/[^0-9]/g, '');
-    
-    setSearchCriteria(prev => ({
+    setAgeRange(prev => ({
       ...prev,
-      ageRange: {
-        ...prev.ageRange,
-        [type]: numericValue
-      }
+      [type]: value
     }));
   };
 
@@ -60,13 +52,13 @@ const FindFriendScreen = ({ navigation }) => {
               key={word}
               style={[
                 styles.wordButton,
-                selectedWords[question.text]?.includes(word) && styles.selectedWord
+                selectedWords.includes(word) && styles.selectedWord
               ]}
               onPress={() => toggleWord(question.text, word)}
             >
               <Text style={[
                 styles.wordText,
-                selectedWords[question.text]?.includes(word) && styles.selectedWordText
+                selectedWords.includes(word) && styles.selectedWordText
               ]}>{word}</Text>
             </TouchableOpacity>
           ))}
@@ -77,21 +69,11 @@ const FindFriendScreen = ({ navigation }) => {
 
   const toggleWord = (questionText, word) => {
     setSelectedWords(prev => {
-      const currentWords = prev[questionText] || [];
-      const newWords = currentWords.includes(word)
-        ? currentWords.filter(w => w !== word)
-        : [...currentWords, word];
-      return { ...prev, [questionText]: newWords };
+      const currentWords = prev.includes(word)
+        ? prev.filter(w => w !== word)
+        : [...prev, word];
+      return currentWords;
     });
-  };
-
-  const toggleState = (state) => {
-    setSearchCriteria(prev => ({
-      ...prev,
-      states: prev.states.includes(state)
-        ? prev.states.filter(s => s !== state)
-        : [...prev.states, state]
-    }));
   };
 
   const handleSearch = async () => {
@@ -174,19 +156,17 @@ const FindFriendScreen = ({ navigation }) => {
     try {
       await adminIndex.setSettings({
         searchableAttributes: [
-          'winTopics',
+          'state',
           'questionAnswers.selectedWords',
           'questionAnswers.textAnswer',
-          'username',
-          'state'
+          'username'
         ],
         attributesForFaceting: [
-          'searchable(questionAnswers.selectedWords)',
-          'searchable(winTopics)',
-          'state'
+          'searchable(state)',
+          'searchable(questionAnswers.selectedWords)'
         ]
       });
-      console.log('Algolia settings updated successfully');
+      console.log('DEBUG: Updated Algolia settings');
     } catch (error) {
       console.error('Error updating Algolia settings:', error);
     }
@@ -257,54 +237,85 @@ const FindFriendScreen = ({ navigation }) => {
     debugAlgoliaData();
   }, []);
 
+  // Keep the original searchCriteria state
+  const [searchCriteria, setSearchCriteria] = useState({
+    states: [],
+    // searchAnywhere: false,
+    ageRange: { min: '18', max: '100' },
+    answers: {},
+    winTopics: ''
+  });
+
+  // Handle state selection separately
+  const handleStateSelect = (state) => {
+    setSelectedState(state);
+  };
+
+  // Search function that handles both state and selectedWords
+  const searchUsers = async () => {
+    if (!auth.currentUser) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+
+      const searchParams = {
+        attributesToRetrieve: ['*'],
+        hitsPerPage: 50,
+        filters: `age >= ${ageRange.min} AND age <= ${ageRange.max}`,
+      };
+
+      // Build search query
+      let searchTerms = [];
+      
+      // Add state to search terms if selected
+      if (selectedState) {
+        searchTerms.push(`state:"${selectedState}"`);
+      }
+
+      // Add selected words to search terms
+      if (selectedWords.length > 0) {
+        searchTerms.push(...selectedWords.map(word => 
+          `questionAnswers.selectedWords:"${word}"`
+        ));
+      }
+
+      const searchQuery = searchTerms.join(' OR ');
+      console.log('DEBUG: Searching with query:', searchQuery);
+
+      // Execute search
+      const { hits } = await searchIndex.search('', {
+        ...searchParams,
+        optionalFilters: searchTerms // Use optionalFilters to rank by matches
+      });
+      
+      // Filter out current user
+      const filteredResults = hits.filter(user => user.path.split('/')[1] !== auth.currentUser.uid);
+      setUsers(filteredResults);
+
+    } catch (err) {
+      console.error('Error in searchUsers:', err);
+      setError('Failed to search users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Watch for changes in both state and selectedWords
+  useEffect(() => {
+    const timer = setTimeout(searchUsers, 300);
+    return () => clearTimeout(timer);
+  }, [selectedState, selectedWords, ageRange]);
+
   return (
     <View style={styles.container}>
+      <StateDropdown onStateSelect={handleStateSelect} />
+      
       <ScrollView 
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Location Preferences</Text>
-            <View style={styles.locationContainer}>
-              <Text>Search Anywhere</Text>
-              <Switch
-                value={searchCriteria.searchAnywhere}
-                onValueChange={(value) => setSearchCriteria(prev => ({
-                  ...prev,
-                  searchAnywhere: value,
-                  states: []
-                }))}
-              />
-            </View>
-            {!searchCriteria.searchAnywhere && (
-              <View style={styles.statesContainer}>
-                <Text style={styles.statesLabel}>Select states:</Text>
-                <View style={styles.statesGrid}>
-                  {states.map((state) => (
-                    <TouchableOpacity
-                      key={state}
-                      style={[
-                        styles.stateButton,
-                        searchCriteria.states.includes(state) && styles.stateButtonSelected
-                      ]}
-                      onPress={() => toggleState(state)}
-                    >
-                      <Text 
-                        style={[
-                          styles.stateButtonText,
-                          searchCriteria.states.includes(state) && styles.stateButtonTextSelected
-                        ]}
-                      >
-                        {state}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Age Range</Text>
             <View style={styles.ageInputContainer}>
@@ -313,7 +324,7 @@ const FindFriendScreen = ({ navigation }) => {
                 <TextInput
                   style={styles.ageTextInput}
                   keyboardType="numeric"
-                  value={searchCriteria.ageRange.min}
+                  value={ageRange.min}
                   onChangeText={(value) => handleAgeChange('min', value)}
                   maxLength={3}
                 />
@@ -323,7 +334,7 @@ const FindFriendScreen = ({ navigation }) => {
                 <TextInput
                   style={styles.ageTextInput}
                   keyboardType="numeric"
-                  value={searchCriteria.ageRange.max}
+                  value={ageRange.max}
                   onChangeText={(value) => handleAgeChange('max', value)}
                   maxLength={3}
                 />
