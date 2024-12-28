@@ -655,6 +655,17 @@ const ProfileScreen = () => {
     </View>
   );
 
+  // Format birthdate function
+  const formatBirthdate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -674,23 +685,40 @@ const ProfileScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
-        <View style={styles.profilePictureContainer}>
-          <Image
-            source={{ 
-              uri: userData?.profilePicture || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
-            }}
-            style={styles.profilePicture}
-          />
-          {!profileUserId && ( // Only show edit icon for own profile
-            <TouchableOpacity 
-              style={styles.editIconContainer}
-              onPress={handleImagePicker}
+        <Image
+          source={
+            userData?.profilePicture 
+              ? { uri: userData.profilePicture } 
+              : require('../../assets/default-profile.png')
+          }
+          style={styles.profilePicture}
+        />
+
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{userData?.username || 'User'}</Text>
+          
+         
+          {/* State */}
+          {userData?.state && (
+            <Text style={styles.infoText}>📍 {userData.state}</Text>
+          )}
+          
+          {/* Birthday */}
+          {userData?.birthdate && (
+            <Text style={styles.infoText}>
+              🎂 {formatBirthdate(userData.birthdate)}
+            </Text>
+          )}
+          
+          {profileUserId === user?.uid && (
+            <TouchableOpacity
+              onPress={handleEditProfile}
+              style={styles.editProfileButton}
             >
-              <MaterialCommunityIcons name="camera" size={20} color="#fff" />
+              <Text style={styles.editButtonText}>Edit Profile</Text>
             </TouchableOpacity>
           )}
         </View>
-        <Text style={styles.username}>{userData?.username || 'Loading...'}</Text>
       </View>
 
       {!profileUserId ? ( // Only show these sections for own profile
@@ -736,46 +764,180 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    backgroundColor: '#fff',
+  },
+  profileHeader: {
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  profilePictureContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  profilePicture: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  editIconContainer: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#24269B',
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   username: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 5,
   },
-  state: {
-    fontSize: 18,
-    marginBottom: 16,
+  email: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginVertical: 12,
+  menuSection: {
+    padding: 15,
   },
-  winItem: {
-    padding: 12,
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  noDataContainer: {
+  menuItemText: {
+    flex: 1,
+    marginLeft: 15,
+    fontSize: 16,
+  },
+  signOutItem: {
+    marginTop: 20,
+    borderBottomWidth: 0,
+  },
+  signOutText: {
+    color: '#FF3B30',
+  },
+  
+  stateContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  stateLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#24269B',
+    marginBottom: 10,
+  },
+  stateButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    marginBottom: 10,
+  },
+  stateButtonText: {
+    fontSize: 14,
+    color: '#333',
+  },
+
+
+  birthdateContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  birthdateLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#24269B',
+    marginBottom: 10,
+  },
+
+  saveButton: {
+    backgroundColor: '#24269B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+
+
+
+
+
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modalView: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  noDataText: {
-    fontSize: 18,
-    marginBottom: 8,
-  },
-  noDataSubtext: {
-    fontSize: 14,
-    color: '#666',
-  },
-  noWinsText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#666',
-    fontSize: 16,
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
     padding: 20,
+    width: '80%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#24269B',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  stateOption: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedStateOption: {
+    backgroundColor: '#24269B',
+  },
+  stateOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedStateOptionText: {
+    color: '#fff',
+  },
+  closeButton: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
   },
   calendarContainer: {
     backgroundColor: '#fff',
@@ -788,29 +950,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  calendar: {
-    marginBottom: 10,
-    borderRadius: 10,
-  },
-  debug: {
-    padding: 10,
-    fontSize: 12,
-    color: '#666',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    width: '90%',
-    maxHeight: '80%',
-    backgroundColor: 'white',
-    borderRadius: 20,
-    overflow: 'hidden',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -819,25 +968,180 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    backgroundColor: 'white',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#24269B',
-    flex: 1,
   },
   winsList: {
-    padding: 15,
+    padding: 10,
   },
-  winCardContainer: {
+  calendar: {
     marginBottom: 10,
   },
-  closeButton: {
-    padding: 8,
+  debug: {
+    padding: 10,
+    fontSize: 12,
+    color: '#666',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    height: '80%', // Make modal take up most of the screen
+    backgroundColor: 'white',
     borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  scrollView: {
+    width: '100%',
+    flex: 1, // This allows the ScrollView to take up available space
+  },
+  closeButton: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#24269B',
+    borderRadius: 8,
+    width: '100%',
+  },
+  closeButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  birthdateContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  birthdateButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  birthdateText: {
+    fontSize: 16,
+  },
+  webDateInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    width: '100%',
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    width: '100%',
+    marginBottom: 10,
+  },
+  personalInfoContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  datePickersRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  datePickerButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 12,
+    marginHorizontal: 5,
+    backgroundColor: '#fff',
+  },
+  datePickerButtonText: {
+    textAlign: 'center',
+    color: '#000',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    maxHeight: '50%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  pickerItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedPickerItem: {
     backgroundColor: '#f0f0f0',
   },
+  pickerItemText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  selectedPickerItemText: {
+    color: '#24269B',
+    fontWeight: 'bold',
+  },
+  userDetails: {
+    marginBottom: 10,
+  },
+  detailText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 5,
+  },
+  infoText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+  },
+
+sectionTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#24269B',
+  marginBottom: 10,
+  marginTop: 20,
+  marginLeft: 10,
+  marginRight: 10,
+  marginBottom: 10,
+  alignSelf: 'center',
+},
+
 });
 
 export default ProfileScreen;
