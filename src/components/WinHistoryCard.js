@@ -10,34 +10,67 @@ import { Video } from 'expo-av';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { format } from 'date-fns';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const WinHistoryCard = ({ win, onPress }) => {
-  if (!win) {
-    return null;
-  }
+  console.log('WinHistoryCard full win data:', win);
+  console.log('Win media URL:', win.mediaUrl);
+  console.log('Win media type:', win.mediaType);
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const hour12 = hours % 12 || 12;
+      return `${hour12}:${minutes} ${period}`;
+    } catch (error) {
+      console.log('Time formatting error:', error);
+      return timeString;
+    }
+  };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
-      {win.mediaUrl ? (
-        <>
-          <Image 
-            source={{ uri: win.mediaUrl }} 
-            style={styles.image}
-            resizeMode="contain"
-          />
-          {win.text && (
-            <View style={styles.textContainer}>
-              <Text style={styles.text} numberOfLines={3}>
-                {win.text}
-              </Text>
-            </View>
-          )}
-        </>
-      ) : (
-        <View style={styles.textOnlyContainer}>
-          <Text style={styles.text} numberOfLines={3}>
-            {win.text || 'No text provided'}
+    <TouchableOpacity 
+      style={styles.container} 
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.content}>
+        <Text style={styles.title}>{win.text}</Text>
+        {win.localTimestamp && (
+          <Text style={styles.timestamp}>
+            {formatTime(win.localTimestamp.time)}
           </Text>
+        )}
+      </View>
+      
+      {win.mediaUrl && win.mediaType === 'photo' && (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: win.mediaUrl }}
+            style={styles.image}
+            resizeMode="cover"
+            onError={(error) => console.log('Image loading error:', error.nativeEvent.error)}
+            onLoad={() => console.log('Image loaded successfully:', win.mediaUrl)}
+          />
+        </View>
+      )}
+
+      {win.comments && win.comments.length > 0 && (
+        <View style={styles.commentsContainer}>
+          {win.comments.map((comment, index) => (
+            <Text key={index} style={styles.comment}>
+              {comment.text}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      {win.cheers > 0 && (
+        <View style={styles.cheersContainer}>
+          <MaterialCommunityIcons name="heart" size={16} color="#FF4B4B" />
+          <Text style={styles.cheersText}>{win.cheers}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -45,32 +78,70 @@ const WinHistoryCard = ({ win, onPress }) => {
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    margin: 8,
-    elevation: 2,
+  container: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 15,
+    marginVertical: 5,
+    marginHorizontal: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  content: {
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 5,
+    color: '#24269B',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+    marginBottom: 10,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
     overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
   },
   image: {
     width: '100%',
-    height: 300,
-    backgroundColor: '#f0f0f0',
+    height: '100%',
   },
-  textContainer: {
-    padding: 12,
+  commentsContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
-  textOnlyContainer: {
-    padding: 16,
+  comment: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
   },
-  text: {
-    fontSize: 16,
-    color: '#333',
-  }
+  cheersContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  cheersText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 5,
+  },
 });
 
 export default WinHistoryCard; 

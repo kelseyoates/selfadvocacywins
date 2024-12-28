@@ -9,11 +9,13 @@ import {
   ScrollView,
   TextInput,
   Modal,
-  FlatList
+  FlatList,
+  ActivityIndicator,
+  SafeAreaView
 } from 'react-native';
 import { auth, db, storage } from '../config/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc, updateDoc, onSnapshot, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot, setDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import globalStyles from '../styles/styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -21,6 +23,8 @@ import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
 import { Calendar } from 'react-native-calendars';
 import WinHistoryCard from '../components/WinHistoryCard';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useAuth } from '../contexts/AuthContext';
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
@@ -35,24 +39,19 @@ const US_STATES = [
   'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
 ];
 
-const ProfileScreen = ({ navigation }) => {
+const ProfileScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { profileUserId } = route.params || {};
+  const { user } = useAuth();
   const [userData, setUserData] = useState(null);
   const [answers, setAnswers] = useState([]);
-  const [location, setLocation] = useState('');
-  const [locationError, setLocationError] = useState(null);
-  const [selectedState, setSelectedState] = useState('');
+  const [wins, setWins] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [userDocId, setUserDocId] = useState(null);
-  const [winDates, setWinDates] = useState({
-    '2024-12-25': { marked: true, dotColor: '#24269B' }  // Test mark
-  });
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDateWins, setSelectedDateWins] = useState([]);
-  const [showWinsModal, setShowWinsModal] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [birthdate, setBirthdate] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+
+  // Add birthdate state variables
   const [month, setMonth] = useState('');
   const [day, setDay] = useState('');
   const [year, setYear] = useState('');
@@ -60,245 +59,73 @@ const ProfileScreen = ({ navigation }) => {
   const [showDayPicker, setShowDayPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
-  const questions = [
-    {
-      id: 1,
-      question: "A little bit about me 😀:",
-      presetWords: ["fun", "smart", "athletic", "funny", "kind", "silly", "serious", "independent", "ambitious", "caring", "creative", "thoughtful", "adventurous"]
-    },
-    {
-      id: 2,
-      question: "What I like to do for fun 🎉:",
-      presetWords: ["Special Olympics", "Best Buddies", "sports", "theater", "watching movies", "art", "dancing", "playing with my dog", "gaming", "listening to music", "hang with friends", "traveling", "reading", "cooking", "photography", "writing", "playing with my dog"]
-    },
-    {
-      id: 3,
-      question: "What I\'m like as a friend 🤝:",
-      presetWords: ["supportive", "fun", "honest", "loyal", "trustworthy", "caring", "spontaneous", "funny", "dependable", "patient", "open-minded", "positive"]
-    },
-    {
-      id: 4,
-      question: "What my future goals are 🎯:",
-      presetWords: ["live with friends", "finish school", "make friends", "get healthy", "get a job", "learn new things", "start a business", "find love", "get a pet", "travel", "make a difference", "make money"]
-    },
-    {
-      id: 5,
-      question: "What I'm most proud of 🔥:",
-      presetWords: ["finishing school", "playing sports", "making friends", "getting a job", "trying new things", "dating", "traveling", "being a good friend", "being in my family", "helping people", "my art"]
-    },
-    {
-      id: 6,
-      question: "What I would do if I won the lottery 💰:",
-      presetWords: ["travel the world", "buy a house", "buy a car", "buy a boat", "start a business", "buy my friends gifts", "buy my family gifts", "give to charity", "own a sports team", "buy a hot tub", "fly first class"]
-    },
-  ];
-
+  // Constants for date selection
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-
+  
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const years = Array.from(
-    { length: 100 }, // Increased length to cover more years
-    (_, i) => (2023 - i).toString()
+    { length: 100 },
+    (_, i) => (new Date().getFullYear() - i).toString()
   ).filter(year => year >= 1924);
 
-  const saveBirthdate = async (newMonth, newDay, newYear) => {
-    try {
-      if (!newMonth || !newDay || !newYear) {
-        return; // Don't save until we have all parts of the date
-      }
+  // Use the passed profileUserId if available, otherwise show current user's profile
+  const targetUserId = (profileUserId || user?.uid)?.toLowerCase();
 
-      const monthIndex = months.indexOf(newMonth) + 1;
-      const formattedDate = `${newYear}-${monthIndex.toString().padStart(2, '0')}-${newDay.padStart(2, '0')}`;
-      
-      // Calculate age
-      const birthDate = new Date(formattedDate);
-      const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-
-      // Convert UID to lowercase
-      const uid = auth.currentUser.uid.toLowerCase();
-      const userRef = doc(db, 'users', uid);
-      
-      await setDoc(userRef, {
-        birthdate: formattedDate,
-        age: age
-      }, { merge: true });
-
-      console.log('Birthdate saved successfully');
-    } catch (error) {
-      console.error('Error saving birthdate:', error);
+  // Load birthdate from userData when it's available
+  useEffect(() => {
+    if (userData?.birthdate) {
+      const date = new Date(userData.birthdate);
+      setMonth(months[date.getMonth()]);
+      setDay(date.getDate().toString());
+      setYear(date.getFullYear().toString());
     }
-  };
-
-  const renderPicker = (data, selectedValue, onSelect, onClose) => (
-    <Modal
-      visible={true}
-      transparent={true}
-      animationType="slide"
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.pickerContainer}>
-          <FlatList
-            data={data}
-            keyExtractor={item => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.pickerItem,
-                  selectedValue === item && styles.selectedPickerItem
-                ]}
-                onPress={() => {
-                  onSelect(item);
-                  onClose();
-                  
-                  // Determine which value was updated and save if we have all three
-                  let newMonth = month;
-                  let newDay = day;
-                  let newYear = year;
-                  
-                  if (data === months) newMonth = item;
-                  if (data === days) newDay = item;
-                  if (data === years) newYear = item;
-                  
-                  saveBirthdate(newMonth, newDay, newYear);
-                }}
-              >
-                <Text style={[
-                  styles.pickerItemText,
-                  selectedValue === item && styles.selectedPickerItemText
-                ]}>
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      </View>
-    </Modal>
-  );
-
-  const renderBirthdateSelectors = () => (
-    <View style={styles.birthdateContainer}>
-      <Text style={styles.label}>Birthdate</Text>
-      <View style={styles.datePickersRow}>
-        <TouchableOpacity 
-          style={styles.datePickerButton}
-          onPress={() => setShowMonthPicker(true)}
-        >
-          <Text style={styles.datePickerButtonText}>
-            {month || 'Month'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.datePickerButton}
-          onPress={() => setShowDayPicker(true)}
-        >
-          <Text style={styles.datePickerButtonText}>
-            {day || 'Day'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.datePickerButton}
-          onPress={() => setShowYearPicker(true)}
-        >
-          <Text style={styles.datePickerButtonText}>
-            {year || 'Year'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {showMonthPicker && renderPicker(months, month, setMonth, () => setShowMonthPicker(false))}
-      {showDayPicker && renderPicker(days, day, setDay, () => setShowDayPicker(false))}
-      {showYearPicker && renderPicker(years, year, setYear, () => setShowYearPicker(false))}
-    </View>
-  );
+  }, [userData]);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (!user) {
-        // User is not logged in, redirect to login
-        navigation.replace('Login');
-        return;
-      }
-      
-      setIsLoading(false);
-      
-      // Now we can safely access user data
-      const userRef = doc(db, 'users', user.uid.toLowerCase());
-      const docUnsubscribe = onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          setUserData(data);
-          setAnswers(data.questionAnswers || []);
-        }
-      }, (error) => {
-        console.error("Error fetching user data:", error);
-        Alert.alert('Error', 'Failed to load your profile data');
-      });
-
-      return () => docUnsubscribe();
+    console.log('DEBUG: ProfileScreen - Loading profile for:', {
+      profileUserId,
+      currentUserId: user?.uid,
+      targetUserId,
+      hasRouteParams: !!route.params
     });
 
-    return () => unsubscribe();
-  }, [navigation]);
-
-  useEffect(() => {
-    const findUserDocument = async () => {
-      try {
-        // Try to find the user document with either case of the UID
-        const usersRef = collection(db, 'users');
-        const q = query(
-          usersRef, 
-          where('uid', 'in', [
-            auth.currentUser.uid,
-            auth.currentUser.uid.toLowerCase()
-          ])
-        );
-        
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0];
-          setUserDocId(userDoc.id);
-          if (userDoc.data().state) {
-            setSelectedState(userDoc.data().state);
-          }
-        } else {
-          console.error('User document not found');
-        }
-      } catch (error) {
-        console.error('Error finding user document:', error);
-      }
-    };
-
-    findUserDocument();
-  }, []);
-
-  const saveState = async () => {
-    if (!userDocId) {
-      Alert.alert('Error', 'User document not found');
+    if (!targetUserId) {
+      console.log('DEBUG: No targetUserId available');
       return;
     }
 
-    try {
-      const userRef = doc(db, 'users', userDocId);
-      await updateDoc(userRef, {
-        state: selectedState,
-      });
-      Alert.alert('Success', 'State saved successfully');
-    } catch (error) {
-      console.error('Error saving state:', error);
-      Alert.alert('Error', 'Failed to save state');
-    }
-  };
+    const fetchProfileData = async () => {
+      try {
+        // Get user profile data
+        const userRef = doc(db, 'users', targetUserId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          console.log('DEBUG: Got profile data:', {
+            username: data.username,
+            state: data.state
+          });
+          setUserData(data);
+          setAnswers(data.questionAnswers || []);
+          
+          // Only fetch wins if viewing own profile
+          if (!profileUserId) {
+            await fetchUserWins();
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [targetUserId]);
 
   const handleImagePicker = async () => {
     try {
@@ -329,26 +156,20 @@ const ProfileScreen = ({ navigation }) => {
       const response = await fetch(uri);
       const blob = await response.blob();
       
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('No user logged in');
+      if (!targetUserId) throw new Error('No user ID available');
 
-      // Create a reference to 'profilePictures/USER_ID.jpg'
-      const storageRef = ref(storage, `profilePictures/${currentUser.uid.toLowerCase()}.jpg`);
+      const storageRef = ref(storage, `profilePictures/${targetUserId}.jpg`);
       
-      // Upload the blob
       const snapshot = await uploadBytes(storageRef, blob);
       console.log('Uploaded successfully');
 
-      // Get the download URL
       const downloadURL = await getDownloadURL(snapshot.ref);
       console.log('Download URL:', downloadURL);
       
-      // Update Firestore
-      await updateDoc(doc(db, 'users', currentUser.uid.toLowerCase()), {
+      await updateDoc(doc(db, 'users', targetUserId), {
         profilePicture: downloadURL
       });
 
-      // Update local state
       setUserData(prev => ({
         ...prev,
         profilePicture: downloadURL
@@ -360,171 +181,6 @@ const ProfileScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to update profile picture: ' + error.message);
     }
   };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      navigation.replace('Login');
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  const handleAnswerSave = (newAnswer) => {
-    setAnswers(prev => [...prev, newAnswer]);
-  };
-
-  const getLatestAnswer = (question) => {
-    if (!answers) return null;
-    
-    const questionAnswers = answers.filter(a => a.question === question);
-    if (questionAnswers.length === 0) return null;
-    
-    // Sort by timestamp and get the most recent
-    return questionAnswers.sort((a, b) => 
-      new Date(b.timestamp) - new Date(a.timestamp)
-    )[0];
-  };
-
-  const formatDateString = (dateStr) => {
-    try {
-      // Handle different date formats
-      if (dateStr.includes(',')) {
-        // Format: "12/25/2024, 9:24:21 PM"
-        dateStr = dateStr.split(',')[0];
-      }
-      
-      const [month, day, year] = dateStr.split('/');
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    } catch (error) {
-      console.error('Error formatting date:', dateStr, error);
-      return null;
-    }
-  };
-
-  const fetchUserWins = async () => {
-    try {
-      const winsQuery = query(
-        collection(db, 'wins'),
-        where('userId', '==', auth.currentUser.uid.toLowerCase())
-      );
-      
-      const querySnapshot = await getDocs(winsQuery);
-      console.log(`Found ${querySnapshot.size} wins`);
-      
-      // Create new object for marked dates
-      const newMarkedDates = {};
-      
-      querySnapshot.docs.forEach(doc => {
-        const win = doc.data();
-        console.log('Processing win:', win);
-        
-        // Get date from localTimestamp
-        if (win.localTimestamp?.date) {
-          const [month, day, year] = win.localTimestamp.date.split('/');
-          const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          
-          console.log('Adding mark for date:', formattedDate);
-          newMarkedDates[formattedDate] = {
-            marked: true,
-            dotColor: '#24269B'
-          };
-        }
-      });
-
-      console.log('New marked dates:', newMarkedDates);
-      
-      // Force update with new object
-      setWinDates(newMarkedDates);
-
-    } catch (error) {
-      console.error('Error fetching wins:', error);
-    }
-  };
-
-  const handleDayPress = (day) => {
-    console.log('Day pressed:', day);
-    fetchWinsForDate(day.dateString);
-  };
-
-  const fetchWinsForDate = async (date) => {
-    try {
-      const winsQuery = query(
-        collection(db, 'wins'),
-        where('userId', '==', auth.currentUser.uid.toLowerCase())
-      );
-      
-      const querySnapshot = await getDocs(winsQuery);
-      const wins = querySnapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-        .filter(win => {
-          if (win.localTimestamp?.date) {
-            const [month, day, year] = win.localTimestamp.date.split('/');
-            const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            return formattedDate === date;
-          }
-          return false;
-        });
-      
-      console.log(`Found ${wins.length} wins for date:`, date);
-      setSelectedDateWins(wins);
-      setSelectedDate(date);
-      setShowWinsModal(true);
-    } catch (error) {
-      console.error('Error fetching wins for date:', error);
-    }
-  };
-
-  const formatSelectedDate = (dateString) => {
-    if (!dateString) return '';
-    
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    try {
-      // Assuming dateString is in format "2024-12-26"
-      const [year, month, day] = dateString.split('-');
-      return `${months[parseInt(month) - 1]} ${parseInt(day)}, ${year}`;
-    } catch (error) {
-      console.log("Date formatting error:", error, "for date:", dateString);
-      return dateString;
-    }
-  };
-
-  const renderWinsModal = () => (
-    <Modal
-      visible={showWinsModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowWinsModal(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Wins on {formatSelectedDate(selectedDate)}</Text>
-          <ScrollView style={styles.scrollView}>
-            {selectedDateWins.map((win) => (
-              <WinHistoryCard
-                key={win.id}
-                win={win}
-                onPress={() => {/* handle press */}}
-              />
-            ))}
-          </ScrollView>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowWinsModal(false)}
-          >
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
 
   const renderStateSelector = () => {
     return (
@@ -593,15 +249,365 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
-  useEffect(() => {
-    fetchUserWins();
-  }, [refreshKey]);
+  const renderPersonalInfo = () => (
+    <View style={styles.personalInfoContainer}>
+      {renderBirthdateSelectors()}
+    </View>
+  );
 
+  const renderBirthdateSelectors = () => (
+    <View style={styles.birthdateContainer}>
+      <Text style={styles.label}>Birthdate</Text>
+      <View style={styles.datePickersRow}>
+        <TouchableOpacity 
+          style={styles.datePickerButton}
+          onPress={() => setShowMonthPicker(true)}
+        >
+          <Text style={styles.datePickerButtonText}>
+            {month || 'Month'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.datePickerButton}
+          onPress={() => setShowDayPicker(true)}
+        >
+          <Text style={styles.datePickerButtonText}>
+            {day || 'Day'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.datePickerButton}
+          onPress={() => setShowYearPicker(true)}
+        >
+          <Text style={styles.datePickerButtonText}>
+            {year || 'Year'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showMonthPicker && renderPicker(months, month, setMonth, () => setShowMonthPicker(false))}
+      {showDayPicker && renderPicker(days, day, setDay, () => setShowDayPicker(false))}
+      {showYearPicker && renderPicker(years, year, setYear, () => setShowYearPicker(false))}
+    </View>
+  );
+
+  const saveState = async () => {
+    if (!targetUserId) {
+      Alert.alert('Error', 'User document not found');
+      return;
+    }
+
+    try {
+      const userRef = doc(db, 'users', targetUserId);
+      await updateDoc(userRef, {
+        state: selectedState,
+      });
+      Alert.alert('Success', 'State saved successfully');
+    } catch (error) {
+      console.error('Error saving state:', error);
+      Alert.alert('Error', 'Failed to save state');
+    }
+  };
+
+  const renderMenuSection = () => (
+    <View style={styles.menuSection}>
+      <TouchableOpacity 
+        style={styles.menuItem}
+        onPress={() => navigation.navigate('EditProfile')}
+      >
+        <MaterialCommunityIcons name="account-edit" size={24} color="#24269B" />
+        <Text style={styles.menuItemText}>Edit Profile</Text>
+        <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.menuItem}
+        onPress={() => navigation.navigate('Settings')}
+      >
+        <MaterialCommunityIcons name="cog" size={24} color="#24269B" />
+        <Text style={styles.menuItemText}>Settings</Text>
+        <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.menuItem, styles.signOutItem]}
+        onPress={handleSignOut}
+      >
+        <MaterialCommunityIcons name="logout" size={24} color="#FF3B30" />
+        <Text style={[styles.menuItemText, styles.signOutText]}>Sign Out</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigation.replace('Login');
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const questions = [
+    {
+      id: 1,
+      question: "A little bit about me 😀:",
+      presetWords: ["fun", "smart", "athletic", "funny", "kind", "silly", "serious", "independent", "ambitious", "caring", "creative", "thoughtful", "adventurous"]
+    },
+    {
+      id: 2,
+      question: "What I like to do for fun 🎉:",
+      presetWords: ["Special Olympics", "Best Buddies", "sports", "theater", "watching movies", "art", "dancing", "playing with my dog", "gaming", "listening to music", "hang with friends", "traveling", "reading", "cooking", "photography", "writing", "playing with my dog"]
+    },
+    {
+      id: 3,
+      question: "What I\'m like as a friend 🤝:",
+      presetWords: ["supportive", "fun", "honest", "loyal", "trustworthy", "caring", "spontaneous", "funny", "dependable", "patient", "open-minded", "positive"]
+    },
+    {
+      id: 4,
+      question: "What my future goals are 🎯:",
+      presetWords: ["live with friends", "finish school", "make friends", "get healthy", "get a job", "learn new things", "start a business", "find love", "get a pet", "travel", "make a difference", "make money"]
+    },
+    {
+      id: 5,
+      question: "What I'm most proud of 🔥:",
+      presetWords: ["finishing school", "playing sports", "making friends", "getting a job", "trying new things", "dating", "traveling", "being a good friend", "being in my family", "helping people", "my art"]
+    },
+    {
+      id: 6,
+      question: "What I would do if I won the lottery 💰:",
+      presetWords: ["travel the world", "buy a house", "buy a car", "buy a boat", "start a business", "buy my friends gifts", "buy my family gifts", "give to charity", "own a sports team", "buy a hot tub", "fly first class"]
+    },
+  ];
+
+  const getLatestAnswer = (question) => {
+    if (!answers) return null;
+    
+    const questionAnswers = answers.filter(a => a.question === question);
+    if (questionAnswers.length === 0) return null;
+    
+    // Sort by timestamp and get the most recent
+    return questionAnswers.sort((a, b) => 
+      new Date(b.timestamp) - new Date(a.timestamp)
+    )[0];
+  };
+
+  const handleAnswerSave = async (newAnswer) => {
+    try {
+      if (!targetUserId) {
+        console.error('No user ID available');
+        return;
+      }
+
+      // Add timestamp to the answer
+      const answerWithTimestamp = {
+        ...newAnswer,
+        timestamp: new Date().toISOString()
+      };
+
+      // Get current answers array from Firestore
+      const userRef = doc(db, 'users', targetUserId);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        console.error('User document not found');
+        return;
+      }
+
+      // Get existing answers or initialize empty array
+      const currentAnswers = userDoc.data().questionAnswers || [];
+
+      // Add new answer to the array
+      const updatedAnswers = [...currentAnswers, answerWithTimestamp];
+
+      // Update Firestore
+      await updateDoc(userRef, {
+        questionAnswers: updatedAnswers
+      });
+
+      // Update local state
+      setAnswers(updatedAnswers);
+
+      console.log('Answer saved successfully');
+    } catch (error) {
+      console.error('Error saving answer:', error);
+      Alert.alert('Error', 'Failed to save your answer');
+    }
+  };
+
+  const [showWinsModal, setShowWinsModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDateWins, setSelectedDateWins] = useState([]);
+
+  const formatSelectedDate = (dateString) => {
+    if (!dateString) return '';
+    
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    try {
+      // Assuming dateString is in format "2024-12-26"
+      const [year, month, day] = dateString.split('-');
+      return `${months[parseInt(month) - 1]} ${parseInt(day)}, ${year}`;
+    } catch (error) {
+      console.log("Date formatting error:", error, "for date:", dateString);
+      return dateString;
+    }
+  };
+
+  const fetchWinsForDate = async (date) => {
+    try {
+      console.log('Fetching wins for date:', date);
+      const winsQuery = query(
+        collection(db, 'wins'),
+        where('userId', '==', targetUserId)
+      );
+      
+      const querySnapshot = await getDocs(winsQuery);
+      const wins = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter(win => {
+          if (win.localTimestamp?.date) {
+            let winDate;
+            if (win.localTimestamp.date.includes('/')) {
+              const [month, day, year] = win.localTimestamp.date.split('/');
+              winDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            } else if (win.localTimestamp.date.includes('-')) {
+              winDate = win.localTimestamp.date;
+            }
+            console.log('Comparing dates:', { winDate, targetDate: date });
+            return winDate === date;
+          }
+          return false;
+        });
+      
+      console.log('Filtered wins:', wins);
+      setSelectedDateWins(wins);
+      setSelectedDate(date);
+      setShowWinsModal(true);
+    } catch (error) {
+      console.error('Error fetching wins for date:', error);
+    }
+  };
+
+  const renderWinsModal = () => (
+    <Modal
+      visible={showWinsModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowWinsModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              Wins on {formatSelectedDate(selectedDate)}
+            </Text>
+            <TouchableOpacity 
+              onPress={() => setShowWinsModal(false)}
+              style={styles.closeButton}
+            >
+              <MaterialCommunityIcons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={selectedDateWins}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.winCardContainer}>
+                <WinHistoryCard
+                  win={item}
+                  onPress={() => console.log('Win pressed:', item)}
+                />
+              </View>
+            )}
+            ListEmptyComponent={() => (
+              <Text style={styles.noWinsText}>
+                No wins recorded for this date
+              </Text>
+            )}
+            contentContainerStyle={styles.winsList}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const [winDates, setWinDates] = useState({});
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const fetchUserWins = async () => {
+    try {
+      console.log('Fetching wins for user:', targetUserId); // Debug log
+      
+      const winsQuery = query(
+        collection(db, 'wins'),
+        where('userId', '==', targetUserId)
+      );
+      
+      const querySnapshot = await getDocs(winsQuery);
+      console.log(`Found ${querySnapshot.size} wins`); // Debug log
+      
+      const newMarkedDates = {};
+      
+      querySnapshot.docs.forEach(doc => {
+        const win = doc.data();
+        console.log('Processing win:', win); // Debug log
+        
+        if (win.localTimestamp?.date) {
+          // Handle different date formats
+          let formattedDate;
+          if (win.localTimestamp.date.includes('/')) {
+            const [month, day, year] = win.localTimestamp.date.split('/');
+            formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          } else if (win.localTimestamp.date.includes('-')) {
+            formattedDate = win.localTimestamp.date;
+          }
+          
+          if (formattedDate) {
+            console.log('Adding mark for date:', formattedDate); // Debug log
+            newMarkedDates[formattedDate] = {
+              marked: true,
+              dotColor: '#24269B',
+              selected: true,
+              selectedColor: '#E8E8FF'
+            };
+          }
+        }
+      });
+
+      console.log('Final marked dates:', newMarkedDates); // Debug log
+      setWinDates(newMarkedDates);
+
+    } catch (error) {
+      console.error('Error fetching wins:', error);
+    }
+  };
+
+  // Add this useEffect to refresh wins when needed
   useEffect(() => {
+    if (targetUserId) {
+      fetchUserWins();
+    }
+  }, [refreshKey, targetUserId]);
+
+  // Add this useEffect to listen for wins collection changes
+  useEffect(() => {
+    if (!targetUserId) return;
+
     const unsubscribe = onSnapshot(
       query(
         collection(db, 'wins'),
-        where('userId', '==', auth.currentUser.uid.toLowerCase())
+        where('userId', '==', targetUserId)
       ),
       (snapshot) => {
         console.log('Wins collection updated');
@@ -610,113 +616,57 @@ const ProfileScreen = ({ navigation }) => {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [targetUserId]);
 
-  const renderPersonalInfo = () => (
-    <View style={styles.personalInfoContainer}>
-      {renderBirthdateSelectors()}
-      </View>
-  );
-
-  const handleSave = async () => {
-    try {
-      console.log('Starting save...'); // Debug log
-
-      if (!month || !day || !year) {
-        Alert.alert('Missing Information', 'Please select your complete birthdate');
-        return;
-      }
-
-      const monthIndex = months.indexOf(month) + 1;
-      const formattedDate = `${year}-${monthIndex.toString().padStart(2, '0')}-${day.padStart(2, '0')}`;
-      
-      // Calculate age
-      const birthDate = new Date(formattedDate);
-      const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-
-      console.log('Current user:', auth.currentUser?.uid); // Debug log
-      console.log('Saving birthdate:', formattedDate); // Debug log
-      console.log('Calculated age:', age); // Debug log
-
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      
-      const userData = {
-        birthdate: formattedDate,
-        age: age,
-        // Include all other fields you're currently saving
-        username,
-        state,
-        questionAnswers,
-      };
-
-      console.log('Saving user data:', userData); // Debug log
-
-      await updateDoc(userRef, userData);
-      console.log('Save completed successfully'); // Debug log
-
-      Alert.alert('Success', 'Profile updated successfully!');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      Alert.alert('Error', `Failed to update profile: ${error.message}`);
-    }
+  const handleDayPress = async (day) => {
+    console.log('Day pressed:', day);
+    await fetchWinsForDate(day.dateString);
   };
 
-  // When loading the profile data, add:
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          // ... your existing data loading ...
-          if (data.birthdate) {
-            const date = new Date(data.birthdate);
-            setYear(date.getFullYear().toString());
-            setMonth(months[date.getMonth()]);
-            setDay(date.getDate().toString().padStart(2, '0'));
-          }
-        }
-      } catch (error) {
-        console.error('Error loading profile:', error);
-      }
-    };
+  const renderCalendarSection = () => (
+    <View style={styles.calendarContainer}>
+      <Text style={styles.sectionTitle}>🏆 Win History</Text>
+      <Calendar
+        style={styles.calendar}
+        current={new Date().toISOString().split('T')[0]}
+        minDate={'2024-01-01'}
+        maxDate={'2024-12-31'}
+        onDayPress={handleDayPress}
+        markedDates={winDates}
+        theme={{
+          backgroundColor: '#ffffff',
+          calendarBackground: '#ffffff',
+          textSectionTitleColor: '#24269B',
+          selectedDayBackgroundColor: '#24269B',
+          selectedDayTextColor: '#ffffff',
+          todayTextColor: '#24269B',
+          dayTextColor: '#2d4150',
+          textDisabledColor: '#d9e1e8',
+          dotColor: '#24269B',
+          selectedDotColor: '#ffffff',
+          arrowColor: '#24269B',
+          monthTextColor: '#24269B',
+          indicatorColor: '#24269B'
+        }}
+      />
+      {/* <Text style={styles.debug}>
+        Debug - Marked Dates: {JSON.stringify(winDates, null, 2)}
+      </Text> */}
+    </View>
+  );
 
-    loadProfile();
-  }, []);
-
-  // Add this useEffect to load the birthdate
-  useEffect(() => {
-    const loadBirthdate = async () => {
-      try {
-        const uid = auth.currentUser.uid.toLowerCase();
-        const userRef = doc(db, 'users', uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (userDoc.exists() && userDoc.data().birthdate) {
-          const birthdate = new Date(userDoc.data().birthdate);
-          setMonth(months[birthdate.getMonth()]);
-          setDay(birthdate.getDate().toString());
-          setYear(birthdate.getFullYear().toString());
-          console.log('Loaded birthdate:', userDoc.data().birthdate);
-        }
-      } catch (error) {
-        console.error('Error loading birthdate:', error);
-      }
-    };
-
-    loadBirthdate();
-  }, []);
-
-  // Wrap the render in a loading check
-  if (isLoading) {
+  if (!user && !profileUserId) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text>Loading...</Text>
+      <View style={styles.container}>
+        <Text>Please log in to view your profile</Text>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
@@ -724,56 +674,35 @@ const ProfileScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
-        <TouchableOpacity onPress={handleImagePicker}>
-          <View style={styles.profilePictureContainer}>
-            <Image
-              source={{ 
-                uri: userData?.profilePicture || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
-              }}
-              style={styles.profilePicture}
-            />
-            <View style={styles.editIconContainer}>
+        <View style={styles.profilePictureContainer}>
+          <Image
+            source={{ 
+              uri: userData?.profilePicture || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+            }}
+            style={styles.profilePicture}
+          />
+          {!profileUserId && ( // Only show edit icon for own profile
+            <TouchableOpacity 
+              style={styles.editIconContainer}
+              onPress={handleImagePicker}
+            >
               <MaterialCommunityIcons name="camera" size={20} color="#fff" />
-            </View>
-          </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.username}>{userData?.username || 'Loading...'}</Text>
-       
       </View>
 
-      {renderStateSelector()}
-      {renderPersonalInfo()}
-
-      <View style={styles.menuSection}>
-        <TouchableOpacity 
-          style={styles.menuItem}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <MaterialCommunityIcons name="account-edit" size={24} color="#24269B" />
-          <Text style={styles.menuItemText}>Edit Profile</Text>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.menuItem}
-          onPress={() => navigation.navigate('Settings')}
-        >
-          <MaterialCommunityIcons name="cog" size={24} color="#24269B" />
-          <Text style={styles.menuItemText}>Settings</Text>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.menuItem, styles.signOutItem]}
-          onPress={handleSignOut}
-        >
-          <MaterialCommunityIcons name="logout" size={24} color="#FF3B30" />
-          <Text style={[styles.menuItemText, styles.signOutText]}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
+      {!profileUserId ? ( // Only show these sections for own profile
+        <>
+          {renderStateSelector()}
+          {renderPersonalInfo()}
+          {renderMenuSection()}
+        </>
+      ) : null}
 
       <View style={styles.questionSection}>
-        <Text style={styles.sectionTitle}>My Self-Advocacy Profile</Text>
+        <Text style={styles.sectionTitle}>Self-Advocacy Profile</Text>
         {questions.map(q => {
           const existingAnswer = getLatestAnswer(q.question);
           return (
@@ -783,268 +712,70 @@ const ProfileScreen = ({ navigation }) => {
                 presetWords={q.presetWords}
                 onSave={handleAnswerSave}
                 existingAnswer={existingAnswer}
+                readOnly={!!profileUserId} // Make read-only when viewing other profiles
               />
             </View>
           );
         })}
       </View>
 
-      <View style={styles.calendarContainer}>
-        <Text style={styles.sectionTitle}>🏆 Win History</Text>
-        {/* <Text style={styles.debug}>
-          Marked ddddjio: {JSON.stringify(winDates, null, 2)}
-        </Text> */}
-        <Calendar
-          style={styles.calendar}
-          current={new Date().toISOString().split('T')[0]}
-          minDate={'2024-01-01'}
-          maxDate={'2024-12-31'}
-          onDayPress={(day) => {
-            console.log('Day pressed:', day);
-            console.log('Current marks:', winDates);
-            fetchWinsForDate(day.dateString);
-          }}
-          markedDates={winDates}
-          markingType="dot"
-          theme={{
-            backgroundColor: '#ffffff',
-            calendarBackground: '#ffffff',
-            textSectionTitleColor: '#24269B',
-            selectedDayBackgroundColor: '#24269B',
-            selectedDayTextColor: '#ffffff',
-            todayTextColor: '#24269B',
-            dayTextColor: '#2d4150',
-            textDisabledColor: '#d9e1e8',
-            dotColor: '#24269B',
-            selectedDotColor: '#ffffff',
-            arrowColor: '#24269B',
-            monthTextColor: '#24269B',
-            indicatorColor: '#24269B'
-          }}
-        />
-      </View>
+      {!profileUserId && renderCalendarSection()}
+
+      {/* <View style={styles.debug}>
+        <Text>Debug Info:</Text>
+        <Text>Selected Date: {selectedDate}</Text>
+        <Text>Number of Wins: {selectedDateWins?.length}</Text>
+        <Text>Win Data: {JSON.stringify(selectedDateWins, null, 2)}</Text>
+      </View> */}
 
       {renderWinsModal()}
-
-      
     </ScrollView>
   );
-};
-
-const additionalStyles = {
-  questionSection: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 15,
-    marginBottom: 10,
-  },
-  questionContainer: {
-    marginBottom: 20,
-  },
-  existingAnswer: {
-    backgroundColor: '#e8f4fd',
-    padding: 15,
-    marginHorizontal: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  answerLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#24269B',
-    marginBottom: 5,
-  },
-  answerText: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  answerTimestamp: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-  },
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  profileHeader: {
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  profilePictureContainer: {
-    position: 'relative',
-    marginBottom: 15,
-  },
-  profilePicture: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-  },
-  editIconContainer: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#24269B',
-    borderRadius: 20,
-    padding: 8,
-    borderWidth: 2,
-    borderColor: '#fff',
+    padding: 16,
   },
   username: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
   },
-  email: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
+  state: {
+    fontSize: 18,
+    marginBottom: 16,
   },
-  menuSection: {
-    padding: 15,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginVertical: 12,
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
+  winItem: {
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  menuItemText: {
-    flex: 1,
-    marginLeft: 15,
-    fontSize: 16,
-  },
-  signOutItem: {
-    marginTop: 20,
-    borderBottomWidth: 0,
-  },
-  signOutText: {
-    color: '#FF3B30',
-  },
-  
-  stateContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    marginHorizontal: 10,
-    marginVertical: 5,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  stateLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#24269B',
-    marginBottom: 10,
-  },
-  stateButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    marginBottom: 10,
-  },
-  stateButtonText: {
-    fontSize: 14,
-    color: '#333',
-  },
-
-
-  birthdateContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    marginHorizontal: 10,
-    marginVertical: 5,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  birthdateLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#24269B',
-    marginBottom: 10,
-  },
-
-  saveButton: {
-    backgroundColor: '#24269B',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-
-
-
-
-
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  modalView: {
+  noDataContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    width: '80%',
-    maxHeight: '80%',
-  },
-  modalTitle: {
+  noDataText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#24269B',
-    marginBottom: 15,
-    textAlign: 'center',
+    marginBottom: 8,
   },
-  stateOption: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  selectedStateOption: {
-    backgroundColor: '#24269B',
-  },
-  stateOptionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  selectedStateOptionText: {
-    color: '#fff',
-  },
-  closeButton: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: '#666',
+  noDataSubtext: {
     fontSize: 14,
-    fontWeight: '500',
+    color: '#666',
+  },
+  noWinsText: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#666',
+    fontSize: 16,
+    padding: 20,
   },
   calendarContainer: {
     backgroundColor: '#fff',
@@ -1057,16 +788,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  calendar: {
+    marginBottom: 10,
+    borderRadius: 10,
+  },
+  debug: {
+    padding: 10,
+    fontSize: 12,
+    color: '#666',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '80%',
+    width: '90%',
+    maxHeight: '80%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1075,153 +819,24 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    backgroundColor: 'white',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#24269B',
+    flex: 1,
   },
   winsList: {
-    padding: 10,
+    padding: 15,
   },
-  calendar: {
+  winCardContainer: {
     marginBottom: 10,
-  },
-  debug: {
-    padding: 10,
-    fontSize: 12,
-    color: '#666',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '90%',
-    height: '80%', // Make modal take up most of the screen
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  scrollView: {
-    width: '100%',
-    flex: 1, // This allows the ScrollView to take up available space
   },
   closeButton: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#24269B',
-    borderRadius: 8,
-    width: '100%',
-  },
-  closeButtonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  birthdateContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  birthdateButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    backgroundColor: '#fff',
-  },
-  birthdateText: {
-    fontSize: 16,
-  },
-  webDateInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    width: '100%',
-    marginBottom: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    width: '100%',
-    marginBottom: 10,
-  },
-  personalInfoContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    marginHorizontal: 10,
-    marginVertical: 5,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  datePickersRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  datePickerButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    marginHorizontal: 5,
-    backgroundColor: '#fff',
-  },
-  datePickerButtonText: {
-    textAlign: 'center',
-    color: '#000',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerContainer: {
-    backgroundColor: '#fff',
-    maxHeight: '50%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-  },
-  pickerItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  selectedPickerItem: {
+    padding: 8,
+    borderRadius: 20,
     backgroundColor: '#f0f0f0',
-  },
-  pickerItemText: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  selectedPickerItemText: {
-    color: '#24269B',
-    fontWeight: 'bold',
   },
 });
 

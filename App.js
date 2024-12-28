@@ -11,6 +11,8 @@ import UserSearchScreen from './src/screens/UserSearchScreen';
 import GroupChatSetupScreen from './src/screens/GroupChatSetupScreen';
 import FindFriendScreen from './src/screens/FindFriendScreen';
 import FriendResultsScreen from './src/screens/FriendResultsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+
 import MainNavigator from './src/navigation/MainNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
 
@@ -89,6 +91,11 @@ export default function App() {
               name="FriendResults"
               component={FriendResultsScreen}
               options={{ title: 'Potential Friends' }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ title: 'Profile' }}
             />
 
 

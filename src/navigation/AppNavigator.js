@@ -6,6 +6,7 @@ import LoginScreen from './LoginScreen';
 import SignUpScreen from './SignUpScreen';
 import MainScreen from './MainScreen'; // Your app's main screen
 
+
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
@@ -29,6 +30,7 @@ const AppNavigator = () => {
             <Stack.Screen name="SignUp" component={SignUpScreen} />
           </>
         )}
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

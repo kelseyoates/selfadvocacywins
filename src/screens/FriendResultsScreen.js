@@ -7,28 +7,25 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
-const FriendResultsScreen = ({ route, navigation }) => {
+const FriendResultsScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
   const { matches } = route.params;
 
-  const renderFriend = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.friendCard}
-      onPress={() => navigation.navigate('Profile', { userId: item.objectID })}
-    >
-      <Image 
-        source={{ uri: item.profilePicture }}
-        style={styles.profilePicture}
-      />
-      <View style={styles.friendInfo}>
-        <Text style={styles.username}>{item.username}</Text>
-        <Text style={styles.state}>{item.state}</Text>
-        <Text style={styles.matchDetails}>
-          Matching interests: {item._highlightResult?.questionAnswers?.length || 0}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const handleUserPress = (user) => {
+    const userId = user.path.split('/')[1];
+    console.log('DEBUG: Navigating to profile with user data:', {
+      userId,
+      username: user.username,
+      path: user.path
+    });
+    
+    navigation.navigate('Profile', {
+      profileUserId: userId
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -37,9 +34,25 @@ const FriendResultsScreen = ({ route, navigation }) => {
       </Text>
       <FlatList
         data={matches}
-        renderItem={renderFriend}
-        keyExtractor={item => item.objectID}
-        contentContainerStyle={styles.listContainer}
+        keyExtractor={(item) => item.objectID}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={styles.userCard}
+            onPress={() => handleUserPress(item)}
+          >
+            <Image 
+              source={{ uri: item.profilePicture }}
+              style={styles.profilePicture}
+            />
+            <View style={styles.friendInfo}>
+              <Text style={styles.username}>{item.username}</Text>
+              <Text style={styles.state}>{item.state}</Text>
+              <Text style={styles.matchDetails}>
+                Matching interests: {item._highlightResult?.questionAnswers?.length || 0}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
       />
     </View>
   );
@@ -59,7 +72,7 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 10,
   },
-  friendCard: {
+  userCard: {
     flexDirection: 'row',
     padding: 15,
     backgroundColor: '#fff',
