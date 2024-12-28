@@ -50,6 +50,15 @@ const FindYourFriendsScreen = ({ navigation }) => {
         hitsPerPage: 50,
       };
 
+      // Add filters for state and exclude current user
+      let filters = [];
+      if (selectedState) {
+        filters.push(`state:"${selectedState}"`);
+      }
+      filters.push(`NOT path:"users/${currentUser.uid.toLowerCase()}"`);
+      
+      searchParams.filters = filters.join(' AND ');
+
       // Build search query for text matching
       let searchTerms = [];
       
@@ -63,23 +72,25 @@ const FindYourFriendsScreen = ({ navigation }) => {
         searchTerms.push(...selectedWords);
       }
 
-      // Add filters for state
-      if (selectedState) {
-        searchParams.filters = `state:"${selectedState}"`;
-      }
-
       const searchQuery = searchTerms.join(' ');
       console.log('DEBUG: Search query:', searchQuery);
       console.log('DEBUG: Search params:', searchParams);
+      console.log('DEBUG: Current user path:', `users/${currentUser.uid.toLowerCase()}`);
 
       const { hits } = await searchIndex.search(searchQuery, searchParams);
       
-      // Filter out current user
-      const filteredResults = hits.filter(user => 
-        user.path.split('/')[1] !== currentUser.uid
-      );
+      // Log the first few hits to see their path format
+      if (hits.length > 0) {
+        console.log('DEBUG: First hit data:', JSON.stringify(hits[0], null, 2));
+      }
+      console.log('DEBUG: Found users:', hits.length);
 
-      console.log('DEBUG: Found users:', filteredResults.length);
+      // Double-check filtering on the client side
+      const filteredResults = hits.filter(hit => 
+        hit.path !== `users/${currentUser.uid.toLowerCase()}`
+      );
+      
+      console.log('DEBUG: Users after client filtering:', filteredResults.length);
       setUsers(filteredResults);
 
     } catch (err) {
@@ -96,15 +107,20 @@ const FindYourFriendsScreen = ({ navigation }) => {
     return () => clearTimeout(timer);
   }, [selectedState, selectedWords, textAnswer]);
 
-  // Update Algolia settings to include winTopics
+  // Update Algolia settings
   useEffect(() => {
     const setupAlgolia = async () => {
       try {
         await adminIndex.setSettings({
           searchableAttributes: [
             'questionAnswers.selectedWords',
+            'questionAnswers.textAnswer',
             'winTopics',
             'state'
+          ],
+          attributesForFaceting: [
+            'state',
+            'path'
           ]
         });
         console.log('DEBUG: Algolia settings updated');
