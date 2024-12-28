@@ -195,7 +195,10 @@ const FindYourFriendsScreen = ({ navigation }) => {
           <TouchableOpacity 
             key={user.objectID}
             style={styles.userCard}
-            onPress={() => navigation.navigate('UserProfile', { userId: user.objectID })}
+            onPress={() => navigation.navigate('Profile', { 
+              profileUserId: user.path.split('/')[1],
+              isCurrentUser: false
+            })}
           >
             <Text style={styles.username}>{user.username}</Text>
             <Text style={styles.stateText}>State: {user.state}</Text>

@@ -5,11 +5,11 @@ import { CommonActions } from '@react-navigation/native';
 const FindScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      <Button
+      {/* <Button
         title="Find Friend"
         onPress={() => navigation.navigate('FindFriend')}
         buttonStyle={styles.button}
-      />
+      /> */}
       <Button
         title="Find Your Friends"
         onPress={() => navigation.navigate('FindYourFriends')}
