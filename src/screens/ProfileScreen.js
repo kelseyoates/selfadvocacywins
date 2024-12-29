@@ -692,6 +692,8 @@ const ProfileScreen = () => {
               : require('../../assets/default-profile.png')
           }
           style={styles.profilePicture}
+          onError={(e) => console.log('Image loading error:', e.nativeEvent.error)}
+          onLoad={() => console.log('Image loaded successfully')}
         />
 
         <View style={styles.userInfo}>
@@ -749,13 +751,6 @@ const ProfileScreen = () => {
 
       {!profileUserId && renderCalendarSection()}
 
-      {/* <View style={styles.debug}>
-        <Text>Debug Info:</Text>
-        <Text>Selected Date: {selectedDate}</Text>
-        <Text>Number of Wins: {selectedDateWins?.length}</Text>
-        <Text>Win Data: {JSON.stringify(selectedDateWins, null, 2)}</Text>
-      </View> */}
-
       {renderWinsModal()}
     </ScrollView>
   );
@@ -777,9 +772,10 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   profilePicture: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginRight: 15,
   },
   editIconContainer: {
     position: 'absolute',
@@ -1126,7 +1122,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 16,
-    color: '#666',
+    color: '#000000',
     marginBottom: 8,
   },
 

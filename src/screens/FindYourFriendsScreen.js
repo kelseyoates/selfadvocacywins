@@ -195,7 +195,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
           <TouchableOpacity 
             key={user.objectID}
             style={styles.userCard}
-            onPress={() => navigation.navigate('Profile', { 
+            onPress={() => navigation.navigate('OtherUserProfile', { 
               profileUserId: user.path.split('/')[1],
               isCurrentUser: false
             })}

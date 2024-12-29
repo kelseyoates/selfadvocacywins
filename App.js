@@ -13,6 +13,7 @@ import FindFriendScreen from './src/screens/FindFriendScreen';
 import FriendResultsScreen from './src/screens/FriendResultsScreen';
 import FindYourFriendsScreen from './src/screens/FindYourFriendsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import OtherUserProfileScreen from './src/screens/OtherUserProfileScreen';
 
 import MainNavigator from './src/navigation/MainNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
@@ -101,6 +102,11 @@ export default function App() {
             <Stack.Screen
               name="Profile"
               component={ProfileScreen}
+              options={{ title: 'Profile' }}
+            />
+            <Stack.Screen
+              name="OtherUserProfile"
+              component={OtherUserProfileScreen}
               options={{ title: 'Profile' }}
             />
 
