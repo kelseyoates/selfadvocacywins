@@ -706,13 +706,13 @@ const ProfileScreen = () => {
             <ScrollView style={styles.commentsList}>
               {selectedWin.comments && selectedWin.comments.length > 0 ? (
                 selectedWin.comments.map((comment, index) => {
-                  const userData = commentUsers[comment.userId] || {};
+                  const userData = commentUsers[comment.userId];
                   return (
                     <View key={index} style={styles.commentItem}>
                       <View style={styles.commentHeader}>
                         <Image
                           source={
-                            userData.profilePicture
+                            userData?.profilePicture
                               ? { uri: userData.profilePicture }
                               : require('../../assets/default-profile.png')
                           }
@@ -720,7 +720,7 @@ const ProfileScreen = () => {
                         />
                         <View style={styles.commentUserInfo}>
                           <Text style={styles.commentUsername}>
-                            {userData.username || 'User'}
+                            {userData?.username || 'Loading...'}
                           </Text>
                           <Text style={styles.commentTime}>
                             {formatDate(comment.createdAt)}
@@ -763,6 +763,68 @@ const ProfileScreen = () => {
     } catch (error) {
       console.log('Error formatting date:', error, 'for timestamp:', timestamp);
       return '';
+    }
+  };
+
+  // Add this function to fetch user data for comments
+  const fetchCommentUserData = async (comments) => {
+    try {
+      console.log('Starting to fetch comment user data');
+      const userPromises = comments.map(async (comment) => {
+        // Use the same approach as profile data fetching
+        const userRef = doc(db, 'users', comment.userId.toLowerCase());
+        console.log('Fetching user data for:', comment.userId.toLowerCase());
+        
+        try {
+          const userSnapshot = await getDoc(userRef);
+          console.log('User snapshot exists:', userSnapshot.exists());
+          
+          if (userSnapshot.exists()) {
+            const userData = userSnapshot.data();
+            console.log('Found user data:', userData);
+            return {
+              userId: comment.userId,
+              userData: {
+                username: userData.username,
+                state: userData.state,
+                profilePicture: userData.profilePicture
+              }
+            };
+          }
+        } catch (e) {
+          console.error('Error fetching user:', e);
+        }
+        return null;
+      });
+
+      const users = await Promise.all(userPromises);
+      const userDataMap = {};
+      users.forEach(user => {
+        if (user) {
+          userDataMap[user.userId] = user.userData;
+        }
+      });
+      
+      console.log('Final user data map:', userDataMap);
+      setCommentUsers(userDataMap);
+    } catch (error) {
+      console.error('Error in fetchCommentUserData:', error);
+    }
+  };
+
+  // Update the handleShowComments to be async and await the fetch
+  const handleShowComments = async (win) => {
+    try {
+      console.log('Showing comments for win:', win.id);
+      setSelectedWin(win);
+      setShowComments(true);
+      
+      if (win.comments && win.comments.length > 0) {
+        console.log('Found comments:', win.comments);
+        await fetchCommentUserData(win.comments);
+      }
+    } catch (error) {
+      console.error('Error in handleShowComments:', error);
     }
   };
 
@@ -876,8 +938,12 @@ const ProfileScreen = () => {
                   </Text>
                   <TouchableOpacity 
                     onPress={() => {
-                      setSelectedWin(win);
-                      setShowComments(true);
+                      if (win.comments?.length > 0) {
+                        handleShowComments(win);
+                      } else {
+                        setSelectedWin(win);
+                        setShowComments(true);
+                      }
                     }}
                     style={styles.commentButton}
                   >
@@ -991,34 +1057,6 @@ const styles = StyleSheet.create({
   stateButtonText: {
     fontSize: 14,
     color: '#333',
-  },
-
-
-  birthdateContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    marginHorizontal: 10,
-    marginVertical: 5,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  birthdateLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#24269B',
-    marginBottom: 10,
-  },
-
-  saveButton: {
-    backgroundColor: '#24269B',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: 'center',
   },
 
 
