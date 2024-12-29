@@ -21,7 +21,6 @@ import globalStyles from '../styles/styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
-import { Calendar } from 'react-native-calendars';
 import WinHistoryCard from '../components/WinHistoryCard';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -542,7 +541,6 @@ const ProfileScreen = () => {
     </Modal>
   );
 
-  const [winDates, setWinDates] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchUserWins = async () => {
@@ -558,37 +556,14 @@ const ProfileScreen = () => {
       const querySnapshot = await getDocs(winsQuery);
       console.log(`Found ${querySnapshot.size} wins`);
       
-      const newMarkedDates = {};
       const userWins = [];
       
       querySnapshot.docs.forEach(doc => {
         const win = { id: doc.id, ...doc.data() };
         userWins.push(win);
-        
-        if (win.localTimestamp?.date) {
-          // Handle different date formats
-          let formattedDate;
-          if (win.localTimestamp.date.includes('/')) {
-            const [month, day, year] = win.localTimestamp.date.split('/');
-            formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          } else if (win.localTimestamp.date.includes('-')) {
-            formattedDate = win.localTimestamp.date;
-          }
-          
-          if (formattedDate) {
-            console.log('Adding mark for date:', formattedDate);
-            newMarkedDates[formattedDate] = {
-              marked: true,
-              dotColor: '#24269B',
-              selected: true,
-              selectedColor: '#E8E8FF'
-            };
-          }
-        }
       });
 
       setWins(userWins);
-      setWinDates(newMarkedDates);
 
     } catch (error) {
       console.error('Error fetching wins:', error);
@@ -625,40 +600,6 @@ const ProfileScreen = () => {
     await fetchWinsForDate(day.dateString);
   };
 
-  
-  const renderCalendarSection = () => (
-    <View style={styles.calendarContainer}>
-      <Text style={styles.sectionTitle}>🏆 Win History</Text>
-      <Calendar
-        style={styles.calendar}
-        current={new Date().toISOString().split('T')[0]}
-        minDate={'2024-01-01'}
-        maxDate={'2024-12-31'}
-        onDayPress={handleDayPress}
-        markedDates={winDates}
-        theme={{
-          backgroundColor: '#ffffff',
-          calendarBackground: '#ffffff',
-          textSectionTitleColor: '#24269B',
-          selectedDayBackgroundColor: '#24269B',
-          selectedDayTextColor: '#ffffff',
-          todayTextColor: '#24269B',
-          dayTextColor: '#2d4150',
-          textDisabledColor: '#d9e1e8',
-          dotColor: '#24269B',
-          selectedDotColor: '#ffffff',
-          arrowColor: '#24269B',
-          monthTextColor: '#24269B',
-          indicatorColor: '#24269B'
-        }}
-      />
-      {/* <Text style={styles.debug}>
-        Debug - Marked Dates: {JSON.stringify(winDates, null, 2)}
-      </Text> */}
-    </View>
-  );
-
-  // Format birthdate function
   const formatBirthdate = (dateString) => {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -723,7 +664,7 @@ const ProfileScreen = () => {
                             {userData?.username || 'Loading...'}
                           </Text>
                           <Text style={styles.commentTime}>
-                            {formatDate(comment.createdAt)}
+                            {formatDate(comment.timestamp || comment.createdAt)}
                           </Text>
                         </View>
                       </View>
@@ -828,6 +769,15 @@ const ProfileScreen = () => {
     }
   };
 
+  // Add this function to calculate total cheers and comments
+  const calculateStats = (userWins) => {
+    return userWins.reduce((acc, win) => {
+      acc.totalCheers += win.cheers || 0;
+      acc.totalComments += (win.comments?.length || 0);
+      return acc;
+    }, { totalCheers: 0, totalComments: 0 });
+  };
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -911,9 +861,38 @@ const ProfileScreen = () => {
         })}
       </View>
 
-      {!profileUserId && renderCalendarSection()}
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Image 
+            source={require('../../assets/wins.png')} 
+            style={styles.statIcon}
+          />
+          <Text style={styles.statNumber}>{wins.length}</Text>
+          <Text style={styles.statLabel}>Wins</Text>
+        </View>
 
-      {renderWinsModal()}
+        <View style={styles.statItem}>
+          <Image 
+            source={require('../../assets/cheers.png')} 
+            style={styles.statIcon}
+          />
+          <Text style={styles.statNumber}>
+            {calculateStats(wins).totalCheers}
+          </Text>
+          <Text style={styles.statLabel}>Cheers</Text>
+        </View>
+
+        <View style={styles.statItem}>
+          <Image 
+            source={require('../../assets/comments.png')} 
+            style={styles.statIcon}
+          />
+          <Text style={styles.statNumber}>
+            {calculateStats(wins).totalComments}
+          </Text>
+          <Text style={styles.statLabel}>Comments</Text>
+        </View>
+      </View>
 
       <View style={styles.winsContainer}>
         <Text style={styles.sectionTitle}>Wins ({wins.length})</Text>
@@ -925,7 +904,7 @@ const ProfileScreen = () => {
                 <Image
                   source={{ uri: win.mediaUrl }}
                   style={styles.winImage}
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
               )}
               <View style={styles.winFooter}>
@@ -1335,9 +1314,10 @@ winText: {
 },
 winImage: {
   width: '100%',
-  height: 200,
+  height: undefined,
+  aspectRatio: 1, // This will adjust based on the actual image
   borderRadius: 8,
-  marginBottom: 10,
+  marginVertical: 10,
 },
 winFooter: {
   flexDirection: 'row',
@@ -1400,7 +1380,7 @@ commentItem: {
 commentHeader: {
   flexDirection: 'row',
   alignItems: 'center',
-  marginBottom: 8,
+  marginBottom: 10,
 },
 commentUserImage: {
   width: 40,
@@ -1410,6 +1390,7 @@ commentUserImage: {
 },
 commentUserInfo: {
   flex: 1,
+  justifyContent: 'center',
 },
 commentUsername: {
   fontWeight: 'bold',
@@ -1436,6 +1417,45 @@ commentButton: {
   flexDirection: 'row',
   alignItems: 'center',
   padding: 5,
+},
+
+statsContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  alignItems: 'center',
+  backgroundColor: '#fff',
+  padding: 15,
+  marginHorizontal: 10,
+  marginVertical: 10,
+  borderRadius: 10,
+  elevation: 2,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+},
+
+statItem: {
+  alignItems: 'center',
+  flex: 1,
+},
+
+statIcon: {
+  width: 90,
+  height: 90,
+  marginBottom: 5,
+},
+
+statNumber: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#24269B',
+  marginBottom: 2,
+},
+
+statLabel: {
+  fontSize: 12,
+  color: '#666',
 },
 
 });
