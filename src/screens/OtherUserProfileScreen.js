@@ -28,6 +28,7 @@ const OtherUserProfileScreen = () => {
   const [markedDates, setMarkedDates] = useState({});
   const [selectedWin, setSelectedWin] = useState(null);
   const [showComments, setShowComments] = useState(false);
+  const [commentUsers, setCommentUsers] = useState({});
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -162,6 +163,41 @@ const OtherUserProfileScreen = () => {
     }
   };
 
+  const fetchCommentUserData = async (comments) => {
+    const userDataPromises = comments.map(async (comment) => {
+      if (!comment.userId) return null;
+      
+      try {
+        const userDoc = await getDoc(doc(db, 'users', comment.userId));
+        if (userDoc.exists()) {
+          return {
+            userId: comment.userId,
+            userData: userDoc.data()
+          };
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+      return null;
+    });
+
+    const userData = await Promise.all(userDataPromises);
+    const userDataMap = {};
+    userData.forEach(data => {
+      if (data) {
+        userDataMap[data.userId] = data.userData;
+      }
+    });
+    setCommentUsers(userDataMap);
+  };
+
+  // Move useEffect outside of renderCommentModal
+  useEffect(() => {
+    if (selectedWin?.comments) {
+      fetchCommentUserData(selectedWin.comments);
+    }
+  }, [selectedWin]);
+
   const renderCommentModal = () => {
     if (!selectedWin) return null;
 
@@ -173,6 +209,7 @@ const OtherUserProfileScreen = () => {
         onRequestClose={() => {
           setShowComments(false);
           setSelectedWin(null);
+          setCommentUsers({});
         }}
       >
         <View style={styles.modalOverlay}>
@@ -183,6 +220,7 @@ const OtherUserProfileScreen = () => {
                 onPress={() => {
                   setShowComments(false);
                   setSelectedWin(null);
+                  setCommentUsers({});
                 }}
                 style={styles.closeButton}
               >
@@ -191,15 +229,32 @@ const OtherUserProfileScreen = () => {
             </View>
             
             {selectedWin.comments && selectedWin.comments.length > 0 ? (
-              selectedWin.comments.map((comment, index) => (
-                <View key={index} style={styles.commentItem}>
-                  <Text style={styles.commentUsername}>{comment.username}</Text>
-                  <Text style={styles.commentText}>{comment.text}</Text>
-                  <Text style={styles.commentTime}>
-                    {formatDate(comment.createdAt)}
-                  </Text>
-                </View>
-              ))
+              selectedWin.comments.map((comment, index) => {
+                const userData = commentUsers[comment.userId] || {};
+                return (
+                  <View key={index} style={styles.commentItem}>
+                    <View style={styles.commentHeader}>
+                      <Image
+                        source={
+                          userData.profilePicture
+                            ? { uri: userData.profilePicture }
+                            : { uri: 'https://via.placeholder.com/100' }
+                        }
+                        style={styles.commentUserImage}
+                      />
+                      <View style={styles.commentUserInfo}>
+                        <Text style={styles.commentUsername}>
+                          {userData.username || 'User'}
+                        </Text>
+                        <Text style={styles.commentTime}>
+                          {formatDate(comment.createdAt)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.commentText}>{comment.text}</Text>
+                  </View>
+                );
+              })
             ) : (
               <Text style={styles.noComments}>No comments yet</Text>
             )}
@@ -436,18 +491,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
     borderRadius: 10,
   },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  commentUserImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  commentUserInfo: {
+    flex: 1,
+  },
   commentUsername: {
     fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#24269B',
-  },
-  commentText: {
     fontSize: 14,
-    marginBottom: 5,
+    color: '#24269B',
   },
   commentTime: {
     fontSize: 12,
     color: '#666',
+    marginTop: 2,
+  },
+  commentText: {
+    fontSize: 14,
+    marginLeft: 50, // Aligns with the username
+    color: '#333',
   },
   noComments: {
     textAlign: 'center',
