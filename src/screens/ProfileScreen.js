@@ -547,21 +547,23 @@ const ProfileScreen = () => {
 
   const fetchUserWins = async () => {
     try {
-      console.log('Fetching wins for user:', targetUserId); // Debug log
+      console.log('Fetching wins for user:', targetUserId);
       
       const winsQuery = query(
         collection(db, 'wins'),
-        where('userId', '==', targetUserId)
+        where('userId', '==', targetUserId),
+        orderBy('createdAt', 'desc')
       );
       
       const querySnapshot = await getDocs(winsQuery);
-      console.log(`Found ${querySnapshot.size} wins`); // Debug log
+      console.log(`Found ${querySnapshot.size} wins`);
       
       const newMarkedDates = {};
+      const userWins = [];
       
       querySnapshot.docs.forEach(doc => {
-        const win = doc.data();
-        console.log('Processing win:', win); // Debug log
+        const win = { id: doc.id, ...doc.data() };
+        userWins.push(win);
         
         if (win.localTimestamp?.date) {
           // Handle different date formats
@@ -574,7 +576,7 @@ const ProfileScreen = () => {
           }
           
           if (formattedDate) {
-            console.log('Adding mark for date:', formattedDate); // Debug log
+            console.log('Adding mark for date:', formattedDate);
             newMarkedDates[formattedDate] = {
               marked: true,
               dotColor: '#24269B',
@@ -585,7 +587,7 @@ const ProfileScreen = () => {
         }
       });
 
-      console.log('Final marked dates:', newMarkedDates); // Debug log
+      setWins(userWins);
       setWinDates(newMarkedDates);
 
     } catch (error) {
@@ -623,6 +625,7 @@ const ProfileScreen = () => {
     await fetchWinsForDate(day.dateString);
   };
 
+  
   const renderCalendarSection = () => (
     <View style={styles.calendarContainer}>
       <Text style={styles.sectionTitle}>🏆 Win History</Text>
@@ -664,6 +667,103 @@ const ProfileScreen = () => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const [showComments, setShowComments] = useState(false);
+  const [selectedWin, setSelectedWin] = useState(null);
+  const [commentUsers, setCommentUsers] = useState({});
+
+  const renderCommentModal = () => {
+    if (!selectedWin) return null;
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showComments}
+        onRequestClose={() => {
+          setShowComments(false);
+          setSelectedWin(null);
+          setCommentUsers({});
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.commentModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Comments</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowComments(false);
+                  setSelectedWin(null);
+                  setCommentUsers({});
+                }}
+                style={styles.closeButton}
+              >
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.commentsList}>
+              {selectedWin.comments && selectedWin.comments.length > 0 ? (
+                selectedWin.comments.map((comment, index) => {
+                  const userData = commentUsers[comment.userId] || {};
+                  return (
+                    <View key={index} style={styles.commentItem}>
+                      <View style={styles.commentHeader}>
+                        <Image
+                          source={
+                            userData.profilePicture
+                              ? { uri: userData.profilePicture }
+                              : require('../../assets/default-profile.png')
+                          }
+                          style={styles.commentUserImage}
+                        />
+                        <View style={styles.commentUserInfo}>
+                          <Text style={styles.commentUsername}>
+                            {userData.username || 'User'}
+                          </Text>
+                          <Text style={styles.commentTime}>
+                            {formatDate(comment.createdAt)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.commentText}>{comment.text}</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.noComments}>No comments yet</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    
+    try {
+      const date = new Date(timestamp);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.log('Invalid date from timestamp:', timestamp);
+        return '';
+      }
+
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.log('Error formatting date:', error, 'for timestamp:', timestamp);
+      return '';
+    }
   };
 
   if (!user && !profileUserId) {
@@ -752,6 +852,48 @@ const ProfileScreen = () => {
       {!profileUserId && renderCalendarSection()}
 
       {renderWinsModal()}
+
+      <View style={styles.winsContainer}>
+        <Text style={styles.sectionTitle}>Wins ({wins.length})</Text>
+        {wins && wins.length > 0 ? (
+          wins.map((win) => (
+            <View key={win.id} style={styles.winCard}>
+              <Text style={styles.winText}>{win.text}</Text>
+              {win.mediaUrl && (
+                <Image
+                  source={{ uri: win.mediaUrl }}
+                  style={styles.winImage}
+                  resizeMode="cover"
+                />
+              )}
+              <View style={styles.winFooter}>
+                <Text style={styles.winDate}>
+                  {formatDate(win.createdAt)}
+                </Text>
+                <View style={styles.winStats}>
+                  <Text style={styles.statText}>
+                    {win.cheers || 0} 👏
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setSelectedWin(win);
+                      setShowComments(true);
+                    }}
+                    style={styles.commentButton}
+                  >
+                    <MaterialCommunityIcons name="comment-outline" size={20} color="#666" />
+                    <Text style={styles.statText}> {win.comments?.length || 0}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.noWins}>No wins yet</Text>
+        )}
+      </View>
+
+      {renderCommentModal()}
     </ScrollView>
   );
 };
@@ -951,17 +1093,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
+  commentModalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '80%',
+    padding: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
+    paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
@@ -1136,6 +1279,125 @@ sectionTitle: {
   marginRight: 10,
   marginBottom: 10,
   alignSelf: 'center',
+},
+winCard: {
+  backgroundColor: 'white',
+  borderRadius: 10,
+  padding: 15,
+  marginBottom: 15,
+  elevation: 2,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+},
+winText: {
+  fontSize: 16,
+  marginBottom: 10,
+},
+winImage: {
+  width: '100%',
+  height: 200,
+  borderRadius: 8,
+  marginBottom: 10,
+},
+winFooter: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+},
+winDate: {
+  fontSize: 14,
+  color: '#666',
+},
+winStats: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 15,
+},
+statText: {
+  fontSize: 14,
+  color: '#666',
+},
+questionsContainer: {
+  padding: 15,
+  backgroundColor: 'white',
+  marginTop: 10,
+},
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  justifyContent: 'flex-end',
+},
+modalContent: {
+  backgroundColor: 'white',
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  padding: 20,
+  maxHeight: '80%',
+},
+modalHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 20,
+  paddingBottom: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+},
+modalTitle: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#24269B',
+},
+closeButton: {
+  padding: 5,
+},
+commentItem: {
+  marginBottom: 15,
+  padding: 10,
+  backgroundColor: '#f8f8f8',
+  borderRadius: 10,
+},
+commentHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8,
+},
+commentUserImage: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  marginRight: 10,
+},
+commentUserInfo: {
+  flex: 1,
+},
+commentUsername: {
+  fontWeight: 'bold',
+  fontSize: 14,
+  color: '#24269B',
+},
+commentTime: {
+  fontSize: 12,
+  color: '#666',
+  marginTop: 2,
+},
+commentText: {
+  fontSize: 14,
+  marginLeft: 50, // Aligns with the username
+  color: '#333',
+},
+noComments: {
+  textAlign: 'center',
+  color: '#666',
+  fontStyle: 'italic',
+  marginTop: 20,
+},
+commentButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  padding: 5,
 },
 
 });
