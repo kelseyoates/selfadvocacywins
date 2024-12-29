@@ -100,7 +100,7 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
           <MaterialCommunityIcons 
             name="pencil" 
             size={24} 
-            color={activeTab === 'text' ? '#24269B' : '#666'} 
+            color={activeTab === 'text' ? '#FFFFFF' : '#666'} 
           />
         </TouchableOpacity>
 
@@ -111,7 +111,7 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
           <MaterialCommunityIcons 
             name="format-list-bulleted" 
             size={24} 
-            color={activeTab === 'words' ? '#24269B' : '#666'} 
+            color={activeTab === 'words' ? '#FFFFFF' : '#666'} 
           />
         </TouchableOpacity>
 
@@ -122,7 +122,7 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
           <MaterialCommunityIcons 
             name="video" 
             size={24} 
-            color={activeTab === 'video' ? '#24269B' : '#666'} 
+            color={activeTab === 'video' ? '#FFFFFF' : '#666'} 
           />
         </TouchableOpacity>
       </View>
@@ -139,11 +139,8 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   question: {
     fontSize: 18,
@@ -162,16 +159,19 @@ const styles = StyleSheet.create({
   tab: {
     padding: 10,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   activeTab: {
-    backgroundColor: 'white',
+    backgroundColor: '#24269B',
   },
+ 
   contentContainer: {
     minHeight: 100,
   },
   textAnswer: {
     fontSize: 14,
-    color: '#666',
+    color: '#000000',
     lineHeight: 20,
   },
   wordsContainer: {

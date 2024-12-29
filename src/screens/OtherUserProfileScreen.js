@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { getAuth } from 'firebase/auth';
@@ -14,6 +15,7 @@ import { getDoc, doc, collection, query, where, orderBy, getDocs } from 'firebas
 import { db } from '../config/firebase';
 import { useRoute } from '@react-navigation/native';
 import OtherUserQuestionCard from '../components/OtherUserQuestionCard';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/100';
 
@@ -24,6 +26,8 @@ const OtherUserProfileScreen = () => {
   const [profileData, setProfileData] = useState(null);
   const [wins, setWins] = useState([]);
   const [markedDates, setMarkedDates] = useState({});
+  const [selectedWin, setSelectedWin] = useState(null);
+  const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -135,10 +139,75 @@ const OtherUserProfileScreen = () => {
     },
     {
       id: 6,
-      question: "What I would do if I won the lottery 💰:",
+      question: "If I won the lottery, I would 💰:",
       presetWords: ["travel the world", "buy a house", "buy a car", "buy a boat", "start a business", "buy my friends gifts", "buy my family gifts", "give to charity", "own a sports team", "buy a hot tub", "fly first class"]
     },
   ];
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
+  };
+
+  const renderCommentModal = () => {
+    if (!selectedWin) return null;
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showComments}
+        onRequestClose={() => {
+          setShowComments(false);
+          setSelectedWin(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Comments</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowComments(false);
+                  setSelectedWin(null);
+                }}
+                style={styles.closeButton}
+              >
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            {selectedWin.comments && selectedWin.comments.length > 0 ? (
+              selectedWin.comments.map((comment, index) => (
+                <View key={index} style={styles.commentItem}>
+                  <Text style={styles.commentUsername}>{comment.username}</Text>
+                  <Text style={styles.commentText}>{comment.text}</Text>
+                  <Text style={styles.commentTime}>
+                    {formatDate(comment.createdAt)}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noComments}>No comments yet</Text>
+            )}
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -173,7 +242,7 @@ const OtherUserProfileScreen = () => {
       </View>
 
       <View style={styles.questionsContainer}>
-        <Text style={styles.sectionTitle}>Self-Advocacy Questions</Text>
+        <Text style={styles.sectionTitle}>My Profile</Text>
         {questions.map((item) => (
           <OtherUserQuestionCard
             key={item.id}
@@ -185,25 +254,10 @@ const OtherUserProfileScreen = () => {
         ))}
       </View>
 
-      <View style={styles.calendarContainer}>
-        <Text style={styles.sectionTitle}>Win History</Text>
-        <Calendar
-          markedDates={markedDates}
-          theme={{
-            selectedDayBackgroundColor: '#24269B',
-            todayTextColor: '#24269B',
-            arrowColor: '#24269B',
-            monthTextColor: '#24269B',
-            textMonthFontWeight: 'bold',
-            textDayFontSize: 16,
-            textMonthFontSize: 18,
-          }}
-          enableSwipeMonths={true}
-        />
-      </View>
+     
 
       <View style={styles.winsContainer}>
-        <Text style={styles.sectionTitle}>Recent Wins</Text>
+        <Text style={styles.sectionTitle}>My Wins</Text>
         {wins.map((win) => (
           <View key={win.id} style={styles.winCard}>
             <Text style={styles.winText}>{win.text}</Text>
@@ -216,20 +270,29 @@ const OtherUserProfileScreen = () => {
             )}
             <View style={styles.winFooter}>
               <Text style={styles.winDate}>
-                {new Date(win.createdAt).toLocaleDateString()}
+                {formatDate(win.createdAt)}
               </Text>
               <View style={styles.winStats}>
                 <Text style={styles.statText}>
                   {win.cheers || 0} 👏
                 </Text>
-                <Text style={styles.statText}>
-                  {win.comments?.length || 0} 💬
-                </Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setSelectedWin(win);
+                    setShowComments(true);
+                  }}
+                  style={styles.commentButton}
+                >
+                  <MaterialCommunityIcons name="comment-outline" size={20} color="#666" />
+                  <Text style={styles.statText}> {win.comments?.length || 0}</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
         ))}
       </View>
+
+      {renderCommentModal()}
     </ScrollView>
   );
 };
@@ -326,7 +389,8 @@ const styles = StyleSheet.create({
   },
   winStats: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    gap: 15,
   },
   statText: {
     fontSize: 14,
@@ -336,6 +400,65 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: 'white',
     marginTop: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#24269B',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  commentItem: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+  },
+  commentUsername: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#24269B',
+  },
+  commentText: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#666',
+  },
+  noComments: {
+    textAlign: 'center',
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 20,
+  },
+  commentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 5,
   },
 });
 

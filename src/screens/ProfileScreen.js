@@ -378,7 +378,7 @@ const ProfileScreen = () => {
     },
     {
       id: 6,
-      question: "What I would do if I won the lottery 💰:",
+      question: "If I won the lottery, I would 💰:",
       presetWords: ["travel the world", "buy a house", "buy a car", "buy a boat", "start a business", "buy my friends gifts", "buy my family gifts", "give to charity", "own a sports team", "buy a hot tub", "fly first class"]
     },
   ];
