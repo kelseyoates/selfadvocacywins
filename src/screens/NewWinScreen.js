@@ -8,7 +8,6 @@ import {
   Alert,
   ScrollView,
   Image,
-  Dimensions,
 } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Video } from 'expo-av';
@@ -18,15 +17,16 @@ import { collection, addDoc, doc, serverTimestamp, runTransaction, setDoc, updat
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigation } from '@react-navigation/native';
 
+// Add video size limit constant
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+
 const NewWinScreen = ({ navigation }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState(null);
   const [video, setVideo] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaType, setMediaType] = useState(null);
-  const [imageHeight, setImageHeight] = useState(0);
   const [media, setMedia] = useState([]);
-  const screenWidth = Dimensions.get('window').width - 40;
 
   const clearForm = () => {
     setText('');
@@ -37,9 +37,17 @@ const NewWinScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    // Check if there's either text or media
-    if (!text.trim() && !image?.uri) {
-      Alert.alert('Error', 'Please enter some text or add a photo to share your win');
+    if (!text.trim() && !image?.uri && !video?.uri) {
+      Alert.alert('Error', 'Please enter some text or add media to share your win');
+      return;
+    }
+
+    // Check video size again before upload
+    if (video && video.fileSize > MAX_VIDEO_SIZE) {
+      Alert.alert(
+        'Video too large',
+        'Please select a video that is smaller than 50MB or shorter in duration.'
+      );
       return;
     }
 
@@ -48,7 +56,8 @@ const NewWinScreen = ({ navigation }) => {
     console.log('Starting win submission with:', {
       hasText: Boolean(text.trim()),
       hasImage: Boolean(image?.uri),
-      imageDetails: image
+      hasVideo: Boolean(video?.uri),
+      mediaType: mediaType
     });
 
     try {
@@ -150,78 +159,100 @@ const NewWinScreen = ({ navigation }) => {
     return unsubscribe;
   }, [navigation]);
 
-  const pickMedia = async (type) => {
+  const pickPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: type === 'photo' 
-          ? ImagePicker.MediaTypeOptions.Images 
-          : ImagePicker.MediaTypeOptions.Videos,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 1,
+        aspect: [4, 3],
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
+        setVideo(null);
+        setMediaType('photo');
         setImage(result.assets[0]);
-        setMediaType(type);
       }
     } catch (error) {
-      console.error('Error picking media:', error);
-      Alert.alert('Error', 'Failed to pick media');
+      console.error('Error picking photo:', error);
+      Alert.alert('Error', 'Failed to pick photo. Please try again.');
     }
   };
 
-  const renderMedia = () => {
-    if (!image && !video) return null;
+  const pickVideo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.5,
+        videoMaxDuration: 30,
+        videoQuality: '480p',
+      });
 
-    if (mediaType === 'photo') {
-      return (
-        <View style={styles.mediaContainer}>
-          <Image source={{ uri: image.uri }} style={styles.media} />
-          <TouchableOpacity 
-            style={styles.removeButton}
-            onPress={() => {
-              setImage(null);
-              setMediaType(null);
-            }}
-          >
-            <MaterialCommunityIcons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      );
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const videoAsset = result.assets[0];
+        
+        if (videoAsset.fileSize > MAX_VIDEO_SIZE) {
+          Alert.alert(
+            'Video too large',
+            'Please select a video that is smaller than 50MB or shorter in duration.'
+          );
+          return;
+        }
+
+        setImage(null);
+        setMediaType('video');
+        setVideo(videoAsset);
+      }
+    } catch (error) {
+      console.error('Error picking video:', error);
+      Alert.alert('Error', 'Failed to pick video. Please try again.');
     }
+  };
 
-    if (mediaType === 'video') {
+  const renderMediaIndicator = () => {
+    if (!mediaType) return null;
+
+    if (mediaType === 'video' && video) {
       return (
-        <View style={styles.mediaContainer}>
-          <Video
-            source={{ uri: video.uri }}
-            style={styles.media}
-            useNativeControls
-            resizeMode="contain"
-            isLooping
-          />
-          <TouchableOpacity 
-            style={styles.removeButton}
+        <View style={styles.mediaIndicator}>
+          <MaterialCommunityIcons name="video" size={24} color="#24269B" />
+          <Text style={styles.mediaText}>
+            Video selected ({(video.fileSize / (1024 * 1024)).toFixed(1)}MB)
+          </Text>
+          <TouchableOpacity
+            style={styles.removeMediaButton}
             onPress={() => {
               setVideo(null);
               setMediaType(null);
             }}
           >
-            <MaterialCommunityIcons name="close" size={24} color="#fff" />
+            <MaterialCommunityIcons name="close" size={20} color="#666" />
           </TouchableOpacity>
         </View>
       );
     }
-  };
 
-  useEffect(() => {
-    if (image) {
-      Image.getSize(image.uri, (width, height) => {
-        const scaledHeight = (height / width) * screenWidth;
-        setImageHeight(scaledHeight);
-      });
+    if (mediaType === 'photo' && image) {
+      return (
+        <View style={styles.mediaIndicator}>
+          <MaterialCommunityIcons name="image" size={24} color="#24269B" />
+          <Text style={styles.mediaText}>Photo selected</Text>
+          <TouchableOpacity
+            style={styles.removeMediaButton}
+            onPress={() => {
+              setImage(null);
+              setMediaType(null);
+            }}
+          >
+            <MaterialCommunityIcons name="close" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+      );
     }
-  }, [image]);
+
+    return null;
+  };
 
   return (
     <ScrollView 
@@ -236,21 +267,21 @@ const NewWinScreen = ({ navigation }) => {
         multiline
       />
       
-      {image && (
-        <Image
-          source={{ uri: image.uri }}
-          style={styles.previewImage}
-          resizeMode="contain"
-        />
-      )}
+      {renderMediaIndicator()}
 
       <View style={styles.mediaButtonContainer}>
-        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('photo')}>
+        <TouchableOpacity 
+          style={styles.mediaButton} 
+          onPress={pickPhoto}
+        >
           <MaterialCommunityIcons name="camera" size={24} color="white" />
           <Text style={styles.buttonText}>Photo</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('video')}>
+        <TouchableOpacity 
+          style={styles.mediaButton} 
+          onPress={pickVideo}
+        >
           <MaterialCommunityIcons name="video" size={24} color="white" />
           <Text style={styles.buttonText}>Video</Text>
         </TouchableOpacity>
@@ -288,12 +319,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
   },
-  previewImage: {
-    width: Dimensions.get('window').width - 40,
-    height: Dimensions.get('window').width - 40,
-    marginBottom: 20,
-    backgroundColor: '#f0f0f0',
-  },
   mediaButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -324,25 +349,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  mediaContainer: {
+  mediaIndicator: {
     width: '100%',
-    height: '100%',
-    backgroundColor: '#ddd',
-    borderRadius: 10,
-    marginBottom: 15,
+    height: 100,
+    marginBottom: 20,
+    position: 'relative',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
     overflow: 'hidden',
   },
-  media: {
-    width: '100%',
-    height: '100%',
+  mediaText: {
+    marginTop: 8,
+    color: '#666',
+    fontSize: 14,
   },
-  removeButton: {
+  removeMediaButton: {
     position: 'absolute',
     top: 10,
     right: 10,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 15,
+    borderRadius: 20,
     padding: 5,
+    zIndex: 1,
   },
 });
 
