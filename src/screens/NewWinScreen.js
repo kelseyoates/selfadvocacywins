@@ -37,24 +37,29 @@ const NewWinScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    if (!text.trim()) {
-      Alert.alert('Error', 'Please enter some text about your win');
+    // Check if there's either text or media
+    if (!text.trim() && !image?.uri) {
+      Alert.alert('Error', 'Please enter some text or add a photo to share your win');
       return;
     }
 
     setIsSubmitting(true);
     const lowerCaseUid = auth.currentUser.uid.toLowerCase();
-    console.log('Starting win submission...');
+    console.log('Starting win submission with:', {
+      hasText: Boolean(text.trim()),
+      hasImage: Boolean(image?.uri),
+      imageDetails: image
+    });
 
     try {
       const userRef = doc(db, 'users', lowerCaseUid);
       const winRef = doc(collection(db, 'wins'));
+      const winId = winRef.id;
+      console.log('Generated win ID:', winId);
       
-      // Check if user exists and get current winTopics
       const userDoc = await getDoc(userRef);
       console.log('User document exists:', userDoc.exists());
       
-      // Get current timestamp
       const now = new Date();
       const localTimestamp = {
         date: now.toLocaleDateString(),
@@ -63,41 +68,63 @@ const NewWinScreen = ({ navigation }) => {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
 
-      // Create win data to match existing structure
+      // Handle media upload if present
+      let mediaUrl = null;
+      let mediaType = null;
+      if (image) {
+        const imageRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
+        const response = await fetch(image.uri);
+        const blob = await response.blob();
+        await uploadBytes(imageRef, blob);
+        mediaUrl = await getDownloadURL(imageRef);
+        mediaType = 'photo';
+        console.log('Image uploaded, URL:', mediaUrl);
+      } else if (video) {
+        const videoRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
+        const response = await fetch(video.uri);
+        const blob = await response.blob();
+        await uploadBytes(videoRef, blob);
+        mediaUrl = await getDownloadURL(videoRef);
+        mediaType = 'video';
+        console.log('Video uploaded, URL:', mediaUrl);
+      }
+
+      // Create win data with correct media fields
       const winData = {
-        text: text,
+        text: text.trim() || null, // Store null if no text
         createdAt: now.toISOString(),
         localTimestamp,
         userId: lowerCaseUid,
         username: userDoc.data().username,
-        profilePicture: userDoc.data().profilePicture,
         cheers: 0,
-        mediaType: null,
-        mediaUrl: null
+        mediaType,
+        mediaUrl,
+        comments: []
       };
 
-      // Extract topics
-      const topics = text.toLowerCase()
-        .split(/[\s,.-]+/)
-        .filter(word => word.length > 3)
-        .filter(word => !['this', 'that', 'with', 'from', 'what', 'have', 'and', 'the'].includes(word));
+      console.log('Saving win with data:', winData);
 
-      console.log('About to save win with topics:', topics);
+      // Only process topics if there's text
+      let newTopics = userDoc.data().winTopics || [];
+      if (text.trim()) {
+        const topics = text.toLowerCase()
+          .split(/[\s,.-]+/)
+          .filter(word => word.length > 3)
+          .filter(word => !['this', 'that', 'with', 'from', 'what', 'have', 'and', 'the'].includes(word));
 
-      // Initialize or update winTopics array
-      const currentTopics = userDoc.data().winTopics || [];
-      const newTopics = Array.from(new Set([...currentTopics, ...topics]));
+        const currentTopics = userDoc.data().winTopics || [];
+        newTopics = Array.from(new Set([...currentTopics, ...topics]));
+      }
 
-      // Save win and update user's topics in a batch
       const batch = writeBatch(db);
       batch.set(winRef, winData);
       batch.update(userRef, {
-        winTopics: newTopics, // Use the merged array instead of arrayUnion
+        winTopics: newTopics,
         lastModified: serverTimestamp()
       });
 
       await batch.commit();
-      console.log('Win saved successfully:', winRef.id);
+      console.log('Win saved successfully:', winId);
       
       navigation.goBack();
 

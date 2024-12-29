@@ -207,10 +207,11 @@ const WinCard = ({ win }) => {
     if (!win.mediaUrl) return null;
 
     if (win.mediaType === 'photo') {
+      console.log('Rendering image with URL:', win.mediaUrl); // Debug log
       return (
         <Image
           source={{ uri: win.mediaUrl }}
-          style={[styles.media, { height: imageHeight }]}
+          style={styles.media}
           resizeMode="contain"
         />
       );
@@ -513,6 +514,8 @@ const styles = StyleSheet.create({
   },
   media: {
     width: '100%',
+    height: undefined,
+    aspectRatio: 1,
     borderRadius: 10,
     marginBottom: 10,
   },

@@ -164,31 +164,47 @@ const OtherUserProfileScreen = () => {
   };
 
   const fetchCommentUserData = async (comments) => {
-    const userDataPromises = comments.map(async (comment) => {
-      if (!comment.userId) return null;
-      
-      try {
-        const userDoc = await getDoc(doc(db, 'users', comment.userId));
-        if (userDoc.exists()) {
-          return {
-            userId: comment.userId,
-            userData: userDoc.data()
-          };
+    try {
+      console.log('Starting to fetch comment user data');
+      const userPromises = comments.map(async (comment) => {
+        const userRef = doc(db, 'users', comment.userId.toLowerCase());
+        console.log('Fetching user data for:', comment.userId.toLowerCase());
+        
+        try {
+          const userSnapshot = await getDoc(userRef);
+          console.log('User snapshot exists:', userSnapshot.exists());
+          
+          if (userSnapshot.exists()) {
+            const userData = userSnapshot.data();
+            console.log('Found user data:', userData);
+            return {
+              userId: comment.userId,
+              userData: {
+                username: userData.username,
+                state: userData.state,
+                profilePicture: userData.profilePicture
+              }
+            };
+          }
+        } catch (e) {
+          console.error('Error fetching user:', e);
         }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-      return null;
-    });
+        return null;
+      });
 
-    const userData = await Promise.all(userDataPromises);
-    const userDataMap = {};
-    userData.forEach(data => {
-      if (data) {
-        userDataMap[data.userId] = data.userData;
-      }
-    });
-    setCommentUsers(userDataMap);
+      const users = await Promise.all(userPromises);
+      const userDataMap = {};
+      users.forEach(user => {
+        if (user) {
+          userDataMap[user.userId] = user.userData;
+        }
+      });
+      
+      console.log('Final user data map:', userDataMap);
+      setCommentUsers(userDataMap);
+    } catch (error) {
+      console.error('Error in fetchCommentUserData:', error);
+    }
   };
 
   // Move useEffect outside of renderCommentModal
@@ -197,6 +213,21 @@ const OtherUserProfileScreen = () => {
       fetchCommentUserData(selectedWin.comments);
     }
   }, [selectedWin]);
+
+  const handleShowComments = async (win) => {
+    try {
+      console.log('Showing comments for win:', win.id);
+      setSelectedWin(win);
+      setShowComments(true);
+      
+      if (win.comments && win.comments.length > 0) {
+        console.log('Found comments:', win.comments);
+        await fetchCommentUserData(win.comments);
+      }
+    } catch (error) {
+      console.error('Error in handleShowComments:', error);
+    }
+  };
 
   const renderCommentModal = () => {
     if (!selectedWin) return null;
@@ -230,24 +261,24 @@ const OtherUserProfileScreen = () => {
             
             {selectedWin.comments && selectedWin.comments.length > 0 ? (
               selectedWin.comments.map((comment, index) => {
-                const userData = commentUsers[comment.userId] || {};
+                const userData = commentUsers[comment.userId];
                 return (
                   <View key={index} style={styles.commentItem}>
                     <View style={styles.commentHeader}>
                       <Image
                         source={
-                          userData.profilePicture
+                          userData?.profilePicture
                             ? { uri: userData.profilePicture }
-                            : { uri: 'https://via.placeholder.com/100' }
+                            : require('../../assets/default-profile.png')
                         }
                         style={styles.commentUserImage}
                       />
                       <View style={styles.commentUserInfo}>
                         <Text style={styles.commentUsername}>
-                          {userData.username || 'User'}
+                          {userData?.username || 'Loading...'}
                         </Text>
                         <Text style={styles.commentTime}>
-                          {formatDate(comment.createdAt)}
+                          {formatDate(comment.timestamp || comment.createdAt)}
                         </Text>
                       </View>
                     </View>
@@ -262,6 +293,15 @@ const OtherUserProfileScreen = () => {
         </View>
       </Modal>
     );
+  };
+
+  // Add the stats calculation function
+  const calculateStats = (userWins) => {
+    return userWins.reduce((acc, win) => {
+      acc.totalCheers += win.cheers || 0;
+      acc.totalComments += (win.comments?.length || 0);
+      return acc;
+    }, { totalCheers: 0, totalComments: 0 });
   };
 
   if (isLoading) {
@@ -296,6 +336,39 @@ const OtherUserProfileScreen = () => {
         <Text style={styles.location}>{profileData?.state || ''}</Text>
       </View>
 
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Image 
+            source={require('../../assets/wins.png')} 
+            style={styles.statIcon}
+          />
+          <Text style={styles.statNumber}>{wins.length}</Text>
+          <Text style={styles.statLabel}>Wins</Text>
+        </View>
+
+        <View style={styles.statItem}>
+          <Image 
+            source={require('../../assets/cheers.png')} 
+            style={styles.statIcon}
+          />
+          <Text style={styles.statNumber}>
+            {calculateStats(wins).totalCheers}
+          </Text>
+          <Text style={styles.statLabel}>Cheers</Text>
+        </View>
+
+        <View style={styles.statItem}>
+          <Image 
+            source={require('../../assets/comments.png')} 
+            style={styles.statIcon}
+          />
+          <Text style={styles.statNumber}>
+            {calculateStats(wins).totalComments}
+          </Text>
+          <Text style={styles.statLabel}>Comments</Text>
+        </View>
+      </View>
+
       <View style={styles.questionsContainer}>
         <Text style={styles.sectionTitle}>My Profile</Text>
         {questions.map((item) => (
@@ -320,7 +393,7 @@ const OtherUserProfileScreen = () => {
               <Image
                 source={{ uri: win.mediaUrl }}
                 style={styles.winImage}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             )}
             <View style={styles.winFooter}>
@@ -333,8 +406,7 @@ const OtherUserProfileScreen = () => {
                 </Text>
                 <TouchableOpacity 
                   onPress={() => {
-                    setSelectedWin(win);
-                    setShowComments(true);
+                    handleShowComments(win);
                   }}
                   style={styles.commentButton}
                 >
@@ -429,9 +501,10 @@ const styles = StyleSheet.create({
   },
   winImage: {
     width: '100%',
-    height: 200,
+    height: undefined,
+    aspectRatio: 1,
     borderRadius: 8,
-    marginBottom: 10,
+    marginVertical: 10,
   },
   winFooter: {
     flexDirection: 'row',
@@ -530,6 +603,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 5,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 10,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statIcon: {
+    width: 90,
+    height: 90,
+    marginBottom: 5,
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
   },
 });
 
