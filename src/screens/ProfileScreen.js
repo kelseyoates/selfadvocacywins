@@ -497,13 +497,19 @@ const ProfileScreen = () => {
     await fetchWinsForDate(day.dateString);
   };
 
-  const formatBirthdate = (dateString) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
+  const formatBirthday = (dateString) => {
+    if (!dateString) return '';
+    
+    // Parse the date string (which is already in YYYY-MM-DD format)
+    const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+    
+    // Create a new date (months are 0-based in JavaScript)
+    const date = new Date(year, month - 1, day);
+    
     return date.toLocaleDateString('en-US', {
+      year: 'numeric',
       month: 'long',
-      day: 'numeric',
-      year: 'numeric'
+      day: 'numeric'
     });
   };
 
@@ -717,7 +723,7 @@ const ProfileScreen = () => {
           {/* Birthday */}
           {userData?.birthdate && (
             <Text style={styles.infoText}>
-              🎂 {formatBirthdate(userData.birthdate)}
+              🎂 {formatBirthday(userData.birthdate)}
             </Text>
           )}
           
