@@ -234,17 +234,17 @@ const FindYourFriendsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f6fbfd',
     padding: 15,
   },
   
   questionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
     padding: 20,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: '#24269B',
   },
   
   question: {
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: '#24269B',
   },
   wordsContainer: {
     flexDirection: 'row',
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f6fbfd',
     borderWidth: 1,
     borderColor: '#000000',
   },
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 8,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: '#24269B',
   },
   
   userInfo: {
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: '#24269B',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
