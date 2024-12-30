@@ -290,16 +290,42 @@ const NewWinScreen = ({ navigation }) => {
         />
       )}
 
-      <View style={styles.mediaButtonContainer}>
+      <View style={styles.mediaButtons}>
+
+
+
+      {/* <View style={styles.buttonContainer}>
+          <View style={styles.buttonShadow} />
+          <TouchableOpacity 
+            style={styles.mediaButton}
+            onPress={handleSelectPhoto}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonText}>Photo</Text>
+              <MaterialCommunityIcons name="camera" size={24} color="#24269B" />
+            </View>
+          </TouchableOpacity>
+        </View> */}
+
+
+        <View style={styles.buttonContainer}>
+          <View style={styles.buttonShadow} />
+
         <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('photo')}>
-          <MaterialCommunityIcons name="camera" size={24} color="white" />
+          <MaterialCommunityIcons name="camera" size={24} color="#24269B" />
           <Text style={styles.buttonText}>Photo</Text>
         </TouchableOpacity>
+        </View>
+
+
+        <View style={styles.buttonContainer}>
+          <View style={styles.buttonShadow} />
 
         <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('video')}>
-          <MaterialCommunityIcons name="video" size={24} color="white" />
+          <MaterialCommunityIcons name="video" size={24} color="#24269B" />
           <Text style={styles.buttonText}>Video</Text>
         </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity 
@@ -307,11 +333,13 @@ const NewWinScreen = ({ navigation }) => {
         onPress={handleSubmit}
         disabled={isSubmitting}
       >
-        <Text style={styles.buttonText}>
+        <Text style={styles.submitButtonText}>
           {isSubmitting ? 'Posting...' : 'Post Win'}
         </Text>
         <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
       </TouchableOpacity>
+
+
     </ScrollView>
   );
 };
@@ -326,7 +354,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#24269B',
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
@@ -334,61 +362,111 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
   },
+  
   previewImage: {
     width: Dimensions.get('window').width - 40,
     height: Dimensions.get('window').width - 40,
     marginBottom: 20,
     backgroundColor: '#f0f0f0',
   },
-  mediaButtonContainer: {
+  mediaButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    justifyContent: 'space-around',
+    padding: 20,
+  },
+  buttonContainer: {
+    position: 'relative',
+    width: '40%',
+    
+  },
+  buttonShadow: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: -4,
+    bottom: -4,
+    backgroundColor: '#000',
+    borderRadius: 8,
   },
   mediaButton: {
-    backgroundColor: '#24269B',
-    padding: 10,
+    backgroundColor: '#ffffff',
     borderRadius: 8,
-    flex: 0.45,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    
+  },
+  buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+   
+  },
+  buttonText: {
+    color: '#24269B',
+    fontSize: 18,
+    fontWeight: '600',
+    marginRight: 10,
+  },
+  submitButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginRight: 10,
+  },
+  buttonIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#24269B',
+  },
+  mediaIndicator: {
+    width: '100%',
+    height: 100,
+    marginBottom: 20,
+    position: 'relative',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  mediaText: {
+    marginTop: 8,
+    color: '#666',
+    fontSize: 14,
+  },
+  removeMediaButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 5,
+    zIndex: 1,
   },
   submitButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#24269B',
     padding: 15,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-  },
-  buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  mediaContainer: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#ddd',
-    borderRadius: 10,
-    marginBottom: 15,
-    overflow: 'hidden',
-  },
-  media: {
-    width: '100%',
-    height: '100%',
+    borderWidth: 1,
+    borderColor: '#24269B',
+    marginTop: 20,
   },
   removeButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 15,
-    padding: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 20,
+    padding: 8,
   },
 });
 
