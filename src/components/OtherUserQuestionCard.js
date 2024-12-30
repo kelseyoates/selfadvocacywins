@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }) => {
   const [textAnswer, setTextAnswer] = useState('');
   const [selectedWords, setSelectedWords] = useState([]);
-  const [videoUrl, setVideoUrl] = useState(null);
+  const [mediaUrl, setMediaUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeTab, setActiveTab] = useState('text');
   const [showVideo, setShowVideo] = useState(false);
@@ -22,6 +22,8 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
           return;
         }
 
+        console.log('Fetching answers for question:', question);
+
         // Fetch the user document which contains the questionAnswers array
         const userDoc = await getDoc(doc(db, 'users', userId));
         
@@ -29,14 +31,15 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
           const userData = userDoc.data();
           const questionAnswers = userData.questionAnswers || [];
           
-          // Find the answer for this specific question
+          // Find the answer for this specific question using the question text
           const answer = questionAnswers.find(qa => qa.question === question);
           
           if (answer) {
             console.log('Found answer:', answer);
             setTextAnswer(answer.textAnswer || '');
             setSelectedWords(answer.selectedWords || []);
-            setVideoUrl(answer.mediaUrl || null);
+            setMediaUrl(answer.videoAnswer || null);
+            console.log('Setting mediaUrl to:', answer.videoAnswer);
           } else {
             console.log('No answer found for question:', question);
           }
@@ -65,14 +68,16 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
     alert('Error playing video. Please try again.');
   };
 
-  const toggleVideo = async () => {
-    try {
-      if (showVideo && videoRef.current) {
-        await videoRef.current.unloadAsync();
-      }
-      setShowVideo(!showVideo);
-    } catch (error) {
-      console.error('Error toggling video:', error);
+  const togglePlayback = async () => {
+    if (!videoRef.current) return;
+    
+    const status = await videoRef.current.getStatusAsync();
+    if (status.isPlaying) {
+      await videoRef.current.pauseAsync();
+      setIsPlaying(false);
+    } else {
+      await videoRef.current.playAsync();
+      setIsPlaying(true);
     }
   };
 
@@ -99,23 +104,29 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
           </View>
         );
       case 'video':
-        return videoUrl ? (
-          <View style={styles.videoContainer}>
+        console.log('Video tab selected. mediaUrl:', mediaUrl);
+        return mediaUrl ? (
+          <View style={styles.mediaContainer}>
             <Video
               ref={videoRef}
-              source={{ uri: videoUrl }}
-              style={styles.video}
-              useNativeControls
+              source={{ uri: mediaUrl }}
+              style={styles.media}
               resizeMode="contain"
               shouldPlay={false}
-              isLooping={false}
-              onError={handleVideoError}
-              // Add memory optimization props
-              posterSource={null}
-              usePoster={false}
-              progressUpdateIntervalMillis={500}
-              maxBitRate={2000000} // Limit bitrate to 2Mbps
+              useNativeControls={true}
+              onLoad={() => console.log('Video loaded successfully')}
+              onError={(error) => console.log('Video loading error:', error)}
             />
+            <TouchableOpacity
+              style={styles.playButton}
+              onPress={togglePlayback}
+            >
+              <MaterialCommunityIcons
+                name={isPlaying ? 'pause' : 'play'}
+                size={50}
+                color="white"
+              />
+            </TouchableOpacity>
           </View>
         ) : (
           <Text style={styles.noAnswer}>No video answer yet</Text>
@@ -169,11 +180,11 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
       </View>
 
       
-      {showVideo && videoUrl && (
-        <View style={styles.videoContainer}>
+      {showVideo && mediaUrl && (
+        <View style={styles.mediaContainer}>
           <Video
             ref={videoRef}
-            source={{ uri: videoUrl }}
+            source={{ uri: question.mediaUrl }}
             style={styles.video}
             useNativeControls
             resizeMode="contain"
@@ -278,6 +289,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#f0f0f0',
     marginTop: 10,
+  },
+  mediaContainer: {
+    width: '100%',
+    aspectRatio: 4/3,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  media: {
+    width: '100%',
+    height: '100%',
   },
 });
 
