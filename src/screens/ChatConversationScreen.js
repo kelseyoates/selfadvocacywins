@@ -505,7 +505,10 @@ const ChatConversationScreen = ({ route, navigation }) => {
           styles.timestamp,
           isMyMessage ? styles.myTimestamp : styles.theirTimestamp
         ]}>
-          {new Date(item.sentAt * 1000).toLocaleTimeString([], { 
+          {new Date(item.sentAt * 1000).toLocaleDateString([], {
+            month: 'short',
+            day: 'numeric'
+          }) + ' ' + new Date(item.sentAt * 1000).toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit' 
           })}
@@ -583,7 +586,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
         >
           <MaterialCommunityIcons 
             name="attachment" 
-            size={24} 
+            size={36} 
             color={isUploading || isLoading ? "#999" : "#24269B"} 
           />
         </TouchableOpacity>
@@ -602,7 +605,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
         >
           <MaterialCommunityIcons 
             name="send" 
-            size={24} 
+            size={36} 
             color={(isLoading || isUploading || !inputText.trim()) ? "#999" : "#24269B"} 
           />
         </TouchableOpacity>
@@ -690,6 +693,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F8F8',
     borderRadius: 20,
     maxHeight: 100,
+    height: 60,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   sendButton: {
     padding: 10,

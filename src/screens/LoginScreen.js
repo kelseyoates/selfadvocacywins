@@ -73,7 +73,7 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.formContainer}>
             <View style={styles.labelContainer}>
               <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="email-outline" size={24} color="#24269B" />
+                <MaterialCommunityIcons name="email-outline" size={24} color="#000000" />
               </View>
               <Text style={styles.formLabel}>Email:</Text>
             </View>
@@ -88,7 +88,7 @@ const LoginScreen = ({ navigation }) => {
 
             <View style={styles.labelContainer}>
               <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="lock-outline" size={24} color="#24269B" />
+                <MaterialCommunityIcons name="lock-outline" size={24} color="#000000" />
               </View>
               <Text style={styles.formLabel}>Password:</Text>
             </View>
@@ -100,16 +100,36 @@ const LoginScreen = ({ navigation }) => {
               secureTextEntry
             />
 
-            <TouchableOpacity 
+            {/* <TouchableOpacity 
               style={styles.loginButton}
               onPress={handleLogin}
               activeOpacity={0.7}
             >
               <Text style={styles.loginButtonText}>
+                old <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
+              </Text>
+            </TouchableOpacity> */}
+          </View>
+
+          <View style={styles.container}>
+    <View style={styles.buttonContainer}>
+      <View style={styles.buttonShadow} />
+
+      <TouchableOpacity 
+        style={styles.loginButton} 
+        onPress={handleLogin}
+      >
+        
+        <View style={styles.buttonContent}>
+        <Text style={styles.loginButtonText}>
                 Login <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
               </Text>
-            </TouchableOpacity>
-          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+
+
+    </View>
 
           <View style={styles.footerContainer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
@@ -179,7 +199,6 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 20,
     lineHeight: 24,
-    color: '#24269B',
   },
   input: {
     width: '100%',
@@ -189,13 +208,7 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
   },
-  loginButton: {
-    backgroundColor: '#24269B',
-    width: '100%',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 32,
-  },
+  
   loginButtonText: {
     color: '#fff',
     fontSize: 20,
@@ -216,6 +229,62 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 100,
   },
+ 
+  buttonText: {
+    color: '#FFF',
+    fontSize: 18,
+    textAlign: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+
+  buttonContainer: {
+    position: 'relative',
+    marginHorizontal: 20,
+    marginVertical: 40,
+  },
+
+  buttonShadow: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
+    backgroundColor: '#000',
+    borderRadius: 8,
+  },
+
+  loginButton: {
+    backgroundColor: '#24269B',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    width: 300,
+    height: 60,
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+
+  buttonIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 15,
+  }
 });
 
 export default LoginScreen;

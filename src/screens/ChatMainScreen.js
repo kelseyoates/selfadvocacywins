@@ -23,15 +23,19 @@ const ChatMainScreen = ({ navigation }) => {
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('NewChat')}
-          style={styles.headerButton}
-        >
-          <View style={styles.headerButtonContent}>
-            <MaterialCommunityIcons name="message-plus" size={32} color="#24269B" />
-            <Text style={styles.headerButtonText}>New Chat</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <View style={styles.buttonShadow} />
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('NewChat')}
+            style={styles.newChatButton}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.newChatButtonText}>
+                New Chat <MaterialCommunityIcons name="message-plus" size={24} color="#24269B" />
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       ),
     });
 
@@ -173,15 +177,22 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     marginRight: 15,
-    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   headerButtonContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   headerButtonText: {
     color: '#24269B',
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   conversationItem: {
     flexDirection: 'row',
@@ -189,6 +200,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     alignItems: 'center',
+    
   },
   avatar: {
     width: 50,
@@ -196,6 +208,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#eee',
     marginRight: 15,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   conversationInfo: {
     flex: 1,
@@ -221,15 +235,59 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 20,
   },
-  startChatButton: {
-    backgroundColor: '#24269B',
+
+  buttonText: {
+    color: '#FFF',
+    fontSize: 18,
+    textAlign: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+
+  buttonContainer: {
+    marginRight: 15,
+    position: 'relative',
+  },
+
+  buttonShadow: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: -4,
+    bottom: -4,
+    backgroundColor: '#1a1b6e',
+    borderRadius: 25,
+  },
+
+  newChatButton: {
+    backgroundColor: '#ffffff',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 25,
+    position: 'relative',
+    zIndex: 1,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
-  startChatButtonText: {
-    color: '#fff',
+
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  newChatButtonText: {
+    color: '#24269B',
     fontSize: 16,
+    fontWeight: '600',
   },
+
+  buttonIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 15,
+  }
+
 });
 
 export default ChatMainScreen;
