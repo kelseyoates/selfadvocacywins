@@ -21,7 +21,6 @@ import globalStyles from '../styles/styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
-import WinHistoryCard from '../components/WinHistoryCard';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';

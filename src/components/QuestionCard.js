@@ -12,7 +12,8 @@ import { Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db, storage } from '../config/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import * as FileSystem from 'expo-file-system';
 
 const QuestionCard = ({ question, presetWords, onSave, existingAnswer }) => {
   const [mode, setMode] = useState('text');
@@ -21,6 +22,11 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer }) => {
   const [selectedWords, setSelectedWords] = useState([]);
   const [video, setVideo] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [questionData, setQuestionData] = useState({
+    mediaUrl: null,
+    mediaType: null
+  });
 
   useEffect(() => {
     if (existingAnswer) {
@@ -62,46 +68,118 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer }) => {
 
   const pickVideo = async () => {
     try {
+      console.log('Starting video picker...');
+      setUploading(true);
+      
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('Permission status:', status);
+      
+      if (status !== 'granted') {
+        alert('Sorry, we need camera roll permissions to make this work!');
+        setUploading(false);
+        return;
+      }
+
+      // Pick the video
+      console.log('Launching image picker...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        quality: 1,
+        quality: 0.5,
+        videoMaxDuration: 60,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const videoUri = result.assets[0].uri;
-        setVideo(videoUri);
-        await uploadVideo(videoUri);
+      console.log('Picker result:', result);
+
+      if (result.canceled) {
+        console.log('Video picking cancelled');
+        setUploading(false);
+        return;
       }
+
+      // Get video file info
+      console.log('Getting file info...');
+      const fileInfo = await FileSystem.getInfoAsync(result.assets[0].uri);
+      console.log('Video size:', fileInfo.size);
+      console.log('Video URI:', result.assets[0].uri);
+
+      if (fileInfo.size > 50 * 1024 * 1024) {
+        alert('Please choose a smaller video (max 50MB)');
+        setUploading(false);
+        return;
+      }
+
+      console.log('Starting upload process...');
+      await uploadVideo(result.assets[0].uri);
+
     } catch (error) {
-      console.error('Error picking video:', error);
-      Alert.alert('Error', 'Failed to pick video');
+      console.error('Error in pickVideo:', error);
+      alert('Error picking video. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
   const uploadVideo = async (uri) => {
-    if (!uri) return;
-    
-    setUploading(true);
     try {
+      console.log('Starting video upload with URI:', uri);
+      setUploading(true);
+
+      // Create blob from uri
+      console.log('Creating blob...');
       const response = await fetch(uri);
       const blob = await response.blob();
-      
-      const filename = `videos/${auth.currentUser.uid}/${question.replace(/\s+/g, '_')}_${Date.now()}.mp4`;
+      console.log('Blob created, size:', blob.size);
+
+      // Create unique filename
+      const filename = `questions/${auth.currentUser.uid}/${Date.now()}.mp4`;
+      console.log('Upload path:', filename);
       const storageRef = ref(storage, filename);
-      
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      await updateFirestore({ videoAnswer: downloadURL });
-      Alert.alert('Success', 'Video uploaded successfully');
+
+      console.log('Starting upload task...');
+      const uploadTask = uploadBytesResumable(storageRef, blob);
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          console.log('Upload progress:', progress + '%');
+          setUploadProgress(progress);
+        },
+        (error) => {
+          console.error('Upload error:', error);
+          console.error('Error code:', error.code);
+          console.error('Error message:', error.message);
+          alert('Error uploading video. Please try again.');
+          setUploading(false);
+        },
+        async () => {
+          console.log('Upload completed successfully!');
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('Download URL:', downloadURL);
+          
+          handleMediaUpload(downloadURL, 'video');
+          
+          setUploading(false);
+          setUploadProgress(0);
+        }
+      );
+
     } catch (error) {
-      console.error('Upload failed:', error);
-      Alert.alert('Error', 'Failed to upload video');
-      setVideo(null);
-    } finally {
+      console.error('Error in uploadVideo:', error);
+      console.error('Error details:', error.message);
+      alert('Error uploading video. Please try again.');
       setUploading(false);
     }
+  };
+
+  const handleMediaUpload = (url, type) => {
+    console.log('Handling media upload:', { url, type });
+    setQuestionData(prev => ({
+      ...prev,
+      mediaUrl: url,
+      mediaType: type
+    }));
   };
 
   const renderVideoMode = () => {
@@ -140,9 +218,16 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer }) => {
           onPress={pickVideo}
           disabled={uploading}
         >
-          <Text style={styles.buttonText}>
-            {uploading ? 'Uploading...' : 'Choose Video'}
-          </Text>
+          {uploading ? (
+            <View style={styles.uploadingContainer}>
+              <Text style={styles.buttonText}>Uploading: {uploadProgress}%</Text>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${uploadProgress}%` }]} />
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>Choose Video</Text>
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -276,6 +361,19 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer }) => {
       )}
 
       {mode === 'video' && renderVideoMode()}
+
+      {/* Show preview after upload */}
+      {questionData.mediaUrl && questionData.mediaType === 'video' && (
+        <View style={styles.previewContainer}>
+          <Video
+            source={{ uri: questionData.mediaUrl }}
+            style={styles.videoPreview}
+            useNativeControls
+            resizeMode="contain"
+            shouldPlay={false}
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -422,6 +520,32 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     marginLeft: 5,
+  },
+  uploadingContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  progressBar: {
+    width: '80%',
+    height: 4,
+    backgroundColor: '#ddd',
+    borderRadius: 2,
+    marginTop: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#24269B',
+    borderRadius: 2,
+  },
+  previewContainer: {
+    marginTop: 10,
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  videoPreview: {
+    width: '100%',
+    height: '100%',
   },
 });
 

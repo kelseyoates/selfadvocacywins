@@ -1,20 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Button } from 'react-native';
-import { CommonActions } from '@react-navigation/native';
+import { View, Text, StyleSheet, TouchableOpacity, Button, Image } from 'react-native';
+
 
 const FindScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      {/* <Button
-        title="Find Friend"
-        onPress={() => navigation.navigate('FindFriend')}
-        buttonStyle={styles.button}
-      /> */}
-      <Button
-        title="Find Your Friends"
-        onPress={() => navigation.navigate('FindYourFriends')}
-        buttonStyle={styles.button}
-      />
+    <TouchableOpacity 
+              style={styles.button}
+              onPress={() => navigation.navigate('FindYourFriends')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.buttonText}>
+                Find a Friend{' '}
+                <Image 
+                  source={require('../../assets/friends-active.png')} 
+                  style={styles.icon}
+                />
+              </Text>
+            </TouchableOpacity>
+
+
     </View>
   );
 };
@@ -29,16 +34,42 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#24269B',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 10,
-    width: '100%',
+    borderRadius: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    height: 120,
+    width: 300,
   },
+
   buttonText: {
-    color: '#fff',
+    color: '#FFF',
     fontSize: 18,
-    fontWeight: '600',
+    textAlign: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  buttonIcon: {
+    marginLeft: 2,
+  },
+
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    right: 16,
+    backgroundColor: '#F0F4FF',
+    paddingTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  icon: {
+    width: 90,
+    height: 90,
   },
 });
 
