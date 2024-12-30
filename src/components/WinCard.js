@@ -120,7 +120,7 @@ const PRESET_COMMENTS = [
   ];
 
 
-const WinCard = ({ win, onCheersPress, onCommentsPress, showActions = true }) => {
+const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [cheerCount, setCheerCount] = useState(win.cheers || 0);
@@ -135,6 +135,7 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, showActions = true }) =>
   );
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(!lazyLoad);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -179,7 +180,24 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, showActions = true }) =>
     if (!win.mediaUrl) return null;
 
     if (win.mediaType === 'video') {
-      console.log('Rendering video component with URL:', win.mediaUrl);
+      if (!shouldLoadVideo) {
+        return (
+          <TouchableOpacity 
+            style={styles.mediaContainer}
+            onPress={() => setShouldLoadVideo(true)}
+          >
+            <View style={styles.videoPlaceholder}>
+              <MaterialCommunityIcons 
+                name="play-circle" 
+                size={50} 
+                color="white" 
+              />
+              <Text style={styles.tapToLoadText}>Tap to load video</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }
+
       return (
         <View style={styles.mediaContainer}>
           <Video
@@ -192,10 +210,7 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, showActions = true }) =>
           />
           <TouchableOpacity
             style={styles.playButton}
-            onPress={() => {
-              console.log('Play button pressed');
-              togglePlayback();
-            }}
+            onPress={togglePlayback}
           >
             <MaterialCommunityIcons
               name={isPlaying ? 'pause' : 'play'}
@@ -698,6 +713,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  videoPlaceholder: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tapToLoadText: {
+    color: 'white',
+    marginTop: 10,
+  }
 });
 
 export default WinCard; 

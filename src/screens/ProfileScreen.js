@@ -24,6 +24,7 @@ import QuestionCard from '../components/QuestionCard';
 import WinHistoryCard from '../components/WinHistoryCard';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import WinCard from '../components/WinCard';
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
@@ -795,43 +796,16 @@ const ProfileScreen = () => {
         <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
         {wins && wins.length > 0 ? (
           wins.map((win) => (
-            <View key={win.id} style={styles.winCard}>
-              <Text style={styles.winText}>{win.text}hhh</Text>
-              {win.mediaUrl && (
-                <Image
-                  source={{ uri: win.mediaUrl }}
-                  style={styles.winImage}
-                  resizeMode="contain"
-                />
-              )}
-              <View style={styles.winFooter}>
-                <Text style={styles.winDate}>
-                  {formatDate(win.createdAt)}
-                </Text>
-                <View style={styles.winStats}>
-                  <Text style={styles.statText}>
-                    {win.cheers || 0} 👏
-                  </Text>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      if (win.comments?.length > 0) {
-                        handleShowComments(win);
-                      } else {
-                        setSelectedWin(win);
-                        setShowComments(true);
-                      }
-                    }}
-                    style={styles.commentButton}
-                  >
-                    <MaterialCommunityIcons name="comment-outline" size={20} color="#666" />
-                    <Text style={styles.statText}> {win.comments?.length || 0}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
+            <WinCard 
+              key={win.id} 
+              win={win}
+              onCheersPress={() => handleCheersPress(win)}
+              onCommentsPress={() => handleCommentsPress(win)}
+              lazyLoad={true}
+            />
           ))
         ) : (
-          <Text style={styles.noWins}>No wins yet</Text>
+          <Text style={styles.noWinsText}>No wins yet</Text>
         )}
       </View>
 
