@@ -233,15 +233,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFF',
     fontSize: 18,
-    textAlign: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-
 
   buttonContainer: {
     position: 'relative',
-    marginHorizontal: 20,
     marginVertical: 40,
   },
 
@@ -274,7 +269,7 @@ const styles = StyleSheet.create({
   },
 
   buttonContent: {
-    flexDirection: 'row',
+   
     alignItems: 'center',
     justifyContent: 'space-between',
   },

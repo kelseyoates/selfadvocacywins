@@ -531,19 +531,34 @@ const ChatConversationScreen = ({ route, navigation }) => {
         
         navigation.setOptions({
           headerTitle: () => (
-            <View style={styles.headerContainer}>
+            <TouchableOpacity 
+              style={styles.headerContainer}
+              onPress={() => {
+                console.log('Header tapped');
+                Alert.alert('Navigating to profile...');
+                navigation.navigate('OtherUserProfile', {
+                  screen: 'OtherUserProfile',
+                  params: {
+                    userId: uid,
+                    username: userData?.name || cometChatUser.name || name || 'Chat'
+                  }
+                });
+              }}
+              activeOpacity={0.6}
+            >
               <Image 
                 source={{ 
                   uri: userData?.profilePicture || 
                        'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' 
                 }} 
-                style={styles.headerAvatar} 
+                style={styles.headerAvatar}
               />
               <Text style={styles.headerTitle}>
                 {userData?.name || cometChatUser.name || name || 'Chat'}
               </Text>
-            </View>
+            </TouchableOpacity>
           ),
+          headerTitleAlign: 'left',
         });
       } catch (error) {
         console.log("Error fetching user details:", error);
@@ -626,12 +641,13 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 5,
   },
   headerAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginRight: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
   },
   headerTitle: {
     fontSize: 16,
@@ -721,6 +737,17 @@ const styles = StyleSheet.create({
   theirTimestamp: {
     color: '#666',
     alignSelf: 'flex-start',
+  },
+  headerProfilePic: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  headerUsername: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
   },
 });
 

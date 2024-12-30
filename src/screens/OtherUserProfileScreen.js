@@ -18,11 +18,20 @@ import OtherUserQuestionCard from '../components/OtherUserQuestionCard';
 import WinCard from '../components/WinCard';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { auth } from '../config/firebase';
 
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/100';
 
-const OtherUserProfileScreen = () => {
-  const route = useRoute();
+const OtherUserProfileScreen = ({ route, navigation }) => {
+  console.log('Route params:', route.params);  // Debug log to see all params
+  
+  // Get userId from route.params, with a fallback
+  const userId = route.params?.userId || route.params?.uid;
+  console.log('Using userId:', userId);  // Debug log
+
+  const profileUserId = route.params?.profileUserId;  // Use the correct param name
+  console.log('Profile User ID:', profileUserId);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [profileData, setProfileData] = useState(null);
@@ -31,6 +40,11 @@ const OtherUserProfileScreen = () => {
   const [selectedWin, setSelectedWin] = useState(null);
   const [showComments, setShowComments] = useState(false);
   const [commentUsers, setCommentUsers] = useState({});
+  const [userData, setUserData] = useState(null);
+
+  console.log('userData:', userData); // Debug log
+
+  console.log('OtherUserProfileScreen - userId:', userId);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -371,6 +385,36 @@ const OtherUserProfileScreen = () => {
         </View>
       </View>
 
+      <View style={styles.buttonContainer}>
+        <View style={styles.buttonShadow} />
+        <TouchableOpacity 
+          style={styles.chatButton}
+          onPress={() => {
+            if (!profileUserId || !auth.currentUser) {
+              console.log('Missing required IDs:', { profileUserId, currentUser: auth.currentUser?.uid });
+              return;
+            }
+            
+            // Match the expected parameters in ChatConversationScreen
+            const chatParams = {
+              uid: profileUserId,  // This is what ChatConversationScreen expects
+              name: profileData?.username || 'User'  // This is used for the header
+            };
+            
+            console.log('Starting chat with params:', chatParams);
+            
+            // Navigate directly to ChatConversation with the expected params
+            navigation.navigate('ChatConversation', chatParams);
+          }}
+        >
+          <View style={styles.buttonContent}>
+            <Text style={styles.chatButtonText}>
+              Start Chat <MaterialCommunityIcons name="chat" size={24} color="white" />
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.questionsContainer}>
         <Text style={styles.sectionTitle}>My Profile</Text>
         {questions.map((item) => (
@@ -623,6 +667,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  buttonContainer: {
+    marginHorizontal: 20,
+    marginVertical: 10,
+    position: 'relative',
+  },
+  buttonShadow: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: -4,
+    bottom: -4,
+    backgroundColor: '#1a1b6e',
+    borderRadius: 25,
+  },
+  chatButton: {
+    backgroundColor: '#24269B',
+    padding: 12,
+    borderRadius: 25,
+    position: 'relative',
+    zIndex: 1,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  }
 });
 
 export default OtherUserProfileScreen; 
