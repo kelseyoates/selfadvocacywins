@@ -5868,6 +5868,11 @@ react-native-calendars@^1.1307.0:
   optionalDependencies:
     moment "^2.29.4"
 
+react-native-compressor@^1.10.3:
+  version "1.10.3"
+  resolved "https://registry.yarnpkg.com/react-native-compressor/-/react-native-compressor-1.10.3.tgz#4e44fa8395de17fd6dc63c074e5a8c2ef06b80a1"
+  integrity sha512-i51DfTwfLcKorWbTXtnPOcQC4SQDuC+DqKkSl9wF9qAUmNS9PtipYZCXOvWShYFnX0mmcWw5vwEp2b2V73PaDQ==
+
 react-native-dotenv@^3.4.11:
   version "3.4.11"
   resolved "https://registry.npmjs.org/react-native-dotenv/-/react-native-dotenv-3.4.11.tgz"
