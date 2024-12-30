@@ -134,6 +134,24 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, showActions = true }) =>
     [...PRESET_COMMENTS].sort(() => 0.5 - Math.random()).slice(0, 3)
   );
   const [currentUser, setCurrentUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', win.userId));
+        if (userDoc.exists()) {
+          setUserData(userDoc.data());
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    if (win.userId) {
+      fetchUserData();
+    }
+  }, [win.userId]);
 
   const togglePlayback = async () => {
     if (!videoRef.current) return;
@@ -338,7 +356,18 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, showActions = true }) =>
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <MaterialCommunityIcons name="account-circle" size={40} color="#24269B" />
+          {userData?.profilePicture ? (
+            <Image 
+              source={{ uri: userData.profilePicture }} 
+              style={styles.profilePicture}
+            />
+          ) : (
+            <MaterialCommunityIcons 
+              name="account-circle" 
+              size={40} 
+              color="#24269B" 
+            />
+          )}
           <View style={styles.nameTimeContainer}>
             <Text style={styles.username}>{win.username}</Text>
             <Text style={styles.timestamp}>
@@ -370,7 +399,7 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, showActions = true }) =>
           style={styles.commentButton}
           onPress={handleShowCommentOptions}
         >
-          <MaterialCommunityIcons name="comment-outline" size={24} color="#666" />
+          <MaterialCommunityIcons name="comment-outline" size={40} color="#24269B" />
         </TouchableOpacity>
       </View>
 
@@ -461,6 +490,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -514,25 +545,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 5,
     paddingHorizontal: 10,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
+    
   },
   cheerButtonDisabled: {
     opacity: 0.7,
   },
   cheerEmoji: {
-    fontSize: 20,
+    fontSize: 40,
     marginRight: 5,
   },
   cheerCount: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
     fontWeight: '500',
   },
   commentButton: {
     padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
     marginLeft: 10,
   },
   commentButtonText: {
@@ -550,7 +578,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginVertical: 5,
-    paddingHorizontal: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#000000',
+    borderRadius: 10,
   },
   commentProfilePic: {
     width: 24,
@@ -565,8 +596,6 @@ const styles = StyleSheet.create({
   },
   commentTextContainer: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 10,
     padding: 8,
   },
   commentUsername: {
@@ -598,7 +627,7 @@ const styles = StyleSheet.create({
   },
   moreCommentsText: {
     color: '#24269B',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
   },
   commentOptions: {
@@ -608,13 +637,14 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   commentOption: {
-    backgroundColor: '#f8f8f8',
-    padding: 12,
+    padding: 16,
     borderRadius: 8,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   commentOptionText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#333',
     textAlign: 'center',
   },
@@ -643,6 +673,30 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     padding: 10,
     zIndex: 1,
+  },
+  profilePicture: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  nameTimeContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#24269B',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#666',
   },
 });
 
