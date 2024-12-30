@@ -136,7 +136,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
     <TouchableOpacity 
       key={user.id} 
       style={styles.userCard}
-      onPress={() => navigation.navigate('Profile', { userId: user.id })}
+      onPress={() => navigation.navigate('OtherUserProfile', { userId: user.id })}
     >
       <View style={styles.userInfo}>
         <View style={styles.avatarContainer}>
@@ -235,7 +235,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
             <View style={styles.cardShadow} />
             <TouchableOpacity 
               style={styles.userCard}
-              onPress={() => navigation.navigate('Profile', { 
+              onPress={() => navigation.navigate('OtherUserProfile', { 
                 profileUserId: user.path.split('/')[1],
                 isCurrentUser: false
               })}
