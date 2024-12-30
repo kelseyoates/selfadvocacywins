@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Video } from 'expo-av';
 import { doc, getDoc } from 'firebase/firestore';
@@ -11,6 +11,8 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
   const [videoUrl, setVideoUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeTab, setActiveTab] = useState('text');
+  const [showVideo, setShowVideo] = useState(false);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     const fetchAnswers = async () => {
@@ -34,7 +36,7 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
             console.log('Found answer:', answer);
             setTextAnswer(answer.textAnswer || '');
             setSelectedWords(answer.selectedWords || []);
-            setVideoUrl(answer.videoUrl || null);
+            setVideoUrl(answer.mediaUrl || null);
           } else {
             console.log('No answer found for question:', question);
           }
@@ -47,6 +49,32 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
 
     fetchAnswers();
   }, [question, userId]);
+
+  // Cleanup video when component unmounts or video is hidden
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  const handleVideoError = (error) => {
+    console.error('Video error:', error);
+    setShowVideo(false);
+    alert('Error playing video. Please try again.');
+  };
+
+  const toggleVideo = async () => {
+    try {
+      if (showVideo && videoRef.current) {
+        await videoRef.current.unloadAsync();
+      }
+      setShowVideo(!showVideo);
+    } catch (error) {
+      console.error('Error toggling video:', error);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -72,14 +100,23 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
         );
       case 'video':
         return videoUrl ? (
-          <Video
-            source={{ uri: videoUrl }}
-            style={styles.video}
-            useNativeControls
-            resizeMode="contain"
-            isLooping
-            shouldPlay={isPlaying}
-          />
+          <View style={styles.videoContainer}>
+            <Video
+              ref={videoRef}
+              source={{ uri: videoUrl }}
+              style={styles.video}
+              useNativeControls
+              resizeMode="contain"
+              shouldPlay={false}
+              isLooping={false}
+              onError={handleVideoError}
+              // Add memory optimization props
+              posterSource={null}
+              usePoster={false}
+              progressUpdateIntervalMillis={500}
+              maxBitRate={2000000} // Limit bitrate to 2Mbps
+            />
+          </View>
         ) : (
           <Text style={styles.noAnswer}>No video answer yet</Text>
         );
@@ -130,6 +167,27 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
       <View style={styles.contentContainer}>
         {renderContent()}
       </View>
+
+      
+      {showVideo && videoUrl && (
+        <View style={styles.videoContainer}>
+          <Video
+            ref={videoRef}
+            source={{ uri: videoUrl }}
+            style={styles.video}
+            useNativeControls
+            resizeMode="contain"
+            shouldPlay={false}
+            isLooping={false}
+            onError={handleVideoError}
+            // Add memory optimization props
+            posterSource={null}
+            usePoster={false}
+            progressUpdateIntervalMillis={500}
+            maxBitRate={2000000} // Limit bitrate to 2Mbps
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -201,6 +259,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontStyle: 'italic',
+  },
+  videoToggleButton: {
+    backgroundColor: '#24269B',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  videoToggleText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  videoContainer: {
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+    marginTop: 10,
   },
 });
 

@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Image,
 } from 'react-native';
 import { searchIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
@@ -16,7 +17,7 @@ import { adminIndex } from '../config/algolia';
 const FindYourFriendsScreen = ({ navigation }) => {
   const [selectedWords, setSelectedWords] = useState([]);
   const [textAnswer, setTextAnswer] = useState('');
-  const [selectedState, setSelectedState] = useState(null);
+  const [selectedState, setSelectedState] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [users, setUsers] = useState([]);
@@ -131,9 +132,41 @@ const FindYourFriendsScreen = ({ navigation }) => {
     setupAlgolia();
   }, []);
 
+  const renderUserCard = (user) => (
+    <TouchableOpacity 
+      key={user.id} 
+      style={styles.userCard}
+      onPress={() => navigation.navigate('OtherUserProfile', { userId: user.id })}
+    >
+      <View style={styles.userInfo}>
+        <View style={styles.avatarContainer}>
+          {user.profilePicture ? (
+            <Image 
+              source={{ uri: user.profilePicture }} 
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={[styles.avatar, styles.defaultAvatar]}>
+              <Text style={styles.defaultAvatarText}>
+                {user.name ? user.name[0].toUpperCase() : '?'}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.userDetails}>
+          <Text style={styles.userName}>{user.username}</Text>
+          <Text style={styles.userLocation}>{user.state}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <ScrollView style={styles.container}>
-      <StateDropdown onStateSelect={handleStateSelect} />
+      <StateDropdown 
+        selectedState={selectedState}
+        onStateChange={setSelectedState}
+      />
       
       <View style={styles.searchSection}>
         <Text style={styles.sectionTitle}>Search by Text</Text>
@@ -151,7 +184,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
         <View style={styles.wordsContainer}>
           {questions.map(question => 
             question.words ? (
-              <View key={question.id}>
+              <View key={question.id} style={styles.questionCard}>
                 <Text style={styles.questionText}>{question.text}</Text>
                 <View style={styles.wordsGrid}>
                   {question.words.map((word) => (
@@ -178,7 +211,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <TouchableOpacity 
+      {/* <TouchableOpacity 
         style={styles.searchButton}
         onPress={searchUsers}
         disabled={loading}
@@ -186,24 +219,13 @@ const FindYourFriendsScreen = ({ navigation }) => {
         <Text style={styles.searchButtonText}>
           {loading ? 'Searching...' : 'Search'}
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {error && <Text style={styles.error}>{error}</Text>}
       
       <View style={styles.resultsContainer}>
-        {users.map(user => (
-          <TouchableOpacity 
-            key={user.objectID}
-            style={styles.userCard}
-            onPress={() => navigation.navigate('OtherUserProfile', { 
-              profileUserId: user.path.split('/')[1],
-              isCurrentUser: false
-            })}
-          >
-            <Text style={styles.username}>{user.username}</Text>
-            <Text style={styles.stateText}>State: {user.state}</Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.sectionTitle}>Results</Text>
+        {users.map(user => renderUserCard(user))}
       </View>
     </ScrollView>
   );
@@ -212,15 +234,35 @@ const FindYourFriendsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    backgroundColor: '#f5f5f5',
+    padding: 15,
+  },
+  
+  questionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#000000',
+  },
+  
+  question: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#24269B',
+    marginBottom: 15,
   },
   questionContainer: {
     marginBottom: 20,
+    marginTop: 20,
   },
+
   questionText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontWeight: '500',
+    color: '#24269B',
+    marginBottom: 15,
   },
   input: {
     borderWidth: 1,
@@ -228,6 +270,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   wordsContainer: {
     flexDirection: 'row',
@@ -239,10 +284,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   selectedWord: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#24269B',
   },
   wordText: {
     color: '#333',
@@ -255,22 +302,55 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   userCard: {
-    padding: 16,
     backgroundColor: '#fff',
-    borderRadius: 8,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 12,
+    padding: 15,
+    marginHorizontal: 20,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
-  username: {
-    fontSize: 18,
+  
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
+  avatarContainer: {
+    marginRight: 15,
+  },
+  
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  
+  defaultAvatar: {
+    backgroundColor: '#24269B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  defaultAvatarText: {
+    color: '#fff',
+    fontSize: 20,
     fontWeight: 'bold',
   },
-  stateText: {
-    fontSize: 16,
+  
+  userDetails: {
+    flex: 1,
+  },
+  
+  userName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#24269B',
+    marginBottom: 4,
+  },
+  
+  userLocation: {
+    fontSize: 14,
     color: '#666',
   },
   error: {
@@ -284,11 +364,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#333',
+    color: '#24269B',
+    alignSelf: 'center',
+    marginTop: 20,
+    marginBottom: 10,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#000000',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
@@ -299,16 +382,17 @@ const styles = StyleSheet.create({
   wordsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
+    gap: 10,
   },
   searchButton: {
-    padding: 16,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    backgroundColor: '#24269B',
+    borderRadius: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
+    flexDirection: 'row',
+    height: 70,
   },
   searchButtonText: {
     color: '#fff',
