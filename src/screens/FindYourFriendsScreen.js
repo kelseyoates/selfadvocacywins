@@ -136,7 +136,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
     <TouchableOpacity 
       key={user.id} 
       style={styles.userCard}
-      onPress={() => navigation.navigate('OtherUserProfile', { userId: user.id })}
+      onPress={() => navigation.navigate('Profile', { userId: user.id })}
     >
       <View style={styles.userInfo}>
         <View style={styles.avatarContainer}>
@@ -154,7 +154,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
           )}
         </View>
         <View style={styles.userDetails}>
-          <Text style={styles.userName}>{user.username}</Text>
+          <Text style={styles.userName}>{user.name}</Text>
           <Text style={styles.userLocation}>{user.state}</Text>
         </View>
       </View>
@@ -223,10 +223,51 @@ const FindYourFriendsScreen = ({ navigation }) => {
 
       {error && <Text style={styles.error}>{error}</Text>}
       
-      <View style={styles.resultsContainer}>
+      {/* <View style={styles.resultsContainer}>
         <Text style={styles.sectionTitle}>Results</Text>
         {users.map(user => renderUserCard(user))}
+      </View> */}
+
+      <View style={styles.resultsContainer}>
+        
+        {users.map(user => (
+          <View key={user.objectID} style={styles.cardContainer}>
+            <View style={styles.cardShadow} />
+            <TouchableOpacity 
+              style={styles.userCard}
+              onPress={() => navigation.navigate('Profile', { 
+                profileUserId: user.path.split('/')[1],
+                isCurrentUser: false
+              })}
+            >
+              <View style={styles.cardContent}>
+                <View style={styles.avatarContainer}>
+                  {user.profilePicture ? (
+                    <Image 
+                      source={{ uri: user.profilePicture }} 
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <View style={[styles.avatar, styles.defaultAvatar]}>
+                      <Text style={styles.defaultAvatarText}>
+                        {user.name ? user.name[0].toUpperCase() : '?'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.userInfo}>
+                  <Text style={styles.username}>{user.username}</Text>
+                  <Text style={styles.infoText}>{user.age} years old</Text>
+                  <Text style={styles.infoText}>{user.state}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        ))}
       </View>
+
+
+      
     </ScrollView>
   );
 };
@@ -283,10 +324,18 @@ const styles = StyleSheet.create({
   wordButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    // borderRadius: 20,
     backgroundColor: '#f6fbfd',
     borderWidth: 1,
     borderColor: '#000000',
+
+    borderRadius: 10,
+    boxShadow: '0.3rem 0.3rem 0.6rem var(--greyLight-2), -0.2rem -0.2rem 0.5rem var(--white)',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+
+
   },
   selectedWord: {
     backgroundColor: '#24269B',
@@ -305,13 +354,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
-    marginHorizontal: 20,
-    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
     borderWidth: 1,
     borderColor: '#24269B',
   },
-  
-  userInfo: {
+
+  buttonShadow: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
+    backgroundColor: '#000',
+    borderRadius: 8,
+  },
+
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -338,20 +403,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   
-  userDetails: {
-    flex: 1,
-  },
-  
-  userName: {
+  username: {
     fontSize: 18,
     fontWeight: '600',
     color: '#24269B',
-    marginBottom: 4,
+  },
+
+  stateText: {
+    fontSize: 16,
   },
   
-  userLocation: {
+  ageText: {
     fontSize: 14,
     color: '#666',
+    marginTop: 2,
   },
   error: {
     color: 'red',
@@ -398,6 +463,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  cardContainer: {
+    position: 'relative',
+    marginHorizontal: 20,
+    marginVertical: 10,
+  },
+  cardShadow: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: -4,
+    bottom: -4,
+    backgroundColor: '#000',
+    borderRadius: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

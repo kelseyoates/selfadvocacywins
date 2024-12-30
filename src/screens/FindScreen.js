@@ -5,19 +5,21 @@ import { View, Text, StyleSheet, TouchableOpacity, Button, Image } from 'react-n
 const FindScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
-    <TouchableOpacity 
-              style={styles.button}
-              onPress={() => navigation.navigate('FindYourFriends')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.buttonText}>
-                Find a Friend{' '}
-                <Image 
-                  source={require('../../assets/friends-active.png')} 
-                  style={styles.icon}
-                />
-              </Text>
-            </TouchableOpacity>
+    <View style={styles.buttonContainer}>
+      <View style={styles.buttonShadow} />
+      <TouchableOpacity 
+        style={styles.findFriendButton} 
+        onPress={() => navigation.navigate('FindYourFriends')}
+      >
+        <View style={styles.buttonContent}>
+          <Text style={styles.buttonText}>Find a Friend</Text>
+          <Image 
+            source={require('../../assets/friends-active.png')} 
+            style={styles.buttonIcon}
+          />
+        </View>
+      </TouchableOpacity>
+    </View>
 
 
     </View>
@@ -57,20 +59,57 @@ const styles = StyleSheet.create({
   },
 
   buttonContainer: {
-    position: 'absolute',
-    bottom: 80,
-    left: 16,
-    right: 16,
-    backgroundColor: '#F0F4FF',
-    paddingTop: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'relative',
+    marginHorizontal: 20,
+    marginVertical: 10,
   },
 
-  icon: {
+  buttonShadow: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
+    backgroundColor: '#000',
+    borderRadius: 8,
+  },
+
+  findFriendButton: {
+    backgroundColor: '#24269B',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    width: 300,
+    height: 120,
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '600',
+  },
+
+  buttonIcon: {
     width: 90,
     height: 90,
-  },
+    borderRadius: 15,
+  }
 });
 
 export default FindScreen; 

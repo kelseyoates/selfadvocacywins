@@ -16,6 +16,7 @@ import { auth, db, storage } from '../config/firebase';
 import { collection, addDoc, doc, serverTimestamp, runTransaction, setDoc, updateDoc, arrayUnion, getDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigation } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 // Add video size limit constant
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
@@ -269,22 +270,32 @@ const NewWinScreen = ({ navigation }) => {
       
       {renderMediaIndicator()}
 
-      <View style={styles.mediaButtonContainer}>
-        <TouchableOpacity 
-          style={styles.mediaButton} 
-          onPress={pickPhoto}
-        >
-          <MaterialCommunityIcons name="camera" size={24} color="white" />
-          <Text style={styles.buttonText}>Photo</Text>
-        </TouchableOpacity>
+      <View style={styles.mediaButtons}>
+        <View style={styles.buttonContainer}>
+          <View style={styles.buttonShadow} />
+          <TouchableOpacity 
+            style={styles.mediaButton}
+            onPress={pickPhoto}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonText}>Photo</Text>
+              <MaterialIcons name="photo-camera" size={24} color="#24269B" />
+            </View>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity 
-          style={styles.mediaButton} 
-          onPress={pickVideo}
-        >
-          <MaterialCommunityIcons name="video" size={24} color="white" />
-          <Text style={styles.buttonText}>Video</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <View style={styles.buttonShadow} />
+          <TouchableOpacity 
+            style={styles.mediaButton}
+            onPress={pickVideo}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonText}>Video</Text>
+              <MaterialIcons name="videocam" size={24} color="#24269B" />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity 
@@ -292,7 +303,7 @@ const NewWinScreen = ({ navigation }) => {
         onPress={handleSubmit}
         disabled={isSubmitting}
       >
-        <Text style={styles.buttonText}>
+        <Text style={styles.submitButtonText}>
           {isSubmitting ? 'Posting...' : 'Post Win'}
         </Text>
         <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
@@ -311,7 +322,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#24269B',
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
@@ -319,35 +330,61 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
   },
-  mediaButtonContainer: {
+  mediaButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    justifyContent: 'space-around',
+    padding: 20,
+  },
+  buttonContainer: {
+    position: 'relative',
+    width: '40%',
+  },
+  buttonShadow: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: -4,
+    bottom: -4,
+    backgroundColor: '#000',
+    borderRadius: 8,
   },
   mediaButton: {
-    backgroundColor: '#24269B',
-    padding: 10,
+    backgroundColor: '#ffffff',
     borderRadius: 8,
-    flex: 0.45,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
-  submitButton: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
+  buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
   },
   buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontSize: 14,
+    color: '#24269B',
+    fontSize: 18,
     fontWeight: '600',
+    marginRight: 10,
+  },
+  submitButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginRight: 10,
+  },
+  buttonIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#24269B',
   },
   mediaIndicator: {
     width: '100%',
@@ -371,6 +408,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 5,
     zIndex: 1,
+  },
+  submitButton: {
+    backgroundColor: '#24269B',
+    padding: 15,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
 });
 

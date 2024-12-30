@@ -5,26 +5,29 @@ import { useNavigation } from '@react-navigation/native';
 const UserCard = ({ user }) => {
   const navigation = useNavigation();
 
-  const handlePress = () => {
-    navigation.navigate('UserProfile', { userId: user.userId });
-  };
-
-  // Get the first question answer that has text
-  const firstAnswer = user.questionAnswers?.find(qa => qa.textAnswer)?.textAnswer || '';
-
   return (
-    <TouchableOpacity onPress={handlePress}>
-      <View style={styles.card}>
-        <Image 
-          source={user.profilePicture ? { uri: user.profilePicture } : { uri: 'https://via.placeholder.com/60' }}
-          style={styles.profilePicture}
-        />
-        <View style={styles.info}>
-          <Text style={styles.username}>{user.username}</Text>
-          <Text style={styles.location}>{user.state}</Text>
-          <Text style={styles.bio} numberOfLines={2}>
-            {firstAnswer}
-          </Text>
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={() => navigation.navigate('Profile', { userId: user.id })}
+    >
+      <View style={styles.userInfo}>
+        <View style={styles.avatarContainer}>
+          {user.profilePicture ? (
+            <Image 
+              source={{ uri: user.profilePicture }} 
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={[styles.avatar, styles.defaultAvatar]}>
+              <Text style={styles.defaultAvatarText}>
+                {user.name ? user.name[0].toUpperCase() : '?'}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.userDetails}>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userLocation}>{user.state}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -71,6 +74,24 @@ const styles = StyleSheet.create({
   bio: {
     fontSize: 14,
     color: '#444',
+  },
+  avatarContainer: {
+    marginRight: 15,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  defaultAvatar: {
+    backgroundColor: '#24269B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  defaultAvatarText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });
 
