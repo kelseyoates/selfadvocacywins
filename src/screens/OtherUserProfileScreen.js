@@ -15,6 +15,8 @@ import { getDoc, doc, collection, query, where, orderBy, getDocs } from 'firebas
 import { db } from '../config/firebase';
 import { useRoute } from '@react-navigation/native';
 import OtherUserQuestionCard from '../components/OtherUserQuestionCard';
+import WinCard from '../components/WinCard';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/100';
@@ -383,41 +385,24 @@ const OtherUserProfileScreen = () => {
       </View>
 
      
-
       <View style={styles.winsContainer}>
-        <Text style={styles.sectionTitle}>My Wins</Text>
-        {wins.map((win) => (
-          <View key={win.id} style={styles.winCard}>
-            <Text style={styles.winText}>{win.text}</Text>
-            {win.mediaUrl && (
-              <Image
-                source={{ uri: win.mediaUrl }}
-                style={styles.winImage}
-                resizeMode="contain"
-              />
-            )}
-            <View style={styles.winFooter}>
-              <Text style={styles.winDate}>
-                {formatDate(win.createdAt)}
-              </Text>
-              <View style={styles.winStats}>
-                <Text style={styles.statText}>
-                  {win.cheers || 0} 👏
-                </Text>
-                <TouchableOpacity 
-                  onPress={() => {
-                    handleShowComments(win);
-                  }}
-                  style={styles.commentButton}
-                >
-                  <MaterialCommunityIcons name="comment-outline" size={20} color="#666" />
-                  <Text style={styles.statText}> {win.comments?.length || 0}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        ))}
+        <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
+        {wins && wins.length > 0 ? (
+          wins.map((win) => (
+            <WinCard 
+              key={win.id} 
+              win={win}
+              onCheersPress={() => handleCheersPress(win)}
+              onCommentsPress={() => handleCommentsPress(win)}
+              lazyLoad={true}
+            />
+          ))
+        ) : (
+          <Text style={styles.noWinsText}>No wins yet</Text>
+        )}
       </View>
+
+      
 
       {renderCommentModal()}
     </ScrollView>
