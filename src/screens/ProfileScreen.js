@@ -437,109 +437,6 @@ const ProfileScreen = () => {
     }
   };
 
-  const [showWinsModal, setShowWinsModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDateWins, setSelectedDateWins] = useState([]);
-
-  const formatSelectedDate = (dateString) => {
-    if (!dateString) return '';
-    
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    try {
-      // Assuming dateString is in format "2024-12-26"
-      const [year, month, day] = dateString.split('-');
-      return `${months[parseInt(month) - 1]} ${parseInt(day)}, ${year}`;
-    } catch (error) {
-      console.log("Date formatting error:", error, "for date:", dateString);
-      return dateString;
-    }
-  };
-
-  const fetchWinsForDate = async (date) => {
-    try {
-      console.log('Fetching wins for date:', date);
-      const winsQuery = query(
-        collection(db, 'wins'),
-        where('userId', '==', targetUserId)
-      );
-      
-      const querySnapshot = await getDocs(winsQuery);
-      const wins = querySnapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-        .filter(win => {
-          if (win.localTimestamp?.date) {
-            let winDate;
-            if (win.localTimestamp.date.includes('/')) {
-              const [month, day, year] = win.localTimestamp.date.split('/');
-              winDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            } else if (win.localTimestamp.date.includes('-')) {
-              winDate = win.localTimestamp.date;
-            }
-            console.log('Comparing dates:', { winDate, targetDate: date });
-            return winDate === date;
-          }
-          return false;
-        });
-      
-      console.log('Filtered wins:', wins);
-      setSelectedDateWins(wins);
-      setSelectedDate(date);
-      setShowWinsModal(true);
-    } catch (error) {
-      console.error('Error fetching wins for date:', error);
-    }
-  };
-
-  const renderWinsModal = () => (
-    <Modal
-      visible={showWinsModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowWinsModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              Wins on {formatSelectedDate(selectedDate)}
-            </Text>
-            <TouchableOpacity 
-              onPress={() => setShowWinsModal(false)}
-              style={styles.closeButton}
-            >
-              <MaterialCommunityIcons name="close" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
-          
-          <FlatList
-            data={selectedDateWins}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.winCardContainer}>
-                <WinHistoryCard
-                  win={item}
-                  onPress={() => console.log('Win pressed:', item)}
-                />
-              </View>
-            )}
-            ListEmptyComponent={() => (
-              <Text style={styles.noWinsText}>
-                No wins recorded for this date
-              </Text>
-            )}
-            contentContainerStyle={styles.winsList}
-          />
-        </View>
-      </View>
-    </Modal>
-  );
 
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -895,11 +792,11 @@ const ProfileScreen = () => {
       </View>
 
       <View style={styles.winsContainer}>
-        <Text style={styles.sectionTitle}>Wins ({wins.length})</Text>
+        <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
         {wins && wins.length > 0 ? (
           wins.map((win) => (
             <View key={win.id} style={styles.winCard}>
-              <Text style={styles.winText}>{win.text}</Text>
+              <Text style={styles.winText}>{win.text}hhh</Text>
               {win.mediaUrl && (
                 <Image
                   source={{ uri: win.mediaUrl }}
