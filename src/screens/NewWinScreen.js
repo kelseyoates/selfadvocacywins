@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   Image,
+  Dimensions,
 } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Video } from 'expo-av';
@@ -16,10 +17,6 @@ import { auth, db, storage } from '../config/firebase';
 import { collection, addDoc, doc, serverTimestamp, runTransaction, setDoc, updateDoc, arrayUnion, getDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigation } from '@react-navigation/native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-
-// Add video size limit constant
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
 const NewWinScreen = ({ navigation }) => {
   const [text, setText] = useState('');
@@ -27,7 +24,9 @@ const NewWinScreen = ({ navigation }) => {
   const [video, setVideo] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaType, setMediaType] = useState(null);
+  const [imageHeight, setImageHeight] = useState(0);
   const [media, setMedia] = useState([]);
+  const screenWidth = Dimensions.get('window').width - 40;
 
   const clearForm = () => {
     setText('');
@@ -38,30 +37,20 @@ const NewWinScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    if (!text.trim() && !image?.uri && !video?.uri) {
-      Alert.alert('Error', 'Please enter some text or add media to share your win');
-      return;
-    }
-
-    // Check video size again before upload
-    if (video && video.fileSize > MAX_VIDEO_SIZE) {
-      Alert.alert(
-        'Video too large',
-        'Please select a video that is smaller than 50MB or shorter in duration.'
-      );
-      return;
-    }
-
-    setIsSubmitting(true);
-    const lowerCaseUid = auth.currentUser.uid.toLowerCase();
-    console.log('Starting win submission with:', {
-      hasText: Boolean(text.trim()),
-      hasImage: Boolean(image?.uri),
-      hasVideo: Boolean(video?.uri),
-      mediaType: mediaType
-    });
-
     try {
+      if (!text.trim() && !image?.uri) {
+        Alert.alert('Error', 'Please enter some text or add a photo to share your win');
+        return;
+      }
+
+      setIsSubmitting(true);
+      const lowerCaseUid = auth.currentUser.uid.toLowerCase();
+      console.log('Starting win submission with:', {
+        hasText: Boolean(text.trim()),
+        hasImage: Boolean(image?.uri),
+        imageDetails: image
+      });
+
       const userRef = doc(db, 'users', lowerCaseUid);
       const winRef = doc(collection(db, 'wins'));
       const winId = winRef.id;
@@ -78,16 +67,14 @@ const NewWinScreen = ({ navigation }) => {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
 
-      // Handle media upload if present
       let mediaUrl = null;
-      let mediaType = null;
+
       if (image) {
         const imageRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
         const response = await fetch(image.uri);
         const blob = await response.blob();
         await uploadBytes(imageRef, blob);
         mediaUrl = await getDownloadURL(imageRef);
-        mediaType = 'photo';
         console.log('Image uploaded, URL:', mediaUrl);
       } else if (video) {
         const videoRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
@@ -95,13 +82,11 @@ const NewWinScreen = ({ navigation }) => {
         const blob = await response.blob();
         await uploadBytes(videoRef, blob);
         mediaUrl = await getDownloadURL(videoRef);
-        mediaType = 'video';
         console.log('Video uploaded, URL:', mediaUrl);
       }
 
-      // Create win data with correct media fields
       const winData = {
-        text: text.trim() || null, // Store null if no text
+        text: text.trim() || null,
         createdAt: now.toISOString(),
         localTimestamp,
         userId: lowerCaseUid,
@@ -114,7 +99,6 @@ const NewWinScreen = ({ navigation }) => {
 
       console.log('Saving win with data:', winData);
 
-      // Only process topics if there's text
       let newTopics = userDoc.data().winTopics || [];
       if (text.trim()) {
         const topics = text.toLowerCase()
@@ -160,100 +144,130 @@ const NewWinScreen = ({ navigation }) => {
     return unsubscribe;
   }, [navigation]);
 
-  const pickPhoto = async () => {
+  const pickMedia = async (type) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: type === 'photo' 
+          ? ImagePicker.MediaTypeOptions.Images 
+          : ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
         quality: 1,
-        aspect: [4, 3],
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setVideo(null);
-        setMediaType('photo');
         setImage(result.assets[0]);
+        setMediaType(type);
       }
     } catch (error) {
-      console.error('Error picking photo:', error);
-      Alert.alert('Error', 'Failed to pick photo. Please try again.');
+      console.error('Error picking media:', error);
+      Alert.alert('Error', 'Failed to pick media');
     }
   };
 
-  const pickVideo = async () => {
+  const handleSelectVideo = async () => {
     try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Needed',
+          'Please grant permission to access your photos in your device settings.'
+        );
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        quality: 0.5,
-        videoMaxDuration: 30,
+        quality: 1,
         videoQuality: '480p',
+        videoMaxDuration: 60,
       });
+
+      console.log('Video picker result:', result);
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const videoAsset = result.assets[0];
         
-        if (videoAsset.fileSize > MAX_VIDEO_SIZE) {
-          Alert.alert(
-            'Video too large',
-            'Please select a video that is smaller than 50MB or shorter in duration.'
-          );
-          return;
-        }
+        if (videoAsset.type === 'video') {
+          const fileSize = videoAsset.fileSize / (1024 * 1024);
+          
+          if (fileSize > 32) {
+            Alert.alert(
+              'Video Too Large',
+              'Please select a shorter video or record at a lower quality. Maximum size is 32MB.'
+            );
+            return;
+          }
 
-        setImage(null);
-        setMediaType('video');
-        setVideo(videoAsset);
+          console.log('Setting video preview and type');
+          setMediaPreview(videoAsset.uri);
+          setMediaType('video');
+        } else {
+          Alert.alert('Error', 'Please select a video file');
+        }
       }
     } catch (error) {
-      console.error('Error picking video:', error);
-      Alert.alert('Error', 'Failed to pick video. Please try again.');
+      console.error('Error selecting video:', error);
+      Alert.alert(
+        'Error',
+        'Failed to select video. Please try again.'
+      );
     }
   };
 
-  const renderMediaIndicator = () => {
-    if (!mediaType) return null;
+  const renderMedia = () => {
+    if (!image && !video) return null;
 
-    if (mediaType === 'video' && video) {
+    if (mediaType === 'photo') {
       return (
-        <View style={styles.mediaIndicator}>
-          <MaterialCommunityIcons name="video" size={24} color="#24269B" />
-          <Text style={styles.mediaText}>
-            Video selected ({(video.fileSize / (1024 * 1024)).toFixed(1)}MB)
-          </Text>
-          <TouchableOpacity
-            style={styles.removeMediaButton}
-            onPress={() => {
-              setVideo(null);
-              setMediaType(null);
-            }}
-          >
-            <MaterialCommunityIcons name="close" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    if (mediaType === 'photo' && image) {
-      return (
-        <View style={styles.mediaIndicator}>
-          <MaterialCommunityIcons name="image" size={24} color="#24269B" />
-          <Text style={styles.mediaText}>Photo selected</Text>
-          <TouchableOpacity
-            style={styles.removeMediaButton}
+        <View style={styles.mediaContainer}>
+          <Image source={{ uri: image.uri }} style={styles.media} />
+          <TouchableOpacity 
+            style={styles.removeButton}
             onPress={() => {
               setImage(null);
               setMediaType(null);
             }}
           >
-            <MaterialCommunityIcons name="close" size={20} color="#666" />
+            <MaterialCommunityIcons name="close" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       );
     }
 
-    return null;
+    if (mediaType === 'video') {
+      return (
+        <View style={styles.mediaContainer}>
+          <Video
+            source={{ uri: video.uri }}
+            style={styles.media}
+            useNativeControls
+            resizeMode="contain"
+            isLooping
+          />
+          <TouchableOpacity 
+            style={styles.removeButton}
+            onPress={() => {
+              setVideo(null);
+              setMediaType(null);
+            }}
+          >
+            <MaterialCommunityIcons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      );
+    }
   };
+
+  useEffect(() => {
+    if (image) {
+      Image.getSize(image.uri, (width, height) => {
+        const scaledHeight = (height / width) * screenWidth;
+        setImageHeight(scaledHeight);
+      });
+    }
+  }, [image]);
 
   return (
     <ScrollView 
@@ -268,34 +282,24 @@ const NewWinScreen = ({ navigation }) => {
         multiline
       />
       
-      {renderMediaIndicator()}
+      {image && (
+        <Image
+          source={{ uri: image.uri }}
+          style={styles.previewImage}
+          resizeMode="contain"
+        />
+      )}
 
-      <View style={styles.mediaButtons}>
-        <View style={styles.buttonContainer}>
-          <View style={styles.buttonShadow} />
-          <TouchableOpacity 
-            style={styles.mediaButton}
-            onPress={pickPhoto}
-          >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonText}>Photo</Text>
-              <MaterialIcons name="photo-camera" size={24} color="#24269B" />
-            </View>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.mediaButtonContainer}>
+        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('photo')}>
+          <MaterialCommunityIcons name="camera" size={24} color="white" />
+          <Text style={styles.buttonText}>Photo</Text>
+        </TouchableOpacity>
 
-        <View style={styles.buttonContainer}>
-          <View style={styles.buttonShadow} />
-          <TouchableOpacity 
-            style={styles.mediaButton}
-            onPress={pickVideo}
-          >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonText}>Video</Text>
-              <MaterialIcons name="videocam" size={24} color="#24269B" />
-            </View>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('video')}>
+          <MaterialCommunityIcons name="video" size={24} color="white" />
+          <Text style={styles.buttonText}>Video</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity 
@@ -303,7 +307,7 @@ const NewWinScreen = ({ navigation }) => {
         onPress={handleSubmit}
         disabled={isSubmitting}
       >
-        <Text style={styles.submitButtonText}>
+        <Text style={styles.buttonText}>
           {isSubmitting ? 'Posting...' : 'Post Win'}
         </Text>
         <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
@@ -322,7 +326,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#24269B',
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
@@ -330,97 +334,62 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 20,
   },
-  mediaButtons: {
+  previewImage: {
+    width: Dimensions.get('window').width - 40,
+    height: Dimensions.get('window').width - 40,
+    marginBottom: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  mediaButtonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
-  },
-  buttonContainer: {
-    position: 'relative',
-    width: '40%',
-  },
-  buttonShadow: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    right: -4,
-    bottom: -4,
-    backgroundColor: '#000',
-    borderRadius: 8,
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   mediaButton: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#24269B',
+    padding: 10,
     borderRadius: 8,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#24269B',
-  },
-  buttonContent: {
+    flex: 0.45,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-  },
-  buttonText: {
-    color: '#24269B',
-    fontSize: 18,
-    fontWeight: '600',
-    marginRight: 10,
-  },
-  submitButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginRight: 10,
-  },
-  buttonIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#24269B',
-  },
-  mediaIndicator: {
-    width: '100%',
-    height: 100,
-    marginBottom: 20,
-    position: 'relative',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  mediaText: {
-    marginTop: 8,
-    color: '#666',
-    fontSize: 14,
-  },
-  removeMediaButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-    padding: 5,
-    zIndex: 1,
+    justifyContent: 'center',
+    gap: 5,
   },
   submitButton: {
-    backgroundColor: '#24269B',
+    backgroundColor: '#4CAF50',
     padding: 15,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    borderWidth: 1,
-    borderColor: '#24269B',
+  },
+  buttonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  mediaContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#ddd',
+    borderRadius: 10,
+    marginBottom: 15,
+    overflow: 'hidden',
+  },
+  media: {
+    width: '100%',
+    height: '100%',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 15,
+    padding: 5,
   },
 });
 
 export default NewWinScreen;
-

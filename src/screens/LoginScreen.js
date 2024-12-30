@@ -73,7 +73,7 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.formContainer}>
             <View style={styles.labelContainer}>
               <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="email-outline" size={24} color="black" />
+                <MaterialCommunityIcons name="email-outline" size={24} color="#24269B" />
               </View>
               <Text style={styles.formLabel}>Email:</Text>
             </View>
@@ -88,7 +88,7 @@ const LoginScreen = ({ navigation }) => {
 
             <View style={styles.labelContainer}>
               <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="lock-outline" size={24} color="black" />
+                <MaterialCommunityIcons name="lock-outline" size={24} color="#24269B" />
               </View>
               <Text style={styles.formLabel}>Password:</Text>
             </View>
@@ -160,14 +160,14 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
-    marginTop: 20,
+    marginTop: 0,
   },
   labelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     marginBottom: 8,
-    marginTop: 16,
+    marginTop: 30,
   },
   iconContainer: {
     width: 24,
@@ -179,15 +179,15 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 20,
     lineHeight: 24,
+    color: '#24269B',
   },
   input: {
     width: '100%',
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
+    borderWidth: 2,
+    borderColor: '#000000',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    backgroundColor: '#F8F8F8',
   },
   loginButton: {
     backgroundColor: '#24269B',
