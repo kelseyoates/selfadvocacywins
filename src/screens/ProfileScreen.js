@@ -726,6 +726,7 @@ const ProfileScreen = () => {
               🎂 {formatBirthday(userData.birthdate)}
             </Text>
           )}
+
           
           {profileUserId === user?.uid && (
             <TouchableOpacity
@@ -738,31 +739,6 @@ const ProfileScreen = () => {
         </View>
       </View>
 
-      {!profileUserId ? ( // Only show these sections for own profile
-        <>
-          {renderStateSelector()}
-          {renderPersonalInfo()}
-          {renderMenuSection()}
-        </>
-      ) : null}
-
-      <View style={styles.questionSection}>
-        <Text style={styles.sectionTitle}>Self-Advocacy Profile</Text>
-        {questions.map(q => {
-          const existingAnswer = getLatestAnswer(q.question);
-          return (
-            <View key={q.id} style={styles.questionContainer}>
-              <QuestionCard
-                question={q.question}
-                presetWords={q.presetWords}
-                onSave={handleAnswerSave}
-                existingAnswer={existingAnswer}
-                readOnly={!!profileUserId} // Make read-only when viewing other profiles
-              />
-            </View>
-          );
-        })}
-      </View>
 
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
@@ -796,6 +772,33 @@ const ProfileScreen = () => {
           <Text style={styles.statLabel}>Comments</Text>
         </View>
       </View>
+
+      {!profileUserId ? ( // Only show these sections for own profile
+        <>
+          {renderStateSelector()}
+          {renderPersonalInfo()}
+          {renderMenuSection()}
+        </>
+      ) : null}
+
+      <View style={styles.questionSection}>
+        <Text style={styles.sectionTitle}>My Profile</Text>
+        {questions.map(q => {
+          const existingAnswer = getLatestAnswer(q.question);
+          return (
+            <View key={q.id} style={styles.questionContainer}>
+              <QuestionCard
+                question={q.question}
+                presetWords={q.presetWords}
+                onSave={handleAnswerSave}
+                existingAnswer={existingAnswer}
+                readOnly={!!profileUserId} // Make read-only when viewing other profiles
+              />
+            </View>
+          );
+        })}
+      </View>
+
 
       <View style={styles.winsContainer}>
         <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
@@ -839,6 +842,8 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     marginRight: 15,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   editIconContainer: {
     position: 'absolute',
@@ -895,6 +900,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   stateLabel: {
     fontSize: 16,
@@ -913,10 +920,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
-
-
-
-
 
   buttonText: {
     color: '#ffffff',
@@ -1102,6 +1105,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   datePickersRow: {
     flexDirection: 'row',
@@ -1309,6 +1314,8 @@ statsContainer: {
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.25,
   shadowRadius: 3.84,
+  borderWidth: 1,
+  borderColor: '#000000',
 },
 
 statItem: {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -70,28 +70,36 @@ const NewChatScreen = ({ navigation }) => {
           style={[styles.tabButton, activeTab === 'individual' && styles.activeTab]}
           onPress={() => setActiveTab('individual')}
         >
-          <MaterialCommunityIcons 
-            name="account" 
-            size={24} 
-            color={activeTab === 'individual' ? '#24269B' : '#666'} 
-          />
-          <Text style={[styles.tabText, activeTab === 'individual' && styles.activeTabText]}>
-            Individual Chat
-          </Text>
+          <View style={styles.tabContent}>
+            <Image 
+              source={require('../../assets/individual-chat.png')} 
+              style={[
+                styles.tabIcon,
+                activeTab === 'individual' && styles.activeTabIcon
+              ]}
+            />
+            <Text style={[styles.tabText, activeTab === 'individual' && styles.activeTabText]}>
+              Individual Chat
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'group' && styles.activeTab]}
           onPress={() => setActiveTab('group')}
         >
-          <MaterialCommunityIcons 
-            name="account-group" 
-            size={24} 
-            color={activeTab === 'group' ? '#24269B' : '#666'} 
-          />
-          <Text style={[styles.tabText, activeTab === 'group' && styles.activeTabText]}>
-            Group Chat
-          </Text>
+          <View style={styles.tabContent}>
+            <Image 
+              source={require('../../assets/group-chat.png')} 
+              style={[
+                styles.tabIcon,
+                activeTab === 'group' && styles.activeTabIcon
+              ]}
+            />
+            <Text style={[styles.tabText, activeTab === 'group' && styles.activeTabText]}>
+              Group Chat
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -111,6 +119,13 @@ const NewChatScreen = ({ navigation }) => {
       <FlatList
         data={searchResults}
         keyExtractor={(item) => item.id}
+        ListEmptyComponent={() => (
+          <Text style={styles.noResults}>
+            {searchQuery.length < 3 
+              ? "Type at least 3 characters to search" 
+              : "No users found"}
+          </Text>
+        )}
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.userItem}
@@ -118,12 +133,18 @@ const NewChatScreen = ({ navigation }) => {
               if (activeTab === 'individual') {
                 createIndividualChat(item);
               } else {
-                // Handle group member selection
                 console.log('Add to group:', item);
               }
             }}
           >
-            <Text style={styles.username}>{item.username}</Text>
+            <View style={styles.userInfo}>
+              <Text style={styles.username}>{item.username}</Text>
+            </View>
+            <MaterialCommunityIcons 
+              name="chevron-right" 
+              size={24} 
+              color="#24269B" 
+            />
           </TouchableOpacity>
         )}
       />
@@ -140,25 +161,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+    backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    borderWidth: 2,
+    
+    borderRadius: 5,
   },
   tabButton: {
     flex: 1,
-    flexDirection: 'row',
+    padding: 15,
+  },
+  tabContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    gap: 8,
+    borderWidth: 2,
+    borderColor: '#24269B',
+    borderRadius: 5,
+    padding: 5,
   },
+  tabIcon: {
+    width: 115,
+    height: 90,
+    marginBottom: 8,
+  },
+ 
   activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#24269B',
+    backgroundColor: '#24269B',
   },
+
   tabText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
+    textAlign: 'center',
   },
   activeTabText: {
-    color: '#24269B',
+    color: '#ffffff',
     fontWeight: '600',
   },
   searchContainer: {
@@ -167,18 +208,36 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+    backgroundColor: '#f8f8f8',
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     marginLeft: 10,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    height: 40,
+    width: '100%',
   },
   userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   username: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
+  },
+  noResults: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#666',
     fontSize: 16,
   },
 });

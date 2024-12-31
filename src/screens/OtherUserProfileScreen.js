@@ -179,6 +179,23 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     }
   };
 
+  const formatBirthday = (dateString) => {
+    if (!dateString) return '';
+    
+    // Parse the date string (which is already in YYYY-MM-DD format)
+    const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+    
+    // Create a new date (months are 0-based in JavaScript)
+    const date = new Date(year, month - 1, day);
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+
   const fetchCommentUserData = async (comments) => {
     try {
       console.log('Starting to fetch comment user data');
@@ -348,7 +365,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
           style={styles.profilePicture}
         />
         <Text style={styles.username}>{profileData?.username || 'User'}</Text>
-        <Text style={styles.bio}>{profileData?.bio || ''}</Text>
+        <Text style={styles.bio}> 🎂 {formatBirthday(profileData?.birthdate || '')}</Text>
         <Text style={styles.location}>{profileData?.state || ''}</Text>
       </View>
 
@@ -647,6 +664,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   statItem: {
     alignItems: 'center',

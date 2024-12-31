@@ -490,6 +490,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   question: {
     fontSize: 18,
