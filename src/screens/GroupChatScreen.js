@@ -267,7 +267,7 @@ const GroupChatScreen = ({ route, navigation }) => {
         setIsUploading(true);
         const imageUri = result.assets[0].uri;
 
-        // Create a media message directly with the local file
+        // Create media message with moderation enabled
         const mediaMessage = new CometChat.MediaMessage(
           groupId,
           {
@@ -279,39 +279,36 @@ const GroupChatScreen = ({ route, navigation }) => {
           CometChat.RECEIVER_TYPE.GROUP
         );
 
-        // Add metadata if needed
-        mediaMessage.setMetadata({
-          type: 'image',
-          size: result.assets[0].fileSize
-        });
+        // Enable image moderation
+        mediaMessage.metadata = {
+          imageModeration: true,
+          sensitive_content: true
+        };
 
-        console.log('Sending media message:', {
-          groupId,
-          type: CometChat.MESSAGE_TYPE.IMAGE,
-          receiverType: CometChat.RECEIVER_TYPE.GROUP
-        });
-
-        const sentMessage = await CometChat.sendMediaMessage(mediaMessage);
-        console.log('Media message sent successfully:', sentMessage);
-        
-        setMessages(prev => [...prev, sentMessage]);
-        
-        if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({ animated: true });
+        try {
+          const sentMessage = await CometChat.sendMediaMessage(mediaMessage);
+          console.log('Image sent successfully');
+          
+          setMessages(prev => [...prev, sentMessage]);
+          
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({ animated: true });
+          }
+        } catch (error) {
+          if (error.code === 'ERR_BLOCKED_BY_EXTENSION') {
+            Alert.alert(
+              'Image Blocked',
+              'This image was blocked by our content filter. Please choose another image.'
+            );
+          } else {
+            console.error('Error sending image:', error);
+            Alert.alert('Error', 'Failed to send image');
+          }
         }
       }
     } catch (error) {
       console.error('Error handling attachment:', error);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        details: error.details
-      });
-      Alert.alert(
-        'Error', 
-        'Failed to send image. Please try again.'
-      );
+      Alert.alert('Error', 'Failed to access image library');
     } finally {
       setIsUploading(false);
     }
@@ -320,11 +317,6 @@ const GroupChatScreen = ({ route, navigation }) => {
   const renderMessage = ({ item }) => {
     const isMyMessage = item.sender?.uid === currentUser?.uid;
     
-    // Get the message text, checking for masked content
-    const messageText = item.metadata?.sensitive_data 
-      ? item.data?.text?.replace(/\d/g, '*') // Mask numbers
-      : item.text || item.data?.text;
-
     return (
       <View style={[
         styles.messageContainer,
@@ -337,13 +329,25 @@ const GroupChatScreen = ({ route, navigation }) => {
         )}
         
         {item.type === 'text' ? (
-          <Text style={styles.messageText}>{messageText}</Text>
+          <Text style={styles.messageText}>
+            {item.metadata?.sensitive_data 
+              ? item.data?.text?.replace(/\d/g, '*') 
+              : item.text || item.data?.text}
+          </Text>
         ) : item.type === 'image' ? (
-          <Image
-            source={{ uri: item.data?.url }}
-            style={styles.messageImage}
-            resizeMode="contain"
-          />
+          item.metadata?.blocked ? (
+            <View style={styles.blockedImageContainer}>
+              <Text style={styles.blockedImageText}>
+                ⚠️ Image blocked due to inappropriate content
+              </Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: item.data?.url }}
+              style={styles.messageImage}
+              resizeMode="contain"
+            />
+          )
         ) : null}
         
         <Text style={styles.timestamp}>
@@ -693,6 +697,17 @@ const styles = StyleSheet.create({
     color: '#24269B',
     fontSize: 16,
     fontWeight: '500',
+  },
+  blockedImageContainer: {
+    backgroundColor: '#ffebee',
+    padding: 10,
+    borderRadius: 8,
+    marginVertical: 5,
+  },
+  blockedImageText: {
+    color: '#d32f2f',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 
