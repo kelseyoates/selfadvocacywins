@@ -17,6 +17,24 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useAuth } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 
+const containsProfanity = (text) => {
+  const profanityList = [
+    'shit', 'fuck', 'damn', 'ass', 'bitch', 'crap', 'piss',
+    'dick', 'pussy', 'cock',
+    'bastard', 'hell', 'whore', 'slut', 'asshole', 'cunt',
+    'fucker', 'fucking',
+    // Add more words as needed
+  ];
+
+  const words = text.toLowerCase().split(/\s+/);
+  return words.some(word =>
+    profanityList.some(profanity =>
+      word.includes(profanity) ||
+      word.replace(/[^a-zA-Z]/g, '').includes(profanity)
+    )
+  );
+};
+
 // Create a separate header component for better control
 const GroupInfoButton = ({ onPress }) => {
   return (
@@ -55,6 +73,7 @@ const GroupChatScreen = ({ route, navigation }) => {
   const flatListRef = useRef();
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [reportedUsers, setReportedUsers] = useState(new Set());
 
   // Test function to verify modal visibility
   const toggleModal = () => {
@@ -115,19 +134,51 @@ const GroupChatScreen = ({ route, navigation }) => {
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
+    // First check for profanity with our local filter
+    if (containsProfanity(inputText)) {
+      Alert.alert(
+        'Inappropriate Content',
+        'Your message contains inappropriate language. Please revise and try again.'
+      );
+      return;
+    }
+
     try {
+      // Create message with data masking enabled
       const textMessage = new CometChat.TextMessage(
         groupId,
         inputText.trim(),
         CometChat.RECEIVER_TYPE.GROUP
       );
 
+      // Enable data masking
+      textMessage.metadata = {
+        dataMasking: true,
+        sensitive_data: true
+      };
+
       const sentMessage = await CometChat.sendMessage(textMessage);
+      console.log('Message sent successfully');
+      
       setMessages(prev => [...prev, sentMessage]);
       setInputText('');
-      flatListRef.current?.scrollToEnd();
+
+      if (flatListRef.current) {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to send message');
+      // Handle CometChat's profanity filter error without logging
+      if (error.code === 'ERR_BLOCKED_BY_EXTENSION' && 
+          error.details?.action === 'do_not_propagate') {
+        Alert.alert(
+          'Message Blocked',
+          'Your message was blocked by our content filter. Please revise and try again.'
+        );
+      } else {
+        // Only log non-profanity errors
+        console.error('Error sending message:', error);
+        Alert.alert('Error', 'Failed to send message');
+      }
     }
   };
 
@@ -268,30 +319,39 @@ const GroupChatScreen = ({ route, navigation }) => {
 
   const renderMessage = ({ item }) => {
     const isMyMessage = item.sender?.uid === currentUser?.uid;
+    
+    // Get the message text, checking for masked content
+    const messageText = item.metadata?.sensitive_data 
+      ? item.data?.text?.replace(/\d/g, '*') // Mask numbers
+      : item.text || item.data?.text;
 
     return (
       <View style={[
         styles.messageContainer,
-        isMyMessage ? styles.myMessage : styles.theirMessage
+        isMyMessage ? styles.myMessage : styles.otherMessage
       ]}>
         {!isMyMessage && (
-          <Text style={styles.senderName}>{item.sender?.name}</Text>
-        )}
-        
-        {item.type === 'image' ? (
-          <Image
-            source={{ uri: item.data.url }}
-            style={styles.messageImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <Text style={[
-            styles.messageText,
-            isMyMessage ? styles.myMessageText : styles.theirMessageText
-          ]}>
-            {item.text}
+          <Text style={styles.senderName}>
+            {item.sender?.name || 'Unknown User'}
           </Text>
         )}
+        
+        {item.type === 'text' ? (
+          <Text style={styles.messageText}>{messageText}</Text>
+        ) : item.type === 'image' ? (
+          <Image
+            source={{ uri: item.data?.url }}
+            style={styles.messageImage}
+            resizeMode="contain"
+          />
+        ) : null}
+        
+        <Text style={styles.timestamp}>
+          {new Date(item.sentAt * 1000).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </Text>
       </View>
     );
   };
