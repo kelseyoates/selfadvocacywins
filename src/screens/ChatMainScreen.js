@@ -87,37 +87,56 @@ const ChatMainScreen = ({ navigation }) => {
     });
   }, [conversations]);
 
-  const fetchConversations = () => {
-    let conversationsRequest = new CometChat.ConversationsRequestBuilder()
-      .setLimit(30)
-      .build();
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Screen focused, refreshing conversations');
+      fetchConversations();
+    });
 
-    conversationsRequest.fetchNext().then(
-      conversationList => {
-        console.log("Conversations list received:", conversationList);
-        setConversations(conversationList);
-        setLoading(false);
-      },
-      error => {
-        console.log("Conversations list fetching failed:", error);
-        setLoading(false);
-      }
-    );
+    return unsubscribe;
+  }, [navigation]);
+
+  const fetchConversations = async () => {
+    setLoading(true);
+    try {
+      const conversationsRequest = new CometChat.ConversationsRequestBuilder()
+        .setLimit(30)
+        .build();
+
+      const conversationList = await conversationsRequest.fetchNext();
+      console.log("Conversations list received:", conversationList);
+      setConversations(conversationList);
+    } catch (error) {
+      console.log("Conversations list fetching failed:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderConversation = ({ item }) => {
     const otherUserUid = item.conversationWith?.uid;
     const profileUrl = users[otherUserUid]?.profilePicture;
     
-    return (
-      <TouchableOpacity 
-        style={styles.conversationItem}
-        onPress={() => navigation.navigate('ChatConversation', { 
+    const navigateToChat = () => {
+      if (item.conversationType === CometChat.RECEIVER_TYPE.GROUP) {
+        navigation.navigate('GroupChat', { 
+          uid: item.conversationWith.guid,
+          name: item.conversationWith.name
+        });
+      } else {
+        navigation.navigate('ChatConversation', { 
           uid: otherUserUid,
           name: item.conversationWith?.name,
           profilePicture: profileUrl,
           conversationType: item.conversationType
-        })}
+        });
+      }
+    };
+
+    return (
+      <TouchableOpacity 
+        style={styles.conversationItem}
+        onPress={navigateToChat}
       >
         <Image 
           source={{ 
@@ -126,7 +145,11 @@ const ChatMainScreen = ({ navigation }) => {
           style={styles.avatar}
         />
         <View style={styles.conversationInfo}>
-          <Text style={styles.userName}>{item.conversationWith?.name || 'Unknown User'}</Text>
+          <Text style={styles.userName}>
+            {item.conversationType === CometChat.RECEIVER_TYPE.GROUP ? 
+              `👥 ${item.conversationWith?.name}` : 
+              item.conversationWith?.name || 'Unknown User'}
+          </Text>
           <Text style={styles.lastMessage} numberOfLines={1}>
             {item.lastMessage?.text || 'No messages yet'}
           </Text>

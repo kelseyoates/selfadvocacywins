@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,7 @@ const NewChatScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('individual');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
   const { user } = useAuth();
 
   const searchUsers = async (text) => {
@@ -60,6 +61,107 @@ const NewChatScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error creating chat:', error);
       console.error('Error details:', error.message);
+    }
+  };
+
+  const toggleMemberSelection = (selectedUser) => {
+    setSelectedMembers(prevMembers => {
+      const isAlreadySelected = prevMembers.some(member => member.id === selectedUser.id);
+      if (isAlreadySelected) {
+        return prevMembers.filter(member => member.id !== selectedUser.id);
+      } else {
+        return [...prevMembers, selectedUser];
+      }
+    });
+  };
+
+  const createGroupChat = async () => {
+    if (selectedMembers.length < 2) {
+      Alert.alert('Error', 'Please select at least 2 members for the group chat');
+      return;
+    }
+
+    try {
+      // Create a unique group ID
+      const groupId = 'group_' + Date.now();
+      
+      // Create the group
+      const groupType = CometChat.GROUP_TYPE.PRIVATE;
+      const groupName = `Group Chat (${selectedMembers.length + 1})`;
+      
+      const group = new CometChat.Group(
+        groupId,
+        groupName,
+        groupType,
+        ''  // Empty string for password as it's not needed for private groups
+      );
+
+      console.log('Creating group:', group);
+      
+      const createdGroup = await CometChat.createGroup(group);
+      console.log('Group created:', createdGroup);
+
+      // Add members to the group
+      const membersList = selectedMembers.map(member => {
+        return new CometChat.GroupMember(
+          member.uid || member.id,
+          CometChat.GROUP_MEMBER_SCOPE.PARTICIPANT
+        );
+      });
+
+      console.log('Adding members:', membersList);
+      
+      await CometChat.addMembersToGroup(groupId, membersList, []);
+      console.log('Members added to group');
+
+      // Send initial message to the group
+      const textMessage = new CometChat.TextMessage(
+        groupId,
+        '👋 Group chat created!',
+        CometChat.RECEIVER_TYPE.GROUP
+      );
+      
+      await CometChat.sendMessage(textMessage);
+      console.log('Initial message sent');
+
+      // Navigate to the new group chat
+      navigation.navigate('GroupChat', {
+        uid: groupId,
+        name: groupName
+      });
+
+      // Clear selected members
+      setSelectedMembers([]);
+      setSearchQuery('');
+      setSearchResults([]);
+
+      // Show success message
+      Alert.alert(
+        'Success',
+        'Group chat created successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to the group chat after a short delay
+              setTimeout(() => {
+                navigation.navigate('ChatConversation', {
+                  uid: groupId,
+                  name: groupName,
+                  conversationType: CometChat.RECEIVER_TYPE.GROUP
+                });
+              }, 100);
+            }
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('Error creating group:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create group chat. Please try again.'
+      );
     }
   };
 
@@ -116,38 +218,67 @@ const NewChatScreen = ({ navigation }) => {
         />
       </View>
 
+      {activeTab === 'group' && selectedMembers.length > 0 && (
+        <View style={styles.selectedMembersContainer}>
+          <Text style={styles.selectedMembersTitle}>
+            Selected Members ({selectedMembers.length}):
+          </Text>
+          <FlatList
+            horizontal
+            data={selectedMembers}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.selectedMemberChip}
+                onPress={() => toggleMemberSelection(item)}
+              >
+                <Text style={styles.selectedMemberText}>{item.username}</Text>
+                <MaterialCommunityIcons name="close" size={16} color="#fff" />
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={styles.selectedMembersList}
+          />
+        </View>
+      )}
+
       <FlatList
         data={searchResults}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={() => (
-          <Text style={styles.noResults}>
-            {searchQuery.length < 3 
-              ? "Type at least 3 characters to search" 
-              : "No users found"}
-          </Text>
-        )}
         renderItem={({ item }) => (
           <TouchableOpacity 
-            style={styles.userItem}
+            style={[
+              styles.userItem,
+              activeTab === 'group' && 
+              selectedMembers.some(member => member.id === item.id) && 
+              styles.selectedUserItem
+            ]}
             onPress={() => {
               if (activeTab === 'individual') {
                 createIndividualChat(item);
               } else {
-                console.log('Add to group:', item);
+                toggleMemberSelection(item);
               }
             }}
           >
-            <View style={styles.userInfo}>
-              <Text style={styles.username}>{item.username}</Text>
-            </View>
-            <MaterialCommunityIcons 
-              name="chevron-right" 
-              size={24} 
-              color="#24269B" 
-            />
+            <Text style={styles.username}>{item.username}</Text>
+            {activeTab === 'group' && 
+              selectedMembers.some(member => member.id === item.id) && (
+              <MaterialCommunityIcons name="check" size={24} color="#24269B" />
+            )}
           </TouchableOpacity>
         )}
       />
+
+      {activeTab === 'group' && selectedMembers.length >= 2 && (
+        <TouchableOpacity 
+          style={styles.createGroupButton}
+          onPress={createGroupChat}
+        >
+          <Text style={styles.createGroupButtonText}>
+            Create Group Chat ({selectedMembers.length} members)
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -240,6 +371,55 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
   },
+  selectedMembersContainer: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  selectedMembersTitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  selectedMembersList: {
+    paddingVertical: 5,
+  },
+  selectedMemberChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#24269B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  selectedMemberText: {
+    color: '#fff',
+    marginRight: 6,
+  },
+  selectedUserItem: {
+    backgroundColor: '#f0f0f0',
+  },
+  createGroupButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: '#24269B',
+    padding: 15,
+    borderRadius: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  createGroupButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  }
 });
 
 export default NewChatScreen; 

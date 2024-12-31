@@ -5,6 +5,7 @@ import { firebase } from './firebaseConfig';
 import LoginScreen from './LoginScreen';
 import SignUpScreen from './SignUpScreen';
 import MainScreen from './MainScreen'; // Your app's main screen
+import GroupChatScreen from '../screens/GroupChatScreen';
 
 
 const Stack = createStackNavigator();
@@ -31,6 +32,39 @@ const AppNavigator = () => {
           </>
         )}
         
+        {/* Chat Stack */}
+        <Stack.Screen 
+          name="Chat" 
+          component={ChatMainScreen}
+          options={{
+            title: 'Messages',
+            // ... your existing options
+          }}
+        />
+        <Stack.Screen 
+          name="ChatConversation" 
+          component={ChatConversationScreen}
+          options={{
+            title: 'Chat',
+            // ... your existing options
+          }}
+        />
+        <Stack.Screen 
+          name="GroupChat" 
+          component={GroupChatScreen}
+          options={{
+            title: 'Group Chat',
+            // ... your existing options
+          }}
+        />
+        <Stack.Screen 
+          name="NewChat" 
+          component={NewChatScreen}
+          options={{
+            title: 'New Chat',
+            // ... your existing options
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
