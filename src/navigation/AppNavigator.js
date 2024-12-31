@@ -6,6 +6,8 @@ import LoginScreen from './LoginScreen';
 import SignUpScreen from './SignUpScreen';
 import MainScreen from './MainScreen'; // Your app's main screen
 import GroupChatScreen from '../screens/GroupChatScreen';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { TouchableOpacity } from 'react-native';
 
 
 const Stack = createStackNavigator();
@@ -52,10 +54,9 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="GroupChat" 
           component={GroupChatScreen}
-          options={{
-            title: 'Group Chat',
-            // ... your existing options
-          }}
+          options={({ route }) => ({
+            title: route.params?.name || 'Group Chat'
+          })}
         />
         <Stack.Screen 
           name="NewChat" 

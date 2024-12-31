@@ -17,7 +17,33 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useAuth } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 
+// Create a separate header component for better control
+const GroupInfoButton = ({ onPress }) => {
+  return (
+    <TouchableOpacity
+      onPress={() => {
+        console.log('Info button pressed');
+        Alert.alert('Debug', 'Info button pressed'); // Debug alert
+        onPress();
+      }}
+      style={{
+        marginRight: 15,
+        padding: 10,
+        backgroundColor: 'transparent',
+      }}
+    >
+      <MaterialCommunityIcons
+        name="information"
+        size={28}
+        color="#24269B"
+      />
+    </TouchableOpacity>
+  );
+};
+
 const GroupChatScreen = ({ route, navigation }) => {
+  console.log('GroupChatScreen rendering');
+  
   const { uid: groupId, name: groupName } = route.params;
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -29,6 +55,13 @@ const GroupChatScreen = ({ route, navigation }) => {
   const flatListRef = useRef();
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+
+  // Test function to verify modal visibility
+  const toggleModal = () => {
+    console.log('Current modal visibility:', isModalVisible);
+    setIsModalVisible(!isModalVisible);
+    console.log('New modal visibility:', !isModalVisible);
+  };
 
   // Fetch group info and members
   const fetchGroupInfo = async () => {
@@ -51,45 +84,19 @@ const GroupChatScreen = ({ route, navigation }) => {
   };
 
   useEffect(() => {
-    fetchGroupInfo();
-    
     const initializeChat = async () => {
-      const user = await CometChat.getLoggedinUser();
-      setCurrentUser(user);
-      fetchMessages();
+      try {
+        const user = await CometChat.getLoggedinUser();
+        setCurrentUser(user);
+        await fetchMessages();
+        await fetchGroupInfo();
+      } catch (error) {
+        console.log("Initialization error:", error);
+      }
     };
 
     initializeChat();
-
-    // Message listener
-    const listenerID = `GROUP_CHAT_${groupId}`;
-    const messageListener = new CometChat.MessageListener({
-      onTextMessageReceived: message => {
-        if (message.receiverId === groupId) {
-          setMessages(prev => [...prev, message]);
-          flatListRef.current?.scrollToEnd();
-        }
-      }
-    });
-
-    CometChat.addMessageListener(listenerID, messageListener);
-
-    return () => CometChat.removeMessageListener(listenerID);
-  }, [groupId]);
-
-  // Set up header with group info button
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity 
-          style={styles.headerButton}
-          onPress={() => setIsModalVisible(true)}
-        >
-          <MaterialCommunityIcons name="information" size={24} color="#24269B" />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
+  }, []);
 
   const fetchMessages = async () => {
     try {
@@ -148,17 +155,45 @@ const GroupChatScreen = ({ route, navigation }) => {
   };
 
   const updateGroupName = async () => {
-    if (!newGroupName.trim()) return;
+    if (!newGroupName.trim() || !groupId) return;
 
     try {
-      await CometChat.updateGroup(groupId, {
+      console.log('Updating group name for group:', groupId);
+      
+      // Create group object with required parameters
+      const group = new CometChat.Group(
+        groupId,
+        newGroupName.trim(),
+        CometChat.GROUP_TYPE.PRIVATE
+      );
+
+      const updatedGroup = await CometChat.updateGroup(group);
+      console.log('Group updated:', updatedGroup);
+
+      // Update local state
+      setGroupInfo(prevInfo => ({
+        ...prevInfo,
         name: newGroupName.trim()
+      }));
+
+      // Update navigation title
+      navigation.setOptions({
+        title: newGroupName.trim()
       });
+
+      // Clear input and close modal
+      setNewGroupName('');
       setIsModalVisible(false);
-      fetchGroupInfo();
+
+      // Show success message
+      Alert.alert('Success', 'Group name updated successfully');
+
     } catch (error) {
       console.error('Error updating group name:', error);
-      Alert.alert('Error', 'Failed to update group name');
+      Alert.alert(
+        'Error',
+        'Failed to update group name. Please try again.'
+      );
     }
   };
 
@@ -261,17 +296,47 @@ const GroupChatScreen = ({ route, navigation }) => {
     );
   };
 
+  // Add this useEffect to pass the toggle method to navigation params
+  useEffect(() => {
+    navigation.setParams({
+      toggleModal: () => {
+        console.log('Toggle modal called');
+        setIsModalVisible(prev => !prev);
+      }
+    });
+  }, [navigation]);
+
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <View style={styles.infoButtonContainer}>
+        <TouchableOpacity
+          onPress={() => {
+            console.log('Info button pressed');
+            setIsModalVisible(true);
+          }}
+          style={styles.infoButton}
+        >
+          <MaterialCommunityIcons 
+            name="information"
+            size={24}
+            color="#24269B"
+          />
+          <Text style={styles.infoButtonText}>Group Info</Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={messages}
         renderItem={renderMessage}
         keyExtractor={item => item.id?.toString()}
         contentContainerStyle={styles.messageList}
+        onContentSizeChange={() => {
+          flatListRef.current?.scrollToEnd({ animated: false });
+        }}
       />
 
       <View style={styles.inputContainer}>
@@ -313,10 +378,25 @@ const GroupChatScreen = ({ route, navigation }) => {
         visible={isModalVisible}
         animationType="slide"
         transparent={true}
+        onRequestClose={() => {
+          console.log('Modal closing');
+          setIsModalVisible(false);
+        }}
       >
-        <View style={styles.modalContainer}>
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Group Information</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Group Information</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  console.log('Close button pressed');
+                  setIsModalVisible(false);
+                }}
+                style={styles.closeButton}
+              >
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
             
             {groupInfo?.owner === currentUser?.uid && (
               <View style={styles.groupNameContainer}>
@@ -325,6 +405,7 @@ const GroupChatScreen = ({ route, navigation }) => {
                   value={newGroupName}
                   onChangeText={setNewGroupName}
                   placeholder="Enter new group name"
+                  placeholderTextColor="#666"
                 />
                 <TouchableOpacity 
                   style={styles.updateButton}
@@ -335,16 +416,21 @@ const GroupChatScreen = ({ route, navigation }) => {
               </View>
             )}
 
-            <Text style={styles.membersTitle}>Members ({members.length}):</Text>
+            <Text style={styles.membersTitle}>
+              Members ({members.length}):
+            </Text>
+            
             <FlatList
               data={members}
               keyExtractor={item => item.uid}
               renderItem={({ item }) => (
-                <Text style={styles.memberItem}>
-                  {item.name || item.uid} 
-                  {item.scope === 'admin' ? ' (Admin)' : ''} 
-                  {item.uid === groupInfo?.owner ? ' (Owner)' : ''}
-                </Text>
+                <View style={styles.memberItem}>
+                  <Text style={styles.memberName}>
+                    {item.name || item.uid}
+                    {item.scope === 'admin' ? ' (Admin)' : ''}
+                    {item.uid === groupInfo?.owner ? ' (Owner)' : ''}
+                  </Text>
+                </View>
               )}
               style={styles.membersList}
             />
@@ -354,13 +440,6 @@ const GroupChatScreen = ({ route, navigation }) => {
               onPress={leaveGroup}
             >
               <Text style={styles.leaveButtonText}>Leave Group</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => setIsModalVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -376,6 +455,8 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     marginRight: 15,
+    padding: 10,
+    backgroundColor: 'transparent',
   },
   messageList: {
     padding: 10,
@@ -432,23 +513,32 @@ const styles = StyleSheet.create({
   sendButton: {
     padding: 10,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
     backgroundColor: '#fff',
-    margin: 20,
-    padding: 20,
-    borderRadius: 10,
+    width: '90%',
     maxHeight: '80%',
+    borderRadius: 15,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 20,
     color: '#24269B',
+  },
+  closeButton: {
+    padding: 5,
   },
   groupNameContainer: {
     marginBottom: 20,
@@ -456,54 +546,51 @@ const styles = StyleSheet.create({
   groupNameInput: {
     borderWidth: 1,
     borderColor: '#24269B',
-    borderRadius: 5,
+    borderRadius: 8,
     padding: 10,
     marginBottom: 10,
+    fontSize: 16,
   },
   updateButton: {
     backgroundColor: '#24269B',
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 8,
     alignItems: 'center',
   },
   updateButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
   },
   membersTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     marginBottom: 10,
+    color: '#333',
   },
   membersList: {
-    maxHeight: 200,
+    maxHeight: '50%',
   },
   memberItem: {
-    padding: 10,
+    padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
+    borderBottomColor: '#eee',
+  },
+  memberName: {
+    fontSize: 16,
+    color: '#333',
   },
   leaveButton: {
     backgroundColor: '#ff4444',
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
   },
   leaveButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    backgroundColor: '#E8E8E8',
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  closeButtonText: {
-    color: '#666',
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
   },
   attachButton: {
     padding: 10,
@@ -516,6 +603,38 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     backgroundColor: '#f0f0f0',
   },
+  testButton: {
+    backgroundColor: '#24269B',
+    padding: 10,
+    margin: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  infoButtonContainer: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
+    backgroundColor: '#fff',
+  },
+  infoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  infoButtonText: {
+    marginLeft: 8,
+    color: '#24269B',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
 
+export { GroupInfoButton };
 export default GroupChatScreen; 

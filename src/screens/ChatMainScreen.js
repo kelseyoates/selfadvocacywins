@@ -114,21 +114,41 @@ const ChatMainScreen = ({ navigation }) => {
   };
 
   const renderConversation = ({ item }) => {
-    const otherUserUid = item.conversationWith?.uid;
-    const profileUrl = users[otherUserUid]?.profilePicture;
+    const isGroup = item.conversationType === CometChat.RECEIVER_TYPE.GROUP;
     
+    // For groups, use guid; for users, use uid
+    const conversationId = isGroup 
+      ? item.conversationWith?.guid 
+      : item.conversationWith?.uid;
+
+    const name = item.conversationWith?.name;
+    
+    // Handle different message types
+    let lastMessage = 'Start chatting';
+    if (item.lastMessage) {
+      if (item.lastMessage.type === 'text') {
+        lastMessage = item.lastMessage.text;
+      } else if (item.lastMessage.type === 'image') {
+        lastMessage = '📷 Photo';
+      } else if (item.lastMessage.type === 'video') {
+        lastMessage = '🎥 Video';
+      } else if (item.lastMessage.type === 'file') {
+        lastMessage = '📎 File';
+      }
+    }
+
     const navigateToChat = () => {
-      if (item.conversationType === CometChat.RECEIVER_TYPE.GROUP) {
+      if (isGroup) {
         navigation.navigate('GroupChat', { 
-          uid: item.conversationWith.guid,
-          name: item.conversationWith.name
+          uid: conversationId,  // Using conversationId here
+          name: name
         });
       } else {
         navigation.navigate('ChatConversation', { 
-          uid: otherUserUid,
-          name: item.conversationWith?.name,
-          profilePicture: profileUrl,
-          conversationType: item.conversationType
+          uid: conversationId,  // Using conversationId here
+          name: name,
+          profilePicture: users[conversationId]?.profilePicture,
+          conversationType: CometChat.RECEIVER_TYPE.USER
         });
       }
     };
@@ -138,20 +158,26 @@ const ChatMainScreen = ({ navigation }) => {
         style={styles.conversationItem}
         onPress={navigateToChat}
       >
-        <Image 
-          source={{ 
-            uri: profileUrl || 'https://www.gravatar.com/avatar'
-          }}
-          style={styles.avatar}
-        />
+        <View style={styles.avatarContainer}>
+          {isGroup ? (
+            <View style={[styles.avatar, styles.groupAvatar]}>
+              <Text style={styles.groupIcon}>👥</Text>
+            </View>
+          ) : (
+            <Image 
+              source={{ 
+                uri: users[conversationId]?.profilePicture || 'https://www.gravatar.com/avatar'
+              }}
+              style={styles.avatar}
+            />
+          )}
+        </View>
         <View style={styles.conversationInfo}>
           <Text style={styles.userName}>
-            {item.conversationType === CometChat.RECEIVER_TYPE.GROUP ? 
-              `👥 ${item.conversationWith?.name}` : 
-              item.conversationWith?.name || 'Unknown User'}
+            {name || 'Unknown'}
           </Text>
           <Text style={styles.lastMessage} numberOfLines={1}>
-            {item.lastMessage?.text || 'No messages yet'}
+            {lastMessage}
           </Text>
         </View>
       </TouchableOpacity>
