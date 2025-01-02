@@ -11,7 +11,8 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
-  SafeAreaView
+  SafeAreaView,
+  Platform
 } from 'react-native';
 import { auth, db, storage } from '../config/firebase';
 import { signOut } from 'firebase/auth';
@@ -24,6 +25,8 @@ import QuestionCard from '../components/QuestionCard';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';
+import { CometChat } from '@cometchat-pro/react-native-chat';
+
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
@@ -51,24 +54,26 @@ const ProfileScreen = () => {
   const [selectedState, setSelectedState] = useState('');
 
   // Add birthdate state variables
-  const [month, setMonth] = useState('');
-  const [day, setDay] = useState('');
-  const [year, setYear] = useState('');
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showDayPicker, setShowDayPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedDay, setSelectedDay] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
 
-  // Constants for date selection
+  // Generate arrays for the pickers
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+  
+  const currentYear = new Date().getFullYear();
   const years = Array.from(
-    { length: 100 },
-    (_, i) => (new Date().getFullYear() - i).toString()
-  ).filter(year => year >= 1924);
+    { length: 100 }, 
+    (_, i) => (currentYear - i).toString()
+  );
 
   // Use the passed profileUserId if available, otherwise show current user's profile
   const targetUserId = (profileUserId || user?.uid)?.toLowerCase();
@@ -76,12 +81,27 @@ const ProfileScreen = () => {
   // Load birthdate from userData when it's available
   useEffect(() => {
     if (userData?.birthdate) {
-      const date = new Date(userData.birthdate);
-      setMonth(months[date.getMonth()]);
-      setDay(date.getDate().toString());
-      setYear(date.getFullYear().toString());
+      try {
+        const [year, month, day] = userData.birthdate.split('-');
+        // Convert to numbers to remove leading zeros
+        const dayNum = parseInt(day, 10);
+        const monthIndex = parseInt(month, 10) - 1;
+        
+        // Only update if the values are different from current state
+        if (selectedYear !== year) {
+          setSelectedYear(year);
+        }
+        if (selectedMonth !== months[monthIndex]) {
+          setSelectedMonth(months[monthIndex]);
+        }
+        if (selectedDay !== dayNum.toString()) {
+          setSelectedDay(dayNum.toString());
+        }
+      } catch (error) {
+        console.error('Error parsing birthdate:', error);
+      }
     }
-  }, [userData]);
+  }, [userData?.birthdate]); // Only trigger on birthdate changes
 
   useEffect(() => {
     console.log('DEBUG: ProfileScreen - Loading profile for:', {
@@ -254,43 +274,84 @@ const ProfileScreen = () => {
     </View>
   );
 
-  const renderBirthdateSelectors = () => (
-    <View style={styles.birthdateContainer}>
-      <Text style={styles.label}>Birthdate</Text>
-      <View style={styles.datePickersRow}>
+  const renderBirthdateSelectors = () => {
+    console.log('Current state values:', {
+      selectedDay,
+      selectedMonth,
+      selectedYear
+    });
+    
+    return (
+      <View style={styles.birthdateContainer}>
         <TouchableOpacity 
-          style={styles.datePickerButton}
+          style={styles.pickerButton}
           onPress={() => setShowMonthPicker(true)}
         >
-          <Text style={styles.datePickerButtonText}>
-            {month || 'Month'}
+          <Text style={styles.pickerButtonText}>
+            {selectedMonth || 'Month'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.datePickerButton}
+          style={styles.pickerButton}
           onPress={() => setShowDayPicker(true)}
         >
-          <Text style={styles.datePickerButtonText}>
-            {day || 'Day'}
+          <Text style={styles.pickerButtonText}>
+            {selectedDay || 'Day'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.datePickerButton}
+          style={styles.pickerButton}
           onPress={() => setShowYearPicker(true)}
         >
-          <Text style={styles.datePickerButtonText}>
-            {year || 'Year'}
+          <Text style={styles.pickerButtonText}>
+            {selectedYear || 'Year'}
           </Text>
         </TouchableOpacity>
-      </View>
 
-      {showMonthPicker && renderPicker(months, month, setMonth, () => setShowMonthPicker(false))}
-      {showDayPicker && renderPicker(days, day, setDay, () => setShowDayPicker(false))}
-      {showYearPicker && renderPicker(years, year, setYear, () => setShowYearPicker(false))}
-    </View>
-  );
+        {showMonthPicker && renderPicker(
+          months,
+          selectedMonth,
+          (month) => {
+            console.log('Month selected:', month);
+            setSelectedMonth(month);
+            setShowMonthPicker(false);
+            setTimeout(updateBirthdate, 0);
+          },
+          () => setShowMonthPicker(false)
+        )}
+
+        {showDayPicker && renderPicker(
+          days,
+          selectedDay,
+          (day) => {
+            console.log('Day selected:', day);
+            setSelectedDay(day);
+            setShowDayPicker(false);
+            // Pass the new day value directly to updateBirthdate
+            setTimeout(() => {
+              console.log('Updating birthdate with day:', day);
+              updateBirthdateWithValues(day, selectedMonth, selectedYear);
+            }, 100);
+          },
+          () => setShowDayPicker(false)
+        )}
+
+        {showYearPicker && renderPicker(
+          years,
+          selectedYear,
+          (year) => {
+            console.log('Year selected:', year);
+            setSelectedYear(year);
+            setShowYearPicker(false);
+            setTimeout(updateBirthdate, 0);
+          },
+          () => setShowYearPicker(false)
+        )}
+      </View>
+    );
+  };
 
   const saveState = async () => {
     if (!targetUserId) {
@@ -362,7 +423,7 @@ const ProfileScreen = () => {
     },
     {
       id: 3,
-      question: "What I\'m like as a friend 🤝:",
+      question: "What I'm like as a friend 🤝:",
       presetWords: ["supportive", "fun", "honest", "loyal", "trustworthy", "caring", "spontaneous", "funny", "dependable", "patient", "open-minded", "positive"]
     },
     {
@@ -681,6 +742,188 @@ const ProfileScreen = () => {
     }, { totalCheers: 0, totalComments: 0 });
   };
 
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleProfilePictureUpdate = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert('Permission needed', 'Please grant permission to access your photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setIsUploading(true);
+        const imageUri = result.assets[0].uri;
+
+        // Convert URI to blob
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+
+        // Upload to Firebase Storage
+        const storageRef = ref(storage, `profilePictures/${userData.uid}.jpg`);
+        await uploadBytes(storageRef, blob);
+
+        // Get download URL
+        const downloadURL = await getDownloadURL(storageRef);
+
+        // Update Firestore
+        const userRef = doc(db, 'users', userData.uid);
+        await updateDoc(userRef, {
+          profilePicture: downloadURL
+        });
+
+        // Update CometChat user
+        try {
+          const user = new CometChat.User(userData.uid);
+          user.setAvatar(downloadURL);
+          await CometChat.updateCurrentUserDetails(user);
+          console.log('CometChat profile updated successfully');
+        } catch (cometChatError) {
+          console.error('CometChat update error:', cometChatError);
+          // Continue even if CometChat update fails
+        }
+
+        // Update local state
+        setUserData(prev => ({
+          ...prev,
+          profilePicture: downloadURL
+        }));
+
+        Alert.alert('Success', 'Profile picture updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating profile picture:', error);
+      Alert.alert('Error', 'Failed to update profile picture');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Add these state variables
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Add this function to handle date changes
+  const onDateChange = (event, selectedDate) => {
+    if (selectedDate) {
+      // Calculate age
+      const today = new Date();
+      let age = today.getFullYear() - selectedDate.getFullYear();
+      if (today.getMonth() < selectedDate.getMonth() || 
+          (today.getMonth() === selectedDate.getMonth() && today.getDate() < selectedDate.getDate())) {
+        age--;
+      }
+
+      // Update state
+      setSelectedDate(selectedDate);
+      setUserData(prev => ({
+        ...prev,
+        birthdate: selectedDate.toISOString().split('T')[0],
+        age: age
+      }));
+    }
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+  };
+
+  // Add this function to show the date picker
+  const showPicker = () => {
+    setShowDatePicker(true);
+  };
+
+  const updateBirthdateWithValues = async (day, month, year) => {
+    console.log('Starting updateBirthdate with values:', {
+      day,
+      month,
+      year
+    });
+
+    if (month && day && year) {
+      try {
+        // Ensure day is properly padded
+        const paddedDay = day.toString().padStart(2, '0');
+        const monthIndex = months.indexOf(month);
+        const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
+        
+        const birthdate = `${year}-${paddedMonth}-${paddedDay}`;
+        console.log('About to save birthdate:', birthdate);
+        
+        const userRef = doc(db, 'users', targetUserId);
+        await updateDoc(userRef, {
+          birthdate: birthdate
+        });
+        
+        console.log('Successfully updated Firestore with:', birthdate);
+        
+        // Update userData and state
+        setUserData(prev => ({
+          ...prev,
+          birthdate
+        }));
+        
+        Alert.alert('Success', 'Birthday updated successfully');
+      } catch (error) {
+        console.error('Error updating birthdate:', error);
+        Alert.alert('Error', 'Failed to update birthday');
+      }
+    } else {
+      console.log('Missing required date information');
+    }
+  };
+
+  const renderPicker = (items, selectedValue, onSelect, onClose) => {
+    return (
+      <Modal
+        transparent={true}
+        visible={true}
+        animationType="slide"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerContainer}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity onPress={onClose}>
+                <Text style={styles.closeButton}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {items.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[
+                    styles.pickerItem,
+                    selectedValue === item && styles.selectedItem
+                  ]}
+                  onPress={() => {
+                    console.log('Selected value in picker:', item);
+                    onSelect(item);
+                    onClose();
+                  }}
+                >
+                  <Text style={[
+                    styles.pickerItemText,
+                    selectedValue === item && styles.selectedItemText
+                  ]}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -700,17 +943,28 @@ const ProfileScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
-        <Image
-          source={
-            userData?.profilePicture 
-              ? { uri: userData.profilePicture } 
-              : require('../../assets/default-profile.png')
-          }
-          style={styles.profilePicture}
-          onError={(e) => console.log('Image loading error:', e.nativeEvent.error)}
-          onLoad={() => console.log('Image loaded successfully')}
-        />
-
+        <TouchableOpacity 
+          onPress={handleProfilePictureUpdate}
+          disabled={isUploading}
+          style={styles.profileImageContainer}
+        >
+          <Image
+            source={{ 
+              uri: userData?.profilePicture || 'https://www.gravatar.com/avatar'
+            }}
+            style={styles.profileImage}
+          />
+          {isUploading ? (
+            <View style={styles.uploadingOverlay}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : (
+            <View style={styles.editOverlay}>
+              <Text style={styles.editText}>Edit</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        
         <View style={styles.userInfo}>
           <Text style={styles.username}>{userData?.username || 'User'}</Text>
           
@@ -818,6 +1072,63 @@ const ProfileScreen = () => {
       </View>
 
       {renderCommentModal()}
+
+      <TouchableOpacity 
+        style={styles.datePickerButton} 
+        onPress={showPicker}
+      >
+        <Text style={styles.datePickerButtonText}>
+          {userData?.birthdate || 'Select Birthday'}
+        </Text>
+      </TouchableOpacity>
+
+      {Platform.OS === 'ios' ? (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showDatePicker}
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.pickerHeader}>
+                <TouchableOpacity 
+                  onPress={() => setShowDatePicker(false)}
+                  style={styles.pickerButton}
+                >
+                  <Text style={styles.pickerButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => setShowDatePicker(false)}
+                  style={styles.pickerButton}
+                >
+                  <Text style={[styles.pickerButtonText, { color: '#24269B' }]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display="spinner"
+                onChange={onDateChange}
+                maximumDate={new Date()}
+                minimumDate={new Date(1900, 0, 1)}
+                style={styles.datePickerIOS}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={onDateChange}
+            maximumDate={new Date()}
+            minimumDate={new Date(1900, 0, 1)}
+          />
+        )
+      )}
     </ScrollView>
   );
 };
@@ -1061,7 +1372,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   birthdateContainer: {
-    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 15,
   },
   label: {
     fontSize: 16,
@@ -1113,17 +1426,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   datePickerButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    marginHorizontal: 5,
-    backgroundColor: '#fff',
+    backgroundColor: '#f0f0f0',
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 10,
+    marginHorizontal: 20,
   },
   datePickerButtonText: {
+    fontSize: 16,
+    color: '#333',
     textAlign: 'center',
-    color: '#000',
   },
   modalOverlay: {
     flex: 1,
@@ -1341,6 +1653,76 @@ statLabel: {
   color: '#666',
 },
 
+profileImageContainer: {
+  width: 150,
+  height: 150,
+  borderRadius: 75,
+  overflow: 'hidden',
+  marginBottom: 20,
+},
+
+profileImage: {
+  width: '100%',
+  height: '100%',
+},
+
+uploadingOverlay: {
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+editOverlay: {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  padding: 8,
+  alignItems: 'center',
+},
+
+editText: {
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: '600',
+},
+
+modalContainer: {
+  flex: 1,
+  justifyContent: 'flex-end',
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+},
+
+modalContent: {
+  backgroundColor: '#fff',
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  paddingBottom: 20,
+},
+
+pickerHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: 16,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+},
+
+pickerButton: {
+  padding: 8,
+},
+
+pickerButtonText: {
+  fontSize: 16,
+  color: '#666',
+},
+
+datePickerIOS: {
+  height: 200,
+},
 });
 
 export default ProfileScreen;

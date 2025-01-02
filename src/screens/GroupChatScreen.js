@@ -314,14 +314,89 @@ const GroupChatScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleReportMessage = async (message) => {
+    try {
+      const reportType = "inappropriate";
+      const reportMessage = await CometChat.reportMessage(
+        message.id,
+        reportType,
+        { reason: "Inappropriate content" }
+      );
+      
+      console.log("Message reported successfully:", reportMessage);
+      Alert.alert(
+        "Message Reported",
+        "Thank you for helping keep our community safe."
+      );
+    } catch (error) {
+      console.error("Error reporting message:", error);
+      Alert.alert(
+        "Error",
+        "Failed to report message. Please try again."
+      );
+    }
+  };
+
+  const handleReportUser = async (user) => {
+    try {
+      const reportType = "inappropriate";
+      const reportUser = await CometChat.reportUser(
+        user.uid,
+        reportType,
+        { reason: "Inappropriate behavior" }
+      );
+      
+      console.log("User reported successfully:", reportUser);
+      Alert.alert(
+        "User Reported",
+        "Thank you for helping keep our community safe."
+      );
+    } catch (error) {
+      console.error("Error reporting user:", error);
+      Alert.alert(
+        "Error",
+        "Failed to report user. Please try again."
+      );
+    }
+  };
+
   const renderMessage = ({ item }) => {
     const isMyMessage = item.sender?.uid === currentUser?.uid;
-    
+
+    const onLongPress = () => {
+      // Don't show report options for own messages
+      if (isMyMessage) return;
+
+      Alert.alert(
+        "Report Options",
+        "What would you like to report?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Report Message",
+            onPress: () => handleReportMessage(item)
+          },
+          {
+            text: "Report User",
+            style: "destructive",
+            onPress: () => handleReportUser(item.sender)
+          }
+        ]
+      );
+    };
+
     return (
-      <View style={[
-        styles.messageContainer,
-        isMyMessage ? styles.myMessage : styles.otherMessage
-      ]}>
+      <TouchableOpacity 
+        style={[
+          styles.messageContainer,
+          isMyMessage ? styles.myMessage : styles.otherMessage
+        ]}
+        onLongPress={onLongPress}
+        delayLongPress={500}
+      >
         {!isMyMessage && (
           <Text style={styles.senderName}>
             {item.sender?.name || 'Unknown User'}
@@ -356,7 +431,7 @@ const GroupChatScreen = ({ route, navigation }) => {
             minute: '2-digit'
           })}
         </Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -527,19 +602,19 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     padding: 10,
-    marginVertical: 2,
+    borderRadius: 12,
     maxWidth: '80%',
-    borderRadius: 15,
+    marginVertical: 4,
   },
   myMessage: {
     alignSelf: 'flex-end',
     backgroundColor: '#24269B',
-    borderBottomRightRadius: 5,
+    marginLeft: 50,
   },
-  theirMessage: {
+  otherMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#E8E8E8',
-    borderBottomLeftRadius: 5,
+    backgroundColor: '#4A4B7C',
+    marginRight: 50,
   },
   senderName: {
     fontSize: 12,
@@ -548,6 +623,8 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
+    color: '#fff',
+    marginBottom: 4,
   },
   myMessageText: {
     color: '#FFFFFF',
@@ -708,6 +785,12 @@ const styles = StyleSheet.create({
     color: '#d32f2f',
     fontSize: 14,
     textAlign: 'center',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.8,
+    alignSelf: 'flex-end',
   },
 });
 

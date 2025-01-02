@@ -85,17 +85,16 @@ const SignUpScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContentContainer}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        bounces={false}
       >
-        <View style={styles.content}>
+        <View style={styles.formContainer}>
           <Image 
             source={require('../../assets/logo.png')} 
             style={styles.headerImage}
@@ -160,15 +159,28 @@ const SignUpScreen = ({ navigation }) => {
             secureTextEntry
           />
 
-          <TouchableOpacity 
-            style={styles.signupButton}
-            onPress={handleSignup}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.signupButtonText}>
-              Sign Up <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
-            </Text>
-          </TouchableOpacity>
+
+          <View style={styles.container}>
+    <View style={styles.buttonContainer}>
+      <View style={styles.buttonShadow} />
+
+      <TouchableOpacity 
+        style={styles.signupButton} 
+        onPress={handleSignup}
+      >
+        
+        <View style={styles.buttonContent}>
+        <Text style={styles.signupButtonText}>
+                Sign Up <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
+              </Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+
+
+    </View>
+
+
 
           <View style={styles.footerContainer}>
             <Text style={styles.footerText}>Already have an account? </Text>
@@ -189,16 +201,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContentContainer: {
+  scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
-  content: {
-    padding: 20,
-    alignItems: 'center',
+  formContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   headerImage: {
     width: '100%',
@@ -239,13 +249,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#F8F8F8',
   },
-  signupButton: {
-    backgroundColor: '#24269B',
-    width: '100%',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 32,
-  },
+ 
   signupButtonText: {
     color: '#fff',
     fontSize: 20,
@@ -266,6 +270,56 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 100,
   },
+
+  buttonText: {
+    color: '#FFF',
+    fontSize: 18,
+  },
+
+  buttonContainer: {
+    position: 'relative',
+    marginVertical: 40,
+  },
+
+  buttonShadow: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
+    backgroundColor: '#000',
+    borderRadius: 8,
+  },
+
+  signupButton: {
+    backgroundColor: '#24269B',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    width: 300,
+    height: 60,
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+
+  buttonContent: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+
+  buttonIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 15,
+  }
 });
 
 export default SignUpScreen;
