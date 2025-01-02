@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';
 import { CometChat } from '@cometchat-pro/react-native-chat';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 
 const US_STATES = [
@@ -145,6 +146,23 @@ const ProfileScreen = () => {
 
     fetchProfileData();
   }, [targetUserId]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Settings')}
+          style={styles.headerButton}
+        >
+          <Image 
+            source={require('../../assets/settings-inactive.png')}
+            style={styles.headerButtonImage}
+          />
+          <Text style={styles.headerButtonText}>Settings</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const handleImagePicker = async () => {
     try {
@@ -1722,6 +1740,23 @@ pickerButtonText: {
 
 datePickerIOS: {
   height: 200,
+},
+
+headerButton: {
+  marginRight: 15,
+  alignItems: 'center',
+},
+
+headerButtonImage: {
+  width: 24,
+  height: 24,
+  resizeMode: 'contain',
+},
+
+headerButtonText: {
+  color: '#24269B',
+  fontSize: 12,
+  marginTop: 2,
 },
 });
 

@@ -15,7 +15,8 @@ import FindYourFriendsScreen from './src/screens/FindYourFriendsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import OtherUserProfileScreen from './src/screens/OtherUserProfileScreen';
 import GroupChatScreen from './src/screens/GroupChatScreen';
-
+import SettingsScreen from './src/screens/SettingsScreen';
+import PeopleScreen from './src/screens/PeopleScreen';
 import MainNavigator from './src/navigation/MainNavigator';
 import { AuthProvider } from './src/contexts/AuthContext';
 
@@ -114,6 +115,16 @@ export default function App() {
               name="GroupChat"
               component={GroupChatScreen}
               options={{ title: 'Group Chat' }}
+            />
+              <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ title: 'Settings' }}
+            />
+            <Stack.Screen
+              name="People"
+              component={PeopleScreen}
+              options={{ title: 'People' }}
             />
 
 
