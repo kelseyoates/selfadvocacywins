@@ -1,4 +1,4 @@
-import * as algoliasearch from 'algoliasearch';
+import algoliasearch from 'algoliasearch';
 import { ALGOLIA_APP_ID, ALGOLIA_SEARCH_KEY, ALGOLIA_ADMIN_KEY } from '@env';
 
 console.log('Algolia App ID:', ALGOLIA_APP_ID);
@@ -11,12 +11,12 @@ let searchIndex;
 let adminIndex;
 
 try {
-  const searchClient = algoliasearch.default(
+  const searchClient = algoliasearch(
     ALGOLIA_APP_ID,
     ALGOLIA_SEARCH_KEY
   );
 
-  const adminClient = algoliasearch.default(
+  const adminClient = algoliasearch(
     ALGOLIA_APP_ID,
     ALGOLIA_ADMIN_KEY
   );

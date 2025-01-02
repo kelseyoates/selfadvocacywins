@@ -18,7 +18,11 @@ import GroupChatScreen from './src/screens/GroupChatScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import PeopleScreen from './src/screens/PeopleScreen';
 import MainNavigator from './src/navigation/MainNavigator';
+import SupporterManagementScreen from './src/screens/SupporterManagementScreen';
+import AddSupporterScreen from './src/screens/AddSupporterScreen';
+import SupporterDashboardScreen from './src/screens/SupporterDashboardScreen';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { useEffect } from 'react';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +45,8 @@ const initCometChat = async () => {
 initCometChat();
 
 export default function App() {
+
+
   return (
     <AuthProvider>
       <NavigationContainer>
@@ -126,8 +132,23 @@ export default function App() {
               component={PeopleScreen}
               options={{ title: 'People' }}
             />
-
-
+         
+            <Stack.Screen
+              name="SupporterManagement"
+              component={SupporterManagementScreen}
+              options={{ title: 'Supporters' }}
+            />
+            <Stack.Screen
+              name="AddSupporter"
+              component={AddSupporterScreen}
+              options={{ title: 'Add Supporter' }}
+            />
+            <Stack.Screen
+              name="SupporterDashboard"
+              component={SupporterDashboardScreen}
+              options={{ title: 'Supporter Dashboard' }}
+            />
+          
 
           </Stack.Navigator>
        

@@ -1,54 +1,86 @@
-const functions = require('firebase-functions');
-const algoliasearch = require('algoliasearch');
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
 
-const client = algoliasearch(
-  'YOUR_ALGOLIA_APP_ID',
-  'YOUR_ALGOLIA_ADMIN_KEY'
-);
-const index = client.initIndex('users');
+admin.initializeApp();
 
-exports.syncUserToAlgolia = functions.firestore
-  .document('users/{userId}')
-  .onWrite(async (change, context) => {
-    const userData = change.after.data();
-    const userId = context.params.userId;
+// Get stripe key from Firebase config
+const stripeSecret = functions.config().stripe.secret_key;
+const stripe = require("stripe")(stripeSecret);
 
-    // If user is deleted, remove from Algolia
-    if (!userData) {
-      await index.deleteObject(userId);
-      return null;
+/**
+ * Creates a Stripe checkout session
+ */
+exports.createCheckoutSession =
+functions.https.onRequest(async (request, response) => {
+  // Enable CORS
+  response.set("Access-Control-Allow-Origin", "*");
+
+  if (request.method === "OPTIONS") {
+    response.set("Access-Control-Allow-Methods", "POST");
+    response.set("Access-Control-Allow-Headers", "Content-Type");
+    response.status(204).send("");
+    return;
+  }
+
+  try {
+    const {priceId} = request.body;
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: "selfadvocacywins://payment-success",
+      cancel_url: "selfadvocacywins://payment-cancelled",
+    });
+
+    response.json({url: session.url});
+  } catch (error) {
+    console.error("Stripe session creation error:", error);
+    response.status(500).json({
+      error: "Failed to create checkout session",
+    });
+  }
+});
+
+/**
+ * Handles Stripe webhook events
+ */
+exports.stripeWebhook = functions.https.onRequest(async (request, response) => {
+  const sig = request.headers["stripe-signature"];
+  const endpointSecret = functions.config().stripe.webhook_secret;
+
+  try {
+    const event = stripe.webhooks.constructEvent(
+        request.rawBody || request.body,
+        sig,
+        endpointSecret,
+    );
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      await updateUserSubscription(session.client_reference_id);
     }
 
-    // Prepare user data for Algolia
-    const algoliaObject = {
-      objectID: userId,
-      username: userData.username,
-      profilePicture: userData.profilePicture,
-      state: userData.state,
-      questionAnswers: userData.questionAnswers,
-      // Calculate age from birthDate if you have it
-      age: calculateAge(userData.birthDate),
-      // Create searchable content from answers
-      _searchableContent: userData.questionAnswers.map(qa => 
-        `${qa.textAnswer} ${(qa.selectedWords || []).join(' ')}`
-      ).join(' ')
-    };
-
-    // Save to Algolia
-    await index.saveObject(algoliaObject);
-    return null;
-  });
-
-function calculateAge(birthDate) {
-  if (!birthDate) return null;
-  const today = new Date();
-  const birth = new Date(birthDate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--;
+    response.json({received: true});
+  } catch (err) {
+    console.error("Webhook Error:", err.message);
+    response.status(400).send(`Webhook Error: ${err.message}`);
   }
-  
-  return age;
-} 
+});
+
+/**
+ * Updates the user's subscription status in Firestore
+ * @param {string} userId - The user's ID
+ * @return {Promise<void>}
+ */
+async function updateUserSubscription(userId) {
+  const db = admin.firestore();
+  await db.collection("users").doc(userId).update({
+    isSubscribed: true,
+    subscriptionDate: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}

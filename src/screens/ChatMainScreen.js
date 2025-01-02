@@ -13,12 +13,14 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { isSupporterFor } from '../services/cometChat';
 
 const ChatMainScreen = ({ navigation }) => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState({});
   const { user } = useAuth();
+  const [supporterAccess, setSupporterAccess] = useState({});
 
   useEffect(() => {
     navigation.setOptions({
@@ -95,6 +97,25 @@ const ChatMainScreen = ({ navigation }) => {
 
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    const checkSupporterAccess = async () => {
+      if (conversations) {
+        const accessMap = {};
+        for (const conv of conversations) {
+          if (conv.conversationType === CometChat.RECEIVER_TYPE.USER) {
+            accessMap[conv.conversationWith.uid] = await isSupporterFor(
+              user.uid.toLowerCase(),
+              conv.conversationWith.uid.toLowerCase()
+            );
+          }
+        }
+        setSupporterAccess(accessMap);
+      }
+    };
+
+    checkSupporterAccess();
+  }, [conversations]);
 
   const fetchConversations = async () => {
     setLoading(true);
@@ -181,6 +202,12 @@ const ChatMainScreen = ({ navigation }) => {
             {lastMessage}
           </Text>
         </View>
+        
+        {supporterAccess[conversationId] && (
+          <View style={styles.supporterBadge}>
+            <Text style={styles.supporterBadgeText}>Supporter</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -336,8 +363,21 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 15,
-  }
+  },
 
+  supporterBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: '#24269B',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  supporterBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+  },
 });
 
 export default ChatMainScreen;
