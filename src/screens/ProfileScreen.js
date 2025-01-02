@@ -335,7 +335,6 @@ const ProfileScreen = () => {
             console.log('Month selected:', month);
             setSelectedMonth(month);
             setShowMonthPicker(false);
-            setTimeout(updateBirthdate, 0);
           },
           () => setShowMonthPicker(false)
         )}
@@ -941,6 +940,80 @@ const ProfileScreen = () => {
       </Modal>
     );
   };
+
+  // Add this function to your ProfileScreen component
+  const updateBirthdate = async () => {
+    // Get the latest state values at the time of the update
+    const currentState = {
+      day: selectedDay,
+      month: selectedMonth,
+      year: selectedYear
+    };
+    
+    console.log('Starting updateBirthdate with latest state:', currentState);
+
+    if (currentState.month && currentState.day && currentState.year) {
+      try {
+        const paddedDay = currentState.day.toString().padStart(2, '0');
+        const monthIndex = months.indexOf(currentState.month);
+        const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
+        
+        const birthdate = `${currentState.year}-${paddedMonth}-${paddedDay}`;
+        console.log('About to save birthdate:', birthdate);
+        
+        const userRef = doc(db, 'users', targetUserId);
+        await updateDoc(userRef, {
+          birthdate: birthdate
+        });
+        
+        console.log('Successfully updated Firestore with:', birthdate);
+        
+        setUserData(prev => ({
+          ...prev,
+          birthdate
+        }));
+        
+        Alert.alert('Success', 'Birthday updated successfully');
+      } catch (error) {
+        console.error('Error updating birthdate:', error);
+        Alert.alert('Error', 'Failed to update birthday');
+      }
+    } else {
+      console.log('Missing required date information:', currentState);
+    }
+  };
+
+  // Add this useEffect to handle birthdate updates
+  useEffect(() => {
+    const updateBirthdate = async () => {
+      if (selectedMonth && selectedDay && selectedYear) {
+        try {
+          console.log('Updating birthdate with:', {
+            month: selectedMonth,
+            day: selectedDay,
+            year: selectedYear
+          });
+          
+          const birthdate = `${selectedYear}-${(months.indexOf(selectedMonth) + 1).toString().padStart(2, '0')}-${selectedDay.toString().padStart(2, '0')}`;
+          
+          const userRef = doc(db, 'users', targetUserId);
+          await updateDoc(userRef, { birthdate });
+          
+          console.log('Successfully updated birthdate with:', birthdate);
+          setUserData(prev => ({
+            ...prev,
+            birthdate
+          }));
+          Alert.alert('Success', 'Birthday updated successfully');
+        } catch (error) {
+          console.error('Error updating birthdate:', error);
+          Alert.alert('Error', 'Failed to update birthday');
+        }
+      }
+    };
+
+    updateBirthdate();
+  }, [selectedMonth, selectedDay, selectedYear]);
 
   if (!user && !profileUserId) {
     return (

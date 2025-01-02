@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const PeopleScreen = () => {
   const [activeTab, setActiveTab] = useState('followers');
@@ -114,7 +115,8 @@ const PeopleScreen = () => {
     }
   };
 
-  const renderUser = ({ item }) => (
+// Update the renderUser function
+const renderUser = ({ item }) => (
     <View style={styles.userItem}>
       <Image
         source={item.profilePicture ? { uri: item.profilePicture } : require('../../assets/default-profile.png')}
@@ -131,12 +133,20 @@ const PeopleScreen = () => {
         ]}
         onPress={() => item.isFollowing ? handleUnfollow(item.id) : handleFollow(item.id)}
       >
-        <Text style={[
-          styles.followButtonText,
-          item.isFollowing && styles.followingButtonText
-        ]}>
-          {item.isFollowing ? 'Following' : 'Follow'}
-        </Text>
+        <View style={styles.buttonContent}>
+          <Text style={[
+            styles.followButtonText,
+            item.isFollowing && styles.followingButtonText
+          ]}>
+            {item.isFollowing ? 'Unfollow' : 'Follow'}
+          </Text>
+          <MaterialCommunityIcons 
+            name={item.isFollowing ? "minus" : "plus"} 
+            size={20} 
+            color={item.isFollowing ? "#24269B" : "white"} 
+            style={styles.iconStyle}
+          />
+        </View>
       </TouchableOpacity>
     </View>
   );

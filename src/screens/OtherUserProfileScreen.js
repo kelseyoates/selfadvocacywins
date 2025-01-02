@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { getAuth } from 'firebase/auth';
-import { getDoc, doc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { getDoc, doc, collection, query, where, orderBy, getDocs, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useRoute } from '@react-navigation/native';
 import OtherUserQuestionCard from '../components/OtherUserQuestionCard';
@@ -41,6 +42,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
   const [showComments, setShowComments] = useState(false);
   const [commentUsers, setCommentUsers] = useState({});
   const [userData, setUserData] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   console.log('userData:', userData); // Debug log
 
@@ -337,6 +339,51 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     }, { totalCheers: 0, totalComments: 0 });
   };
 
+  // Add this useEffect to check if current user is following this profile
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      try {
+        const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+        const currentUserDoc = await getDoc(currentUserRef);
+        
+        if (currentUserDoc.exists()) {
+          const following = currentUserDoc.data().following || [];
+          setIsFollowing(following.includes(profileUserId));
+        }
+      } catch (error) {
+        console.error('Error checking follow status:', error);
+      }
+    };
+
+    if (profileUserId && auth.currentUser) {
+      checkFollowStatus();
+    }
+  }, [profileUserId]);
+
+  // Add follow/unfollow handler
+  const handleFollowPress = async () => {
+    try {
+      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+      
+      if (isFollowing) {
+        // Unfollow
+        await updateDoc(currentUserRef, {
+          following: arrayRemove(profileUserId)
+        });
+      } else {
+        // Follow
+        await updateDoc(currentUserRef, {
+          following: arrayUnion(profileUserId)
+        });
+      }
+      
+      setIsFollowing(!isFollowing);
+    } catch (error) {
+      console.error('Error updating follow status:', error);
+      Alert.alert('Error', 'Failed to update follow status');
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -403,33 +450,54 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
       </View>
 
       <View style={styles.buttonContainer}>
-        <View style={styles.buttonShadow} />
-        <TouchableOpacity 
-          style={styles.chatButton}
-          onPress={() => {
-            if (!profileUserId || !auth.currentUser) {
-              console.log('Missing required IDs:', { profileUserId, currentUser: auth.currentUser?.uid });
-              return;
-            }
-            
-            // Match the expected parameters in ChatConversationScreen
-            const chatParams = {
-              uid: profileUserId,  // This is what ChatConversationScreen expects
-              name: profileData?.username || 'User'  // This is used for the header
-            };
-            
-            console.log('Starting chat with params:', chatParams);
-            
-            // Navigate directly to ChatConversation with the expected params
-            navigation.navigate('ChatConversation', chatParams);
-          }}
-        >
-          <View style={styles.buttonContent}>
-            <Text style={styles.chatButtonText}>
-              Start Chat <MaterialCommunityIcons name="chat" size={24} color="white" />
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[styles.button, styles.chatButton]}
+            onPress={() => {
+              if (!profileUserId || !auth.currentUser) {
+                console.log('Missing required IDs:', { profileUserId, currentUser: auth.currentUser?.uid });
+                return;
+              }
+              
+              const chatParams = {
+                uid: profileUserId,
+                name: profileData?.username || 'User'
+              };
+              
+              console.log('Starting chat with params:', chatParams);
+              navigation.navigate('ChatConversation', chatParams);
+            }}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonText}>
+                Start Chat <MaterialCommunityIcons name="chat" size={24} color="white" />
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.button, 
+              isFollowing ? styles.followingButton : styles.followButton
+            ]}
+            onPress={handleFollowPress}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={[
+                styles.buttonText,
+                isFollowing && styles.followingButtonText
+              ]}>
+                {isFollowing ? 'Unfollow' : 'Follow'}
+              </Text>
+              <MaterialCommunityIcons 
+                name={isFollowing ? "minus" : "plus"} 
+                size={20} 
+                color={isFollowing ? "#24269B" : "white"} 
+                style={styles.iconStyle}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.questionsContainer}>
@@ -689,34 +757,48 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginHorizontal: 20,
     marginVertical: 10,
-    position: 'relative',
   },
-  buttonShadow: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    right: -4,
-    bottom: -4,
-    backgroundColor: '#1a1b6e',
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  button: {
+    flex: 1,
     borderRadius: 25,
+    position: 'relative',
+    zIndex: 1,
   },
   chatButton: {
     backgroundColor: '#24269B',
     padding: 12,
-    borderRadius: 25,
-    position: 'relative',
-    zIndex: 1,
+  },
+  followButton: {
+    backgroundColor: '#24269B',
+    padding: 12,
+  },
+  followingButton: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderWidth: 2,
+    borderColor: '#24269B',
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chatButtonText: {
+  buttonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  }
+  },
+  followingButtonText: {
+    color: '#24269B',
+  },
+  iconStyle: {
+    marginLeft: 5,
+  },
 });
 
 export default OtherUserProfileScreen; 
