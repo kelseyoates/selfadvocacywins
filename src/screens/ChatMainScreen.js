@@ -140,12 +140,12 @@ const ChatMainScreen = ({ navigation }) => {
     const navigateToChat = () => {
       if (isGroup) {
         navigation.navigate('GroupChat', { 
-          uid: conversationId,  // Using conversationId here
+          uid: conversationId,
           name: name
         });
       } else {
         navigation.navigate('ChatConversation', { 
-          uid: conversationId,  // Using conversationId here
+          uid: conversationId,
           name: name,
           profilePicture: users[conversationId]?.profilePicture,
           conversationType: CometChat.RECEIVER_TYPE.USER
@@ -160,9 +160,10 @@ const ChatMainScreen = ({ navigation }) => {
       >
         <View style={styles.avatarContainer}>
           {isGroup ? (
-            <View style={[styles.avatar, styles.groupAvatar]}>
-              <Text style={styles.groupIcon}>👥</Text>
-            </View>
+            <Image 
+              source={require('../../assets/friends-inactive.png')}
+              style={styles.avatar}
+            />
           ) : (
             <Image 
               source={{ 

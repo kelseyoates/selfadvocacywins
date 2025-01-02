@@ -596,27 +596,42 @@ const GroupChatScreen = ({ route, navigation }) => {
                 <TouchableOpacity 
                   style={styles.memberItem}
                   onPress={() => {
+                    console.log('Navigating to profile for user:', item.uid.toLowerCase());
                     setIsModalVisible(false);
                     navigation.navigate('OtherUserProfile', {
                       profileUserId: item.uid.toLowerCase(),
                       isCurrentUser: item.uid === currentUser?.uid
                     });
                   }}
+                  activeOpacity={0.7}
                 >
-                  <Image
-                    source={
-                      memberProfiles[item.uid]?.profilePicture 
-                        ? { uri: memberProfiles[item.uid].profilePicture }
-                        : require('../../assets/default-profile.png')
-                    }
-                    style={styles.memberAvatar}
-                  />
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>
-                      {memberProfiles[item.uid]?.username || item.name || item.uid}
-                      {item.scope === 'admin' ? ' (Admin)' : ''}
-                      {item.uid === groupInfo?.owner ? ' (Owner)' : ''}
-                    </Text>
+                  <View style={styles.memberContent}>
+                    <Image
+                      source={
+                        memberProfiles[item.uid]?.profilePicture 
+                          ? { uri: memberProfiles[item.uid].profilePicture }
+                          : require('../../assets/default-profile.png')
+                      }
+                      style={styles.memberAvatar}
+                    />
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>
+                        {memberProfiles[item.uid]?.username || item.name || item.uid}
+                      </Text>
+                      <Text style={styles.memberRole}>
+                        {item.uid === groupInfo?.owner 
+                          ? 'Owner' 
+                          : item.scope === 'admin' 
+                            ? 'Admin' 
+                            : 'Member'}
+                      </Text>
+                    </View>
+                    <MaterialCommunityIcons 
+                      name="chevron-right" 
+                      size={24} 
+                      color="#666"
+                      style={styles.memberChevron}
+                    />
                   </View>
                 </TouchableOpacity>
               )}
@@ -763,16 +778,19 @@ const styles = StyleSheet.create({
     maxHeight: '50%',
   },
   memberItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  memberContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   memberAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     marginRight: 12,
   },
   memberInfo: {
@@ -781,6 +799,15 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
+  },
+  memberRole: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  memberChevron: {
+    marginLeft: 8,
   },
   leaveButton: {
     backgroundColor: '#ff4444',
