@@ -16,6 +16,8 @@ import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
+import { getDoc, doc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const containsProfanity = (text) => {
   const profanityList = [
@@ -74,6 +76,7 @@ const GroupChatScreen = ({ route, navigation }) => {
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [reportedUsers, setReportedUsers] = useState(new Set());
+  const [memberProfiles, setMemberProfiles] = useState({});
 
   // Test function to verify modal visibility
   const toggleModal = () => {
@@ -96,9 +99,30 @@ const GroupChatScreen = ({ route, navigation }) => {
       console.log('Members:', membersList);
       setMembers(membersList);
       
+      // Fetch Firestore profiles after getting CometChat members
+      await fetchMemberProfiles(membersList);
+      
       console.log('Group info:', group);
     } catch (error) {
       console.error('Error fetching group info:', error);
+    }
+  };
+
+  // Add this function to fetch user profiles from Firestore
+  const fetchMemberProfiles = async (membersList) => {
+    try {
+      const profiles = {};
+      const userPromises = membersList.map(async (member) => {
+        const userDoc = await getDoc(doc(db, 'users', member.uid.toLowerCase()));
+        if (userDoc.exists()) {
+          profiles[member.uid] = userDoc.data();
+        }
+      });
+      
+      await Promise.all(userPromises);
+      setMemberProfiles(profiles);
+    } catch (error) {
+      console.error('Error fetching member profiles:', error);
     }
   };
 
@@ -404,7 +428,10 @@ const GroupChatScreen = ({ route, navigation }) => {
         )}
         
         {item.type === 'text' ? (
-          <Text style={styles.messageText}>
+          <Text style={[
+            styles.messageText,
+            isMyMessage ? styles.myMessageText : styles.otherMessageText
+          ]}>
             {item.metadata?.sensitive_data 
               ? item.data?.text?.replace(/\d/g, '*') 
               : item.text || item.data?.text}
@@ -425,7 +452,10 @@ const GroupChatScreen = ({ route, navigation }) => {
           )
         ) : null}
         
-        <Text style={styles.timestamp}>
+        <Text style={[
+          styles.timestamp,
+          isMyMessage ? styles.myTimestamp : styles.otherTimestamp
+        ]}>
           {new Date(item.sentAt * 1000).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit'
@@ -563,13 +593,32 @@ const GroupChatScreen = ({ route, navigation }) => {
               data={members}
               keyExtractor={item => item.uid}
               renderItem={({ item }) => (
-                <View style={styles.memberItem}>
-                  <Text style={styles.memberName}>
-                    {item.name || item.uid}
-                    {item.scope === 'admin' ? ' (Admin)' : ''}
-                    {item.uid === groupInfo?.owner ? ' (Owner)' : ''}
-                  </Text>
-                </View>
+                <TouchableOpacity 
+                  style={styles.memberItem}
+                  onPress={() => {
+                    setIsModalVisible(false);
+                    navigation.navigate('OtherUserProfile', {
+                      profileUserId: item.uid.toLowerCase(),
+                      isCurrentUser: item.uid === currentUser?.uid
+                    });
+                  }}
+                >
+                  <Image
+                    source={
+                      memberProfiles[item.uid]?.profilePicture 
+                        ? { uri: memberProfiles[item.uid].profilePicture }
+                        : require('../../assets/default-profile.png')
+                    }
+                    style={styles.memberAvatar}
+                  />
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>
+                      {memberProfiles[item.uid]?.username || item.name || item.uid}
+                      {item.scope === 'admin' ? ' (Admin)' : ''}
+                      {item.uid === groupInfo?.owner ? ' (Owner)' : ''}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               )}
               style={styles.membersList}
             />
@@ -613,8 +662,10 @@ const styles = StyleSheet.create({
   },
   otherMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#4A4B7C',
+    backgroundColor: '#ffffff',
     marginRight: 50,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   senderName: {
     fontSize: 12,
@@ -623,13 +674,12 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
-    color: '#fff',
     marginBottom: 4,
   },
   myMessageText: {
     color: '#FFFFFF',
   },
-  theirMessageText: {
+  otherMessageText: {
     color: '#000000',
   },
   inputContainer: {
@@ -713,9 +763,20 @@ const styles = StyleSheet.create({
     maxHeight: '50%',
   },
   memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  memberAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  memberInfo: {
+    flex: 1,
   },
   memberName: {
     fontSize: 16,
@@ -788,9 +849,15 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
+    alignSelf: 'flex-end',
+  },
+  myTimestamp: {
     color: '#fff',
     opacity: 0.8,
-    alignSelf: 'flex-end',
+  },
+  otherTimestamp: {
+    color: '#666',
+    opacity: 0.8,
   },
 });
 
