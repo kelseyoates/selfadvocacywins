@@ -38,14 +38,14 @@ const PeopleScreen = () => {
     try {
       setLoading(true);
       const usersRef = collection(db, 'users');
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, 'users', user.uid.toLowerCase());
       const userSnapshot = await getDoc(userDocRef);
       
       // Check if user document exists, if not, create it
       if (!userSnapshot.exists()) {
         // Initialize user document with empty following array
         await setDoc(userDocRef, {
-          uid: user.uid,
+          uid: user.uid.toLowerCase(), // Ensure uid is lowercase
           following: [],
           // Add any other default fields you need
         });
@@ -58,18 +58,18 @@ const PeopleScreen = () => {
       
       if (activeTab === 'followers') {
         // Fetch users who follow the current user
-        const q = query(usersRef, where('following', 'array-contains', user.uid));
+        const q = query(usersRef, where('following', 'array-contains', user.uid.toLowerCase())); // Use lowercase
         const querySnapshot = await getDocs(q);
         usersList = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          isFollowing: userData?.following?.includes(doc.id) || false
+          isFollowing: userData?.following?.includes(doc.id.toLowerCase()) || false // Compare with lowercase
         }));
       } else {
         // Fetch users followed by the current user
         const following = userData?.following || [];
         if (following.length > 0) {
-          const q = query(usersRef, where('uid', 'in', following));
+          const q = query(usersRef, where('uid', 'in', following.map(id => id.toLowerCase()))); // Ensure all IDs are lowercase
           const querySnapshot = await getDocs(q);
           usersList = querySnapshot.docs.map(doc => ({
             id: doc.id,
@@ -86,12 +86,12 @@ const PeopleScreen = () => {
       setLoading(false);
     }
   };
-
+  
   const handleFollow = async (userId) => {
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'users', user.uid.toLowerCase());
       await updateDoc(userRef, {
-        following: arrayUnion(userId)
+        following: arrayUnion(userId.toLowerCase()) // Ensure lowercase when following
       });
       setUsers(users.map(u => 
         u.id === userId ? { ...u, isFollowing: true } : u
@@ -100,12 +100,12 @@ const PeopleScreen = () => {
       console.error('Error following user:', error);
     }
   };
-
+  
   const handleUnfollow = async (userId) => {
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'users', user.uid.toLowerCase());
       await updateDoc(userRef, {
-        following: arrayRemove(userId)
+        following: arrayRemove(userId.toLowerCase()) // Ensure lowercase when unfollowing
       });
       setUsers(users.map(u => 
         u.id === userId ? { ...u, isFollowing: false } : u

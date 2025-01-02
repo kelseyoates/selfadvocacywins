@@ -5,7 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert
+  Alert,
+  Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -14,7 +15,6 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
 
   const handleUpgradePress = () => {
-    // TODO: Implement Stripe functionality
     Alert.alert('Coming Soon', 'Premium features will be available soon!');
   };
 
@@ -25,18 +25,32 @@ const SettingsScreen = () => {
           style={styles.menuItem}
           onPress={() => navigation.navigate('People')}
         >
-          <MaterialCommunityIcons name="account-group" size={24} color="#24269B" />
+          <Image 
+            source={require('../../assets/people.png')}
+            style={styles.menuIcon}
+          />
           <Text style={styles.menuItemText}>People</Text>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+          <MaterialCommunityIcons 
+            name="chevron-right" 
+            size={24} 
+            color="#666" 
+          />
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.menuItem}
           onPress={handleUpgradePress}
         >
-          <MaterialCommunityIcons name="star" size={24} color="#24269B" />
+          <Image 
+            source={require('../../assets/upgrade.png')}
+            style={styles.menuIcon}
+          />
           <Text style={styles.menuItemText}>Upgrade to Premium</Text>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+          <MaterialCommunityIcons 
+            name="chevron-right" 
+            size={24} 
+            color="#666" 
+          />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -68,6 +82,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  menuIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
+  }
 });
 
 export default SettingsScreen;

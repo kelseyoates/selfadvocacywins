@@ -24,14 +24,11 @@ import { auth } from '../config/firebase';
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/100';
 
 const OtherUserProfileScreen = ({ route, navigation }) => {
-  console.log('Route params:', route.params);  // Debug log to see all params
+  console.log('Route params:', route.params);
   
-  // Get userId from route.params, with a fallback
-  const userId = route.params?.userId || route.params?.uid;
-  console.log('Using userId:', userId);  // Debug log
-
-  const profileUserId = route.params?.profileUserId;  // Use the correct param name
-  console.log('Profile User ID:', profileUserId);
+  // Get profileUserId from route.params
+  const profileUserId = route.params?.profileUserId?.toLowerCase();
+  console.log('Profile User ID (lowercase):', profileUserId);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,15 +41,14 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
   const [userData, setUserData] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
 
-  console.log('userData:', userData); // Debug log
-
-  console.log('OtherUserProfileScreen - userId:', userId);
+  console.log('Current user data:', userData);
+  console.log('Current profile data:', profileData);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setIsLoading(true);
-        const userIdToFetch = route.params?.profileUserId;
+        const userIdToFetch = profileUserId;
         
         console.log('Attempting to fetch user data for:', userIdToFetch);
 
@@ -121,7 +117,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     };
 
     fetchUserData();
-  }, [route.params?.profileUserId]);
+  }, [profileUserId]);
 
   // Add data verification logs in render
   useEffect(() => {
@@ -339,45 +335,83 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     }, { totalCheers: 0, totalComments: 0 });
   };
 
-  // Add this useEffect to check if current user is following this profile
+  // Update the useEffect that checks follow status
   useEffect(() => {
     const checkFollowStatus = async () => {
       try {
-        const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+        if (!auth.currentUser || !profileUserId) return;
+
+        console.log('Checking follow status for current user:', auth.currentUser.uid.toLowerCase());
+        console.log('Checking against profile:', profileUserId.toLowerCase());
+
+        const currentUserRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
         const currentUserDoc = await getDoc(currentUserRef);
         
         if (currentUserDoc.exists()) {
           const following = currentUserDoc.data().following || [];
-          setIsFollowing(following.includes(profileUserId));
+          const isUserFollowing = following.includes(profileUserId.toLowerCase());
+          console.log('Current following status:', isUserFollowing);
+          setIsFollowing(isUserFollowing);
+        }
+
+        // Also ensure the target user has a followers array
+        const targetUserRef = doc(db, 'users', profileUserId.toLowerCase());
+        const targetUserDoc = await getDoc(targetUserRef);
+        
+        if (targetUserDoc.exists()) {
+          if (!targetUserDoc.data().followers) {
+            // Initialize followers array if it doesn't exist
+            await updateDoc(targetUserRef, {
+              followers: []
+            });
+          }
         }
       } catch (error) {
         console.error('Error checking follow status:', error);
       }
     };
 
-    if (profileUserId && auth.currentUser) {
-      checkFollowStatus();
-    }
-  }, [profileUserId]);
+    checkFollowStatus();
+  }, [profileUserId, auth.currentUser]);
 
-  // Add follow/unfollow handler
+  // Update the handleFollowPress function
   const handleFollowPress = async () => {
     try {
-      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+      const currentUserRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+      const targetUserRef = doc(db, 'users', profileUserId.toLowerCase());
       
       if (isFollowing) {
-        // Unfollow
-        await updateDoc(currentUserRef, {
-          following: arrayRemove(profileUserId)
-        });
+        // Unfollow - update both users
+        await Promise.all([
+          updateDoc(currentUserRef, {
+            following: arrayRemove(profileUserId.toLowerCase())
+          }),
+          updateDoc(targetUserRef, {
+            followers: arrayRemove(auth.currentUser.uid.toLowerCase())
+          })
+        ]);
+        console.log('Unfollowed user:', profileUserId.toLowerCase());
       } else {
-        // Follow
-        await updateDoc(currentUserRef, {
-          following: arrayUnion(profileUserId)
-        });
+        // Follow - update both users
+        await Promise.all([
+          updateDoc(currentUserRef, {
+            following: arrayUnion(profileUserId.toLowerCase())
+          }),
+          updateDoc(targetUserRef, {
+            followers: arrayUnion(auth.currentUser.uid.toLowerCase())
+          })
+        ]);
+        console.log('Followed user:', profileUserId.toLowerCase());
       }
       
+      // Force refresh of follow status
       setIsFollowing(!isFollowing);
+      
+      // Trigger a re-render of the profile data
+      const userDoc = await getDoc(doc(db, 'users', profileUserId.toLowerCase()));
+      if (userDoc.exists()) {
+        setProfileData(userDoc.data());
+      }
     } catch (error) {
       console.error('Error updating follow status:', error);
       Alert.alert('Error', 'Failed to update follow status');
