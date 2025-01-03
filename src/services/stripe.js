@@ -1,35 +1,34 @@
 import { Linking } from 'react-native';
+import { auth } from '../config/firebase';
 
-// Your price IDs
-const STRIPE_PRICES = {
-    item1: 'price_1QcoKMKsSm8QZ3xYMdZytQWI',
-    item2: 'price_1QZDoHKsSm8QZ3xYSkYVFVKW',
-    item3: 'price_1QcsYoKsSm8QZ3xY16MyY6zn',
-    item4: 'price_1Qcsa4KsSm8QZ3xYfQPyK6AA',
-    item5: 'price_1QcsdUKsSm8QZ3xY5eSumBGO'
+const STRIPE_PAYMENT_LINKS = {
+    selfAdvocatePlus: 'https://buy.stripe.com/test_bIYcP87ZlaU6dqgaEF',
+    selfAdvocateDating: 'https://buy.stripe.com/test_aEU6qKdjF1jwbi8aEG',
+    supporterOne: 'https://buy.stripe.com/test_dR69CW3J56DQ71ScMP',
+    supporterFive: 'https://buy.stripe.com/test_8wMeXgbbxfameuk148',
+    supporterTen: 'https://buy.stripe.com/test_fZe9CWfrN4vIgCsdQV'
+    // Add all your subscription tiers
 };
 
-// Replace with your Stripe publishable key
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_xNZWZmyjOMgm4GAKBKWXIU4C';
-
-export const startStripeCheckout = async (itemKey) => {
+export const startStripeCheckout = async (planType) => {
     try {
-        const priceId = STRIPE_PRICES[itemKey];
-        if (!priceId) {
-            throw new Error('Invalid item key');
+        const paymentLink = STRIPE_PAYMENT_LINKS[planType];
+        if (!paymentLink) {
+            throw new Error(`Invalid plan type: ${planType}`);
         }
         
-        const checkoutUrl = `https://checkout.stripe.com/c/pay/${priceId}?key=${STRIPE_PUBLISHABLE_KEY}`;
+        // Add user ID to the URL
+        const userId = auth.currentUser?.uid;
+        const urlWithParams = `${paymentLink}?client_reference_id=${userId}&metadata[userId]=${userId}&metadata[planType]=${planType}`;
         
-        const supported = await Linking.canOpenURL(checkoutUrl);
-        if (supported) {
-            await Linking.openURL(checkoutUrl);
-            return true;
-        } else {
-            throw new Error('Cannot open URL');
-        }
+        console.log('Opening payment link for:', planType);
+        console.log('URL:', urlWithParams);
+        
+        await Linking.openURL(urlWithParams);
+        return true;
     } catch (error) {
         console.error('Stripe checkout error:', error);
+        Alert.alert('Error', 'Could not open checkout page');
         return false;
     }
 }; 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -79,30 +79,97 @@ const ProfileScreen = () => {
   // Use the passed profileUserId if available, otherwise show current user's profile
   const targetUserId = (profileUserId || user?.uid)?.toLowerCase();
 
-  // Load birthdate from userData when it's available
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [initialBirthdate, setInitialBirthdate] = useState(null);
+  const [shouldUpdate, setShouldUpdate] = useState(false);
+
+  // Add a ref to track if this is the initial set of values
+  const isSettingInitialValues = useRef(true);
+
   useEffect(() => {
-    if (userData?.birthdate) {
+    const fetchUserData = async () => {
       try {
-        const [year, month, day] = userData.birthdate.split('-');
-        // Convert to numbers to remove leading zeros
-        const dayNum = parseInt(day, 10);
-        const monthIndex = parseInt(month, 10) - 1;
+        isSettingInitialValues.current = true;
+        setIsInitialLoad(true);
+        const userDoc = await getDoc(doc(db, 'users', targetUserId));
+        const data = userDoc.data();
         
-        // Only update if the values are different from current state
-        if (selectedYear !== year) {
+        setUserData(data);
+        
+        if (data?.birthdate) {
+          const [year, month, day] = data.birthdate.split('-');
+          const monthName = months[parseInt(month) - 1];
+          
+          setSelectedDay(day);
+          setSelectedMonth(monthName);
           setSelectedYear(year);
-        }
-        if (selectedMonth !== months[monthIndex]) {
-          setSelectedMonth(months[monthIndex]);
-        }
-        if (selectedDay !== dayNum.toString()) {
-          setSelectedDay(dayNum.toString());
+          setInitialBirthdate(data.birthdate);
         }
       } catch (error) {
-        console.error('Error parsing birthdate:', error);
+        console.error('Error fetching user data:', error);
+      } finally {
+        setTimeout(() => {
+          setIsInitialLoad(false);
+          isSettingInitialValues.current = false;
+        }, 1000);
+      }
+    };
+
+    fetchUserData();
+  }, [targetUserId]);
+
+  const updateBirthdateWithValues = async (day, month, year) => {
+    // Multiple checks to prevent automatic updates
+    if (isInitialLoad || !shouldUpdate) {
+      console.log('Skipping update: initial load or update not requested');
+      return;
+    }
+
+    console.log('Starting manual birthdate update with:', {
+      day,
+      month,
+      year,
+      isInitialLoad,
+      shouldUpdate
+    });
+
+    if (month && day && year) {
+      try {
+        const paddedDay = day.toString().padStart(2, '0');
+        const monthIndex = months.indexOf(month);
+        const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
+        const birthdate = `${year}-${paddedMonth}-${paddedDay}`;
+
+        if (birthdate === initialBirthdate) {
+          console.log('Birthday unchanged, skipping update');
+          return;
+        }
+
+        const userRef = doc(db, 'users', targetUserId);
+        await updateDoc(userRef, {
+          birthdate: birthdate
+        });
+        
+        setUserData(prev => ({
+          ...prev,
+          birthdate
+        }));
+        
+        setInitialBirthdate(birthdate);
+        setShouldUpdate(false); // Reset update flag
+        Alert.alert('Success', 'Birthday updated successfully');
+      } catch (error) {
+        console.error('Error updating birthdate:', error);
+        Alert.alert('Error', 'Failed to update birthday');
       }
     }
-  }, [userData?.birthdate]); // Only trigger on birthdate changes
+  };
+
+  // Add this function to handle the save button press
+  const handleSaveBirthdate = () => {
+    setShouldUpdate(true);
+    updateBirthdateWithValues(selectedDay, selectedMonth, selectedYear);
+  };
 
   useEffect(() => {
     console.log('DEBUG: ProfileScreen - Loading profile for:', {
@@ -292,13 +359,27 @@ const ProfileScreen = () => {
     </View>
   );
 
+  // Modify the handlers to prevent updates during initial load
+  const handleMonthSelect = (month) => {
+    if (isSettingInitialValues.current) return;
+    setSelectedMonth(month);
+    setShowMonthPicker(false);
+  };
+
+  const handleDaySelect = (day) => {
+    if (isSettingInitialValues.current) return;
+    setSelectedDay(day);
+    setShowDayPicker(false);
+  };
+
+  const handleYearSelect = (year) => {
+    if (isSettingInitialValues.current) return;
+    setSelectedYear(year);
+    setShowYearPicker(false);
+  };
+
+  // Update your picker render code to use these new handlers
   const renderBirthdateSelectors = () => {
-    console.log('Current state values:', {
-      selectedDay,
-      selectedMonth,
-      selectedYear
-    });
-    
     return (
       <View style={styles.birthdateContainer}>
         <TouchableOpacity 
@@ -328,42 +409,35 @@ const ProfileScreen = () => {
           </Text>
         </TouchableOpacity>
 
+        {/* Add Save button */}
+        {selectedMonth && selectedDay && selectedYear && (
+          <TouchableOpacity 
+            style={styles.saveButton}
+            onPress={handleSaveBirthdate}
+          >
+            <Text style={styles.saveButtonText}>Save Birthday</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Your existing picker modals with updated handlers */}
         {showMonthPicker && renderPicker(
           months,
           selectedMonth,
-          (month) => {
-            console.log('Month selected:', month);
-            setSelectedMonth(month);
-            setShowMonthPicker(false);
-          },
+          handleMonthSelect,
           () => setShowMonthPicker(false)
         )}
 
         {showDayPicker && renderPicker(
           days,
           selectedDay,
-          (day) => {
-            console.log('Day selected:', day);
-            setSelectedDay(day);
-            setShowDayPicker(false);
-            // Pass the new day value directly to updateBirthdate
-            setTimeout(() => {
-              console.log('Updating birthdate with day:', day);
-              updateBirthdateWithValues(day, selectedMonth, selectedYear);
-            }, 100);
-          },
+          handleDaySelect,
           () => setShowDayPicker(false)
         )}
 
         {showYearPicker && renderPicker(
           years,
           selectedYear,
-          (year) => {
-            console.log('Year selected:', year);
-            setSelectedYear(year);
-            setShowYearPicker(false);
-            setTimeout(updateBirthdate, 0);
-          },
+          handleYearSelect,
           () => setShowYearPicker(false)
         )}
       </View>
@@ -858,46 +932,6 @@ const ProfileScreen = () => {
     setShowDatePicker(true);
   };
 
-  const updateBirthdateWithValues = async (day, month, year) => {
-    console.log('Starting updateBirthdate with values:', {
-      day,
-      month,
-      year
-    });
-
-    if (month && day && year) {
-      try {
-        // Ensure day is properly padded
-        const paddedDay = day.toString().padStart(2, '0');
-        const monthIndex = months.indexOf(month);
-        const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
-        
-        const birthdate = `${year}-${paddedMonth}-${paddedDay}`;
-        console.log('About to save birthdate:', birthdate);
-        
-        const userRef = doc(db, 'users', targetUserId);
-        await updateDoc(userRef, {
-          birthdate: birthdate
-        });
-        
-        console.log('Successfully updated Firestore with:', birthdate);
-        
-        // Update userData and state
-        setUserData(prev => ({
-          ...prev,
-          birthdate
-        }));
-        
-        Alert.alert('Success', 'Birthday updated successfully');
-      } catch (error) {
-        console.error('Error updating birthdate:', error);
-        Alert.alert('Error', 'Failed to update birthday');
-      }
-    } else {
-      console.log('Missing required date information');
-    }
-  };
-
   const renderPicker = (items, selectedValue, onSelect, onClose) => {
     return (
       <Modal
@@ -982,38 +1016,6 @@ const ProfileScreen = () => {
       console.log('Missing required date information:', currentState);
     }
   };
-
-  // Add this useEffect to handle birthdate updates
-  useEffect(() => {
-    const updateBirthdate = async () => {
-      if (selectedMonth && selectedDay && selectedYear) {
-        try {
-          console.log('Updating birthdate with:', {
-            month: selectedMonth,
-            day: selectedDay,
-            year: selectedYear
-          });
-          
-          const birthdate = `${selectedYear}-${(months.indexOf(selectedMonth) + 1).toString().padStart(2, '0')}-${selectedDay.toString().padStart(2, '0')}`;
-          
-          const userRef = doc(db, 'users', targetUserId);
-          await updateDoc(userRef, { birthdate });
-          
-          console.log('Successfully updated birthdate with:', birthdate);
-          setUserData(prev => ({
-            ...prev,
-            birthdate
-          }));
-          Alert.alert('Success', 'Birthday updated successfully');
-        } catch (error) {
-          console.error('Error updating birthdate:', error);
-          Alert.alert('Error', 'Failed to update birthday');
-        }
-      }
-    };
-
-    updateBirthdate();
-  }, [selectedMonth, selectedDay, selectedYear]);
 
   if (!user && !profileUserId) {
     return (

@@ -21,6 +21,7 @@ import MainNavigator from './src/navigation/MainNavigator';
 import SupporterManagementScreen from './src/screens/SupporterManagementScreen';
 import AddSupporterScreen from './src/screens/AddSupporterScreen';
 import SupporterDashboardScreen from './src/screens/SupporterDashboardScreen';
+import SubscriptionOptionsScreen from './src/screens/SubscriptionOptionsScreen';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useEffect } from 'react';
 
@@ -147,6 +148,11 @@ export default function App() {
               name="SupporterDashboard"
               component={SupporterDashboardScreen}
               options={{ title: 'Supporter Dashboard' }}
+            />
+            <Stack.Screen
+              name="SubscriptionOptions"
+              component={SubscriptionOptionsScreen}
+              options={{ title: 'Subscription Options' }}
             />
           
 

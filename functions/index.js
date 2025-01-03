@@ -1,86 +1,48 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const stripe = require("stripe")("sk_test_5iwXahUlMmEEjqQkE4KddFI2");
 
-admin.initializeApp();
+// Initialize admin if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
-// Get stripe key from Firebase config
-const stripeSecret = functions.config().stripe.secret_key;
-const stripe = require("stripe")(stripeSecret);
-
-/**
- * Creates a Stripe checkout session
- */
-exports.createCheckoutSession =
-functions.https.onRequest(async (request, response) => {
-  // Enable CORS
-  response.set("Access-Control-Allow-Origin", "*");
-
-  if (request.method === "OPTIONS") {
-    response.set("Access-Control-Allow-Methods", "POST");
-    response.set("Access-Control-Allow-Headers", "Content-Type");
-    response.status(204).send("");
-    return;
-  }
+// Simplified version without any CPU or memory settings
+exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
+  console.log("Webhook received");
 
   try {
-    const {priceId} = request.body;
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: "selfadvocacywins://payment-success",
-      cancel_url: "selfadvocacywins://payment-cancelled",
-    });
-
-    response.json({url: session.url});
-  } catch (error) {
-    console.error("Stripe session creation error:", error);
-    response.status(500).json({
-      error: "Failed to create checkout session",
-    });
-  }
-});
-
-/**
- * Handles Stripe webhook events
- */
-exports.stripeWebhook = functions.https.onRequest(async (request, response) => {
-  const sig = request.headers["stripe-signature"];
-  const endpointSecret = functions.config().stripe.webhook_secret;
-
-  try {
-    const event = stripe.webhooks.constructEvent(
-        request.rawBody || request.body,
-        sig,
-        endpointSecret,
+    const event = await stripe.webhooks.constructEvent(
+        req.rawBody,
+        req.headers["stripe-signature"],
+        "we_1QcuuLKsSm8QZ3xYEUWRJgq2",
     );
 
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object;
-      await updateUserSubscription(session.client_reference_id);
+    const session = event.data.object;
+    const userId = session.client_reference_id;
+
+    if (!userId) {
+      console.error("No userId found in webhook data");
+      return res.status(400).send("No userId found");
     }
 
-    response.json({received: true});
-  } catch (err) {
-    console.error("Webhook Error:", err.message);
-    response.status(400).send(`Webhook Error: ${err.message}`);
+    // Update Firestore
+    const db = admin.firestore();
+    const planType =
+    session.metadata &&
+    session.metadata.planType ? session.metadata.planType : "unknown";
+
+    await db.collection("users").doc(userId).update({
+      subscriptionStatus: "active",
+      subscriptionType: planType,
+      subscriptionId: session.subscription,
+      customerId: session.customer,
+    });
+
+    console.log("Successfully updated user subscription in Firestore");
+    return res.json({received: true});
+  } catch (error) {
+    console.error("Error processing webhook:", error);
+    return res.status(500).send("Webhook processing failed");
   }
 });
-
-/**
- * Updates the user's subscription status in Firestore
- * @param {string} userId - The user's ID
- * @return {Promise<void>}
- */
-async function updateUserSubscription(userId) {
-  const db = admin.firestore();
-  await db.collection("users").doc(userId).update({
-    isSubscribed: true,
-    subscriptionDate: admin.firestore.FieldValue.serverTimestamp(),
-  });
-}
