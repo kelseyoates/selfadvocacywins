@@ -1,288 +1,321 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Alert,
-  ActivityIndicator
-} from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  arrayUnion,
-  arrayRemove,
-  query,
-  collection,
-  where,
-  getDocs
-} from 'firebase/firestore';
-import { USER_TYPES, USER_TYPE_FEATURES } from '../constants/userTypes';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { 
-  grantSupporterAccess, 
-  revokeSupporterAccess, 
-  updateUserRole 
-} from '../services/cometChat';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 const SupporterManagementScreen = () => {
-  const { user } = useAuth();
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userType, setUserType] = useState(null);
-  const [supporters, setSupporters] = useState([]);
-  const [supportedUsers, setSupportedUsers] = useState([]);
-  const [canAddSupporters, setCanAddSupporters] = useState(false);
-
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  const navigation = useNavigation();
 
   const fetchUserData = async () => {
     try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid.toLowerCase()));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setUserType(userData.userType || USER_TYPES.BASIC);
-        setCanAddSupporters(
-          USER_TYPE_FEATURES[userData.userType]?.canHaveSupporters || false
-        );
-
-        // Fetch supporters if user can have them
-        if (userData.supporters) {
-          const supporterPromises = userData.supporters.map(supporterId =>
-            getDoc(doc(db, 'users', supporterId.toLowerCase()))
-          );
-          const supporterDocs = await Promise.all(supporterPromises);
-          setSupporters(
-            supporterDocs
-              .filter(doc => doc.exists())
-              .map(doc => ({ id: doc.id, ...doc.data() }))
-          );
-        }
-
-        // Fetch supported users if user is a supporter
-        if (USER_TYPE_FEATURES[userData.userType]?.canBeSupporter) {
-          const supportedQuery = query(
-            collection(db, 'users'),
-            where('supporters', 'array-contains', user.uid.toLowerCase())
-          );
-          const supportedDocs = await getDocs(supportedQuery);
-          setSupportedUsers(
-            supportedDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-          );
-        }
+      const user = auth.currentUser;
+      if (!user?.uid) {
+        console.log('Waiting for auth...');
+        return;
       }
+
+      const lowercaseUid = user.uid.toLowerCase();
+      console.log('Fetching user data for:', lowercaseUid);
+
+      const userDoc = await getDoc(doc(db, 'users', lowercaseUid));
+      
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        console.log('User data fetched:', data);
+        setUserData(data);
+      } else {
+        console.log('No user document found for lowercase uid:', lowercaseUid);
+        Alert.alert('Error', 'Unable to find your user profile');
+      }
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching user data:', error);
-      Alert.alert('Error', 'Failed to load supporter data');
-    } finally {
+      Alert.alert('Error', 'Failed to load user data');
       setLoading(false);
     }
   };
 
-  const handleAddSupporter = async (supporterId) => {
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Screen focused, refreshing data...');
+      fetchUserData();
+    }, [])
+  );
+
+  // Initial data fetch
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchUserData();
+      } else {
+        console.log('No authenticated user');
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleRemoveSupporter = async (supporter) => {
     try {
-      // ... existing supporter limit checks ...
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const lowercaseUid = user.uid.toLowerCase();
+      const userRef = doc(db, 'users', lowercaseUid);
+
+      // Get current supporters array
+      const userDoc = await getDoc(userRef);
+      if (!userDoc.exists()) {
+        throw new Error('User document not found');
+      }
+
+      // Filter out the removed supporter
+      const updatedSupporters = userData.supporters.filter(
+        s => s.id !== supporter.id
+      );
 
       // Update Firestore
-      await updateDoc(doc(db, 'users', user.uid.toLowerCase()), {
-        supporters: arrayUnion(supporterId.toLowerCase())
+      await updateDoc(userRef, {
+        supporters: updatedSupporters
       });
 
-      await updateDoc(doc(db, 'users', supporterId.toLowerCase()), {
-        supporting: arrayUnion(user.uid.toLowerCase())
-      });
+      // Update local state
+      setUserData(prev => ({
+        ...prev,
+        supporters: updatedSupporters
+      }));
 
-      // Grant CometChat access
-      await grantSupporterAccess(supporterId.toLowerCase(), user.uid.toLowerCase());
-
-      Alert.alert('Success', 'Supporter added successfully');
-      navigation.goBack();
+      console.log('Supporter removed successfully');
     } catch (error) {
-      console.error('Error adding supporter:', error);
-      Alert.alert('Error', 'Failed to add supporter');
+      console.error('Error removing supporter:', error);
+      Alert.alert('Error', 'Failed to remove supporter. Please try again.');
     }
   };
 
-  const handleRemoveSupporter = async (supporterId) => {
-    Alert.alert(
-      'Remove Supporter',
-      'Are you sure you want to remove this supporter?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Update Firestore
-              await updateDoc(doc(db, 'users', user.uid.toLowerCase()), {
-                supporters: arrayRemove(supporterId.toLowerCase())
-              });
-
-              await updateDoc(doc(db, 'users', supporterId.toLowerCase()), {
-                supporting: arrayRemove(user.uid.toLowerCase())
-              });
-
-              // Revoke CometChat access
-              await revokeSupporterAccess(supporterId.toLowerCase(), user.uid.toLowerCase());
-
-              setSupporters(supporters.filter(s => s.id !== supporterId));
-            } catch (error) {
-              console.error('Error removing supporter:', error);
-              Alert.alert('Error', 'Failed to remove supporter');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const renderSupporterItem = ({ item }) => (
-    <View style={styles.supporterItem}>
-      <View style={styles.supporterInfo}>
-        <Text style={styles.supporterName}>{item.username}</Text>
-        <Text style={styles.supporterType}>{item.userType}</Text>
-      </View>
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => handleRemoveSupporter(item.id)}
-      >
-        <MaterialCommunityIcons name="close" size={24} color="#FF4444" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderSupportedUserItem = ({ item }) => (
-    <View style={styles.supporterItem}>
-      <View style={styles.supporterInfo}>
-        <Text style={styles.supporterName}>{item.username}</Text>
-      </View>
-    </View>
-  );
-
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#24269B" />
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  const canManageSupporters = userData?.subscriptionType === 'selfAdvocatePlus' || 
+                             userData?.subscriptionType === 'selfAdvocateDating';
+
+  if (!canManageSupporters) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.subscriptionMessage}>
+          Upgrade to Self Advocate Plus or Dating to add supporters! 💝
+        </Text>
+        <TouchableOpacity 
+          style={styles.upgradeButton}
+          onPress={() => navigation.navigate('Subscription')}
+        >
+          <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {canAddSupporters && (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>My Supporters</Text>
-            {supporters.length > 0 ? (
-              <FlatList
-                data={supporters}
-                renderItem={renderSupporterItem}
-                keyExtractor={item => item.id}
-                style={styles.list}
-              />
-            ) : (
-              <Text style={styles.emptyText}>No supporters added yet</Text>
-            )}
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddSupporter}
-            >
-              <Text style={styles.addButtonText}>Add Supporter</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
+    <ScrollView style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>Manage Your Supporters</Text>
 
-      {USER_TYPE_FEATURES[userType]?.canBeSupporter && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>People I Support</Text>
-          {supportedUsers.length > 0 ? (
-            <FlatList
-              data={supportedUsers}
-              renderItem={renderSupportedUserItem}
-              keyExtractor={item => item.id}
-              style={styles.list}
-            />
+        <Text style={styles.body}>Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. You can remove a supporter at any time.</Text>
+
+
+        
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => navigation.navigate('AddSupporter')}
+        >
+          <Text style={styles.addButtonText}>Add New Supporter +</Text>
+        </TouchableOpacity>
+
+        <View style={styles.supportersList}>
+          <Text style={styles.sectionTitle}>Your Current Supporters</Text>
+          {userData?.supporters?.length > 0 ? (
+            userData.supporters.map((supporter, index) => (
+              <View key={index} style={styles.supporterCard}>
+                <View style={styles.supporterInfo}>
+                  <Image 
+                    source={
+                      supporter.profilePicture 
+                        ? { uri: supporter.profilePicture }
+                        : require('../../assets/default-avatar.png')
+                    }
+                    style={styles.profilePicture}
+                  />
+                  <View style={styles.textContainer}>
+                    <Text style={styles.supporterName}>
+                      {supporter.username || supporter.name || 'Unknown'}
+                    </Text>
+                    <Text style={styles.supporterEmail}>{supporter.email}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity 
+                  style={styles.removeButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Remove Supporter',
+                      `Are you sure you want to remove ${supporter.name}?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { 
+                          text: 'Remove',
+                          style: 'destructive',
+                          onPress: () => handleRemoveSupporter(supporter)
+                        }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.removeButtonText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            ))
           ) : (
-            <Text style={styles.emptyText}>
-              You are not supporting anyone yet
+            <Text style={styles.noSupportersText}>
+              You haven't added any supporters yet.
             </Text>
           )}
         </View>
-      )}
-    </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  section: {
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
+  },
+  content: {
+    padding: 16,
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#666',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 20,
+    textAlign: 'center',
+  },
+  body: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+    color: '#000000',
+  },
+  subscriptionMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginHorizontal: 20,
+    marginTop: 40,
+    color: '#666',
+  },
+  upgradeButton: {
+    backgroundColor: '#24269B',
+    padding: 16,
+    borderRadius: 8,
+    marginHorizontal: 40,
+    marginTop: 20,
+  },
+  upgradeButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  addButton: {
+    backgroundColor: '#24269B',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  addButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#24269B',
+    fontWeight: '600',
+    marginBottom: 12,
   },
-  supporterItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  supportersList: {
+    marginTop: 20,
+  },
+  supporterCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   supporterInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  profilePicture: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  textContainer: {
     flex: 1,
   },
   supporterName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  supporterType: {
+  supporterEmail: {
     fontSize: 14,
     color: '#666',
   },
   removeButton: {
-    padding: 5,
+    backgroundColor: '#ff4444',
+    padding: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-end',
   },
-  addButton: {
-    backgroundColor: '#24269B',
-    padding: 15,
-    borderRadius: 25,
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  addButtonText: {
+  removeButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
-  list: {
-    maxHeight: 300,
-  },
-  emptyText: {
+  noSupportersText: {
     textAlign: 'center',
     color: '#666',
-    marginVertical: 20,
+    marginTop: 20,
+    fontSize: 16,
   },
 });
 

@@ -1,131 +1,96 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator
-} from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  updateDoc,
-  arrayUnion,
-  getDoc
-} from 'firebase/firestore';
-import { USER_TYPES, USER_TYPE_FEATURES } from '../constants/userTypes';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
+import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { auth, db} from '../config/firebase';
 
 const AddSupporterScreen = ({ navigation }) => {
-  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const handleSearch = async () => {
-    if (searchQuery.length < 3) {
-      Alert.alert('Error', 'Please enter at least 3 characters');
+    if (!searchQuery.trim()) {
+      Alert.alert('Please enter a username to search');
       return;
     }
 
     setLoading(true);
     try {
       const usersRef = collection(db, 'users');
-      const q = query(
-        usersRef,
-        where('username', '>=', searchQuery.toLowerCase()),
-        where('username', '<=', searchQuery.toLowerCase() + '\uf8ff')
-      );
+      const lowercaseQuery = searchQuery.toLowerCase();
+      console.log('Searching for username:', lowercaseQuery);
 
+      // Search by username (case insensitive)
+      const q = query(usersRef, where('username', '>=', lowercaseQuery), 
+                               where('username', '<=', lowercaseQuery + '\uf8ff'));
       const querySnapshot = await getDocs(q);
+
       const results = [];
-      
-      for (const doc of querySnapshot.docs) {
+      querySnapshot.forEach((doc) => {
         const userData = doc.data();
-        if (
-          doc.id !== user.uid.toLowerCase() &&
-          USER_TYPE_FEATURES[userData.userType]?.canBeSupporter
-        ) {
-          results.push({ id: doc.id, ...userData });
+        // Don't include current user in results
+        if (doc.id !== auth.currentUser.uid.toLowerCase()) {
+          console.log('Found user:', userData);
+          results.push({
+            id: doc.id,
+            ...userData
+          });
         }
-      }
-      
+      });
+
       setSearchResults(results);
+      if (results.length === 0) {
+        Alert.alert('No users found', 'Try searching with a different username');
+      }
     } catch (error) {
-      console.error('Error searching users:', error);
-      Alert.alert('Error', 'Failed to search users');
-    } finally {
-      setLoading(false);
+      console.error('Search error:', error);
+      Alert.alert('Error', 'Failed to search for users');
     }
+    setLoading(false);
   };
 
-  const handleAddSupporter = async (supporterId) => {
+  const handleAddSupporter = async (selectedUser) => {
     try {
-      // Check if current user can have supporters
-      const userAccess = await checkSubscriptionAccess(user.uid, 'canHaveSupporters');
-      if (!userAccess.hasAccess) {
-        if (userAccess.requiredUpgrade) {
-          Alert.alert(
-            'Subscription Required',
-            'Please upgrade your subscription to add supporters',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Upgrade',
-                onPress: () => navigation.navigate('Subscription')
-              }
-            ]
-          );
-        } else {
-          Alert.alert('Error', userAccess.message);
-        }
+      const currentUserId = auth.currentUser.uid.toLowerCase();
+      console.log('Current user id:', currentUserId);
+      
+      // Get current user's document
+      const userDoc = await getDoc(doc(db, 'users', currentUserId));
+      if (!userDoc.exists()) {
+        throw new Error('User document not found');
+      }
+
+      const currentSupporters = userDoc.data().supporters || [];
+      
+      // Check if already a supporter
+      if (currentSupporters.some(supporter => supporter.id === selectedUser.id)) {
+        Alert.alert('Already Added', 'This person is already one of your supporters');
         return;
       }
 
-      // Check if supporter can support more users
-      const supporterAccess = await checkSubscriptionAccess(supporterId, 'canBeSupporter');
-      if (!supporterAccess.hasAccess) {
-        Alert.alert('Error', supporterAccess.message);
-        return;
-      }
+      // Add new supporter
+      const newSupporter = {
+        name: selectedUser.username || selectedUser.name || 'Unknown',
+        email: selectedUser.email,
+        id: selectedUser.id,
+        username: selectedUser.username,
+        profilePicture: selectedUser.profilePicture || null
+      };
 
-      // Add supporter to user's supporters
-      await updateDoc(doc(db, 'users', user.uid.toLowerCase()), {
-        supporters: arrayUnion(supporterId.toLowerCase())
+      await updateDoc(doc(db, 'users', currentUserId), {
+        supporters: [...currentSupporters, newSupporter]
       });
 
-      // Add user to supporter's supporting list
-      await updateDoc(doc(db, 'users', supporterId.toLowerCase()), {
-        supporting: arrayUnion(user.uid.toLowerCase())
-      });
-
-      Alert.alert('Success', 'Supporter added successfully');
-      navigation.goBack();
+      Alert.alert(
+        'Success',
+        'Supporter added successfully!',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       console.error('Error adding supporter:', error);
       Alert.alert('Error', 'Failed to add supporter');
     }
   };
-
-  const renderUserItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.userItem}
-      onPress={() => handleAddSupporter(item.id)}
-    >
-      <View style={styles.userInfo}>
-        <Text style={styles.username}>{item.username}</Text>
-        <Text style={styles.userType}>{item.userType}</Text>
-      </View>
-      <MaterialCommunityIcons name="plus" size={24} color="#24269B" />
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>
@@ -135,31 +100,39 @@ const AddSupporterScreen = ({ navigation }) => {
           placeholder="Search by username"
           value={searchQuery}
           onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
+          autoCapitalize="none"
         />
-        <TouchableOpacity
+        <TouchableOpacity 
           style={styles.searchButton}
           onPress={handleSearch}
+          disabled={loading}
         >
-          <Text style={styles.searchButtonText}>Search</Text>
+          <Text style={styles.searchButtonText}>
+            {loading ? 'Searching...' : 'Search'}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#24269B" style={styles.loader} />
-      ) : (
-        <FlatList
-          data={searchResults}
-          renderItem={renderUserItem}
-          keyExtractor={item => item.id}
-          style={styles.list}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              {searchQuery ? 'No supporters found' : 'Search for supporters'}
-            </Text>
-          }
-        />
-      )}
+      <FlatList
+        data={searchResults}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={styles.resultItem}
+            onPress={() => handleAddSupporter(item)}
+          >
+            <View>
+              <Text style={styles.userName}>{item.username || 'Unknown Username'}</Text>
+              {item.name && <Text style={styles.userEmail}>{item.name}</Text>}
+            </View>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            {searchQuery ? 'No users found' : 'Search for users by username'}
+          </Text>
+        }
+      />
     </View>
   );
 };
@@ -167,60 +140,52 @@ const AddSupporterScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 15,
+    backgroundColor: '#fff',
+    padding: 16,
   },
   searchContainer: {
     flexDirection: 'row',
-    marginBottom: 15,
+    marginBottom: 16,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 25,
-    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
   },
   searchButton: {
-    backgroundColor: '#24269B',
-    padding: 10,
-    borderRadius: 25,
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 8,
     justifyContent: 'center',
   },
   searchButtonText: {
     color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
+  resultItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  userInfo: {
-    flex: 1,
-  },
-  username: {
+  userName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  userType: {
+  userEmail: {
     fontSize: 14,
     color: '#666',
-  },
-  loader: {
-    marginTop: 20,
   },
   emptyText: {
     textAlign: 'center',
     color: '#666',
     marginTop: 20,
-  },
-  list: {
-    flex: 1,
-  },
+  }
 });
 
 export default AddSupporterScreen; 
