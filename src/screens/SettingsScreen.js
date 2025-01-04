@@ -21,10 +21,6 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
   const [userSubscription, setUserSubscription] = useState(null);
 
-  useEffect(() => {
-    fetchUserSubscription();
-  }, []);
-
   const fetchUserSubscription = async () => {
     try {
       const userId = auth.currentUser.uid.toLowerCase();
@@ -36,6 +32,19 @@ const SettingsScreen = () => {
       console.error('Error fetching subscription:', error);
     }
   };
+
+  // Add focus listener to refresh data
+  useEffect(() => {
+    fetchUserSubscription(); // Initial fetch
+
+    // Set up focus listener
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchUserSubscription(); // Fetch when screen comes into focus
+    });
+
+    // Cleanup
+    return unsubscribe;
+  }, [navigation]);
 
   const handleSubscriptionPress = () => {
     if (!userSubscription || userSubscription === 'selfAdvocateFree') {

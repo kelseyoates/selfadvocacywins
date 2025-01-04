@@ -76,8 +76,8 @@ const ManageSubscriptionScreen = () => {
       <View style={styles.currentPlanCard}>
         <Text style={styles.currentPlanTitle}>Current Plan:</Text>
         <Text style={styles.currentPlanName}>
-          {currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus' :
-           currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating' :
+          {currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus - $10/month' :
+           currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating - $15/month' :
            'Self Advocate - Free'}
         </Text>
       </View>
@@ -100,7 +100,7 @@ const ManageSubscriptionScreen = () => {
           style={styles.planButton}
           onPress={() => handleSubscriptionChange('selfAdvocatePlus')}
         >
-          <Text style={styles.planTitle}>Downgrade to Self Advocate - Plus</Text>
+          <Text style={styles.planTitle}>Switch to Self Advocate - Plus</Text>
           <Text style={styles.planPrice}>$10/month</Text>
           <Text style={styles.planDescription}>You'll lose access to the dating feature. You'll still be able to add supporters, chat, and post wins.</Text>
         </TouchableOpacity>
@@ -112,7 +112,7 @@ const ManageSubscriptionScreen = () => {
           onPress={() => handleSubscriptionChange('selfAdvocateDating')}
         >
           <Text style={styles.planTitle}>Switch to Self Advocate Dating</Text>
-          <Text style={styles.planPrice}>$9.99/month</Text>
+          <Text style={styles.planPrice}>$15/month</Text>
           <Text style={styles.planDescription}>All Plus features and dating access</Text>
         </TouchableOpacity>
       )}
