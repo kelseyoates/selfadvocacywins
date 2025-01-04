@@ -9,7 +9,7 @@ import ChatConversationScreen from './src/screens/ChatConversationScreen';
 import NewChatScreen from './src/screens/NewChatScreen';
 import UserSearchScreen from './src/screens/UserSearchScreen';
 import GroupChatSetupScreen from './src/screens/GroupChatSetupScreen';
-import FindFriendScreen from './src/screens/FindFriendScreen';
+// import FindFriendScreen from './src/screens/FindFriendScreen';
 import FriendResultsScreen from './src/screens/FriendResultsScreen';
 import FindYourFriendsScreen from './src/screens/FindYourFriendsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -93,11 +93,11 @@ export default function App() {
               component={MainNavigator}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
+            {/* <Stack.Screen
               name="FindFriend"
               component={FindFriendScreen}
               options={{ title: 'Find a Friend' }}
-            />
+            /> */}
             <Stack.Screen
               name="FindYourFriends"
               component={FindYourFriendsScreen}

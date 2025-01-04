@@ -1,7 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import TabNavigator from './TabNavigator';
-import FindFriendScreen from '../screens/FindFriendScreen';
+import FindYourFriendsScreen from '../screens/FindYourFriendsScreen';
 import FriendResultsScreen from '../screens/FriendResultsScreen';
 
 const Stack = createStackNavigator();
@@ -16,8 +16,8 @@ const MainNavigator = () => {
         options={{ headerShown: false }}
       />
       <Stack.Screen 
-        name="FindFriend"
-        component={FindFriendScreen}
+        name="FindYourFriends"
+        component={FindYourFriendsScreen}
         options={{ 
           title: 'Find a Friend',
           headerShown: true 

@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { startStripeCheckout } from '../services/stripe';
+import { getDoc, doc } from 'firebase/firestore';
+import { auth, db, storage } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 const SUBSCRIPTION_OPTIONS = {
   selfAdvocate: [
@@ -45,6 +48,45 @@ const SUBSCRIPTION_OPTIONS = {
 };
 
 const SubscriptionOptionsScreen = () => {
+  const { user } = useAuth();
+  const [currentSubscription, setCurrentSubscription] = useState('');
+
+  useEffect(() => {
+    const fetchCurrentSubscription = async () => {
+      console.log('Fetching subscription, user:', user?.uid);
+      
+      if (!user || !user.uid) {
+        console.log('No user found');
+        return;
+      }
+      
+      try {
+        let userRef = doc(db, 'users', user.uid.toLowerCase());
+        let userDoc = await getDoc(userRef);
+        
+        if (!userDoc.exists()) {
+          console.log('Document not found with lowercase ID, trying original case');
+          userRef = doc(db, 'users', user.uid);
+          userDoc = await getDoc(userRef);
+        }
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log('User data found:', userData);
+          setCurrentSubscription(userData.subscriptionType || 'Free');
+        } else {
+          console.log('No user document found in either case');
+          setCurrentSubscription('Free');
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+        setCurrentSubscription('Error loading');
+      }
+    };
+
+    fetchCurrentSubscription();
+  }, [user]);
+
   const handleUpgrade = async (planType) => {
     try {
       console.log('Starting checkout for plan:', planType);
@@ -60,8 +102,15 @@ const SubscriptionOptionsScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>Subscription Options</Text>
+        <Text style={styles.currentSubscription}>
+          Current Plan: {currentSubscription || 'Loading...'}
+        </Text>
+      </View>
+
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Self-Advocate Pddddlans</Text>
+        <Text style={styles.sectionTitle}>Self-Advocate Plans</Text>
         {SUBSCRIPTION_OPTIONS.selfAdvocate.map((option) => (
           <TouchableOpacity
             key={option.id}
@@ -69,7 +118,10 @@ const SubscriptionOptionsScreen = () => {
             onPress={() => handleUpgrade(option.planType)}
           >
             <View style={styles.cardContent}>
-              <Text style={styles.title}>{option.title}</Text>
+              <Text style={styles.title}>
+                {option.title} {'\n'}
+                
+              </Text>
               <Text style={styles.price}>{option.price}</Text>
               <Text style={styles.description}>{option.description}</Text>
             </View>
@@ -86,7 +138,10 @@ const SubscriptionOptionsScreen = () => {
             onPress={() => handleUpgrade(option.planType)}
           >
             <View style={styles.cardContent}>
-              <Text style={styles.title}>{option.title}</Text>
+              <Text style={styles.title}>
+                {option.title} {'\n'}
+               
+              </Text>
               <Text style={styles.price}>{option.price}</Text>
               <Text style={styles.description}>{option.description}</Text>
             </View>
@@ -140,6 +195,27 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: '#666',
+  },
+  currentSubscription: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: 'normal',
+  },
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#24269B',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  currentSubscription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 
