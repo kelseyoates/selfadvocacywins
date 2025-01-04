@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { updateUserDatingProfile } from '../services/userService';
 import QuestionCard from './QuestionCard';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db, storage } from '../config/firebase';
 import { Alert } from 'react-native';
 import { datingQuestions } from '../constants/datingQuestions';
@@ -69,12 +69,30 @@ const DatingProfileForm = ({ userId, initialData = {} }) => {
 
   const handleAnswerSave = async ({ question, answer }) => {
     try {
-      console.log('Starting save process for question:', question);
-      console.log('Answer data:', JSON.stringify(answer, null, 2));
-      console.log('User ID:', userId);
+      console.log('Starting dating answer save:', { question, answer });
       
       const userRef = doc(db, 'users', userId);
-      const updateData = {
+      
+      // First, get the current user data to check existing answers
+      const userDoc = await getDoc(userRef);
+      const userData = userDoc.data();
+      
+      // Check if this question already exists in questionAnswers and remove it
+      if (userData?.questionAnswers) {
+        const filteredAnswers = userData.questionAnswers.filter(
+          a => a.question !== question
+        );
+        
+        // Update questionAnswers without this question
+        await updateDoc(userRef, {
+          questionAnswers: filteredAnswers
+        });
+        
+        console.log('Removed question from questionAnswers');
+      }
+
+      // Now save to datingAnswers
+      const datingAnswerData = {
         [`datingAnswers.${question}`]: {
           answer: {
             question: question,
@@ -88,20 +106,21 @@ const DatingProfileForm = ({ userId, initialData = {} }) => {
         }
       };
 
-      console.log('Attempting to update with data:', JSON.stringify(updateData, null, 2));
+      console.log('Saving to datingAnswers:', JSON.stringify(datingAnswerData, null, 2));
+      await updateDoc(userRef, datingAnswerData);
       
-      await updateDoc(userRef, updateData);
-      console.log('Update successful');
-      
-      // Add a visual confirmation
-      Alert.alert('Success', 'Your answer has been saved!');
+      // Verify the save
+      const updatedDoc = await getDoc(userRef);
+      const savedAnswer = updatedDoc.data()?.datingAnswers?.[question];
+      console.log('Verified saved dating answer:', savedAnswer);
+
+      Alert.alert('Success', 'Your dating profile answer has been saved!');
 
     } catch (error) {
-      console.error('Error details:', error.code, error.message);
-      console.error('Full error:', error);
+      console.error('Error in handleAnswerSave:', error);
       Alert.alert(
         'Error',
-        'Failed to save your answer. Please try again. Error: ' + error.message
+        'Failed to save your dating answer: ' + error.message
       );
     }
   };
