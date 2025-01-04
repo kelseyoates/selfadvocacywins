@@ -105,23 +105,23 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
           let subscriptionType = "selfAdvocateFree";
 
           switch (subscription.items.data[0].price.id) {
-            case "plink_1Qcy2qKsSm8QZ3xYMlW2WoT7":
+            case "price_1QcoKMKsSm8QZ3xYMdZytQWI":
               subscriptionType = "selfAdvocatePlus";
               console.log("Updated to Self Advocate Plus");
               break;
-            case "plink_1Qcy3HKsSm8QZ3xY8CXish4i":
+            case "price_1QcsdUKsSm8QZ3xY5eSumBGO":
               subscriptionType = "selfAdvocateDating";
               console.log("Updated to Self Advocate Dating");
               break;
-            case "plink_1Qcy3hKsSm8QZ3xYbacu5Dtd":
+            case "price_1QZDoHKsSm8QZ3xYSkYVFVKW":
               subscriptionType = "supporter1";
               console.log("Updated to Supporter 1");
               break;
-            case "plink_1Qcy43KsSm8QZ3xYyj686UkD":
+            case "price_1QcsYoKsSm8QZ3xY16MyY6zn":
               subscriptionType = "supporter5";
               console.log("Updated to Supporter 5");
               break;
-            case "plink_1Qcy4QKsSm8QZ3xYp3aXfVVT":
+            case "price_1Qcsa4KsSm8QZ3xYfQPyK6AA":
               subscriptionType = "supporter10";
               console.log("Updated to Supporter 10");
               break;
