@@ -61,7 +61,7 @@ const SubscriptionOptionsScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Self-Advocate Plans</Text>
+        <Text style={styles.sectionTitle}>Self-Advocate Pddddlans</Text>
         {SUBSCRIPTION_OPTIONS.selfAdvocate.map((option) => (
           <TouchableOpacity
             key={option.id}

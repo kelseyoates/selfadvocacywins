@@ -27,6 +27,8 @@ import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import DatingProfileForm from '../components/DatingProfileForm';
+
 
 
 const US_STATES = [
@@ -53,6 +55,8 @@ const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedState, setSelectedState] = useState('');
+
+  
 
   // Add birthdate state variables
   const [showMonthPicker, setShowMonthPicker] = useState(false);
@@ -82,6 +86,9 @@ const ProfileScreen = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [initialBirthdate, setInitialBirthdate] = useState(null);
   const [shouldUpdate, setShouldUpdate] = useState(false);
+
+
+
 
   // Add a ref to track if this is the initial set of values
   const isSettingInitialValues = useRef(true);
@@ -1120,6 +1127,16 @@ const ProfileScreen = () => {
         </View>
       </View>
 
+      {userData?.subscriptionType === 'selfAdvocateDating' && (
+        <View style={styles.datingProfileContainer}>
+          <Text style={styles.sectionTitle}>Dating Profile</Text>
+          <DatingProfileForm 
+            userId={targetUserId}
+            initialData={userData.datingProfile}
+          />
+        </View>
+      )}
+
       {!profileUserId ? ( // Only show these sections for own profile
         <>
           {renderStateSelector()}
@@ -1832,6 +1849,21 @@ headerButtonText: {
   color: '#24269B',
   fontSize: 12,
   marginTop: 2,
+},
+
+datingProfileContainer: {
+  backgroundColor: '#fff',
+  padding: 15,
+  marginHorizontal: 10,
+  marginVertical: 5,
+  borderRadius: 10,
+  elevation: 2,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  borderWidth: 1,
+  borderColor: '#000000',
 },
 });
 
