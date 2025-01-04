@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,37 @@ import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
+  const [userSubscription, setUserSubscription] = useState(null);
+
+  useEffect(() => {
+    fetchUserSubscription();
+  }, []);
+
+  const fetchUserSubscription = async () => {
+    try {
+      const userId = auth.currentUser.uid.toLowerCase();
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        setUserSubscription(userDoc.data().subscriptionType);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+  };
+
+  const handleSubscriptionPress = () => {
+    if (!userSubscription || userSubscription === 'selfAdvocateFree') {
+      navigation.navigate('SubscriptionOptions');
+    } else {
+      navigation.navigate('ManageSubscription');
+    }
+  };
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -66,21 +93,23 @@ const SettingsScreen = () => {
 
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => navigation.navigate('SubscriptionOptions')}
+            onPress={handleSubscriptionPress}
           >
             <Image 
-              source={require('../../assets/upgrade.png')}
+              source={require('../../assets/credit-card.png')}
               style={styles.menuIcon}
             />
-            <Text style={styles.menuItemText}>Upgrade</Text>
+            <Text style={styles.menuItemText}>
+              {!userSubscription || userSubscription === 'selfAdvocateFree' 
+                ? 'Upgrade Subscription' 
+                : 'Manage Subscription'}
+            </Text>
             <MaterialCommunityIcons 
               name="chevron-right" 
               size={24} 
               color="#666" 
             />
           </TouchableOpacity>
-
-
 
           <TouchableOpacity 
             style={styles.menuItem}
@@ -97,8 +126,7 @@ const SettingsScreen = () => {
               color="#666" 
             />
           </TouchableOpacity>
-
-
+          
         </View>
       </View>
 
@@ -167,6 +195,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signOutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  settingButton: {
+    backgroundColor: '#ff4444',
+    margin: 16,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  settingButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

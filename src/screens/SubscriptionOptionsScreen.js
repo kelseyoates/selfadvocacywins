@@ -5,6 +5,7 @@ import { getDoc, doc } from 'firebase/firestore';
 import { auth, db, storage } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 
 const SUBSCRIPTION_OPTIONS = {
   selfAdvocate: [
@@ -82,6 +83,7 @@ const SubscriptionCard = ({ title, price, features, titleBackgroundColor, planTy
 const SubscriptionOptionsScreen = () => {
   const { user } = useAuth();
   const [currentSubscription, setCurrentSubscription] = useState('');
+  const navigation = useNavigation();
 
   useEffect(() => {
     const fetchCurrentSubscription = async () => {
@@ -141,28 +143,30 @@ const SubscriptionOptionsScreen = () => {
         </Text>
       </View>
 
+{/* 
+      <View style={styles.buttonContainer}>
+      <View style={styles.buttonShadow} />
+      <TouchableOpacity 
+        style={styles.findDateButton} 
+        onPress={() => navigation.navigate('ManageSubscription')}
+      >
+        <View style={styles.buttonContent}>
+          <Text style={styles.buttonDateText}>Manage Subscription</Text>
+          <Image 
+            source={require('../../assets/find-a-date.png')} 
+            style={styles.buttonIcon}
+          />
+        </View>
+      </TouchableOpacity>
+    </View> */}
+
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Self-Advocate Plans</Text>
-        {/* {SUBSCRIPTION_OPTIONS.selfAdvocate.map((option) => (
-          <TouchableOpacity
-            key={option.id}
-            style={styles.card}
-            onPress={() => handleUpgrade(option.planType)}
-          >
-            <View style={styles.cardContent}>
-              <Text style={styles.title}>
-                {option.title} {'\n'}
-                
-              </Text>
-              <Text style={styles.price}>{option.price}</Text>
-              <Text style={styles.description}>{option.description}</Text>
-            </View>
-          </TouchableOpacity>
-        ))} */}
-
+  
 
 <SubscriptionCard
-        title="Self-Advocate - Basic"
+        title="Self-Advocate - Plus"
         price="$10/month"
         titleBackgroundColor="#ffffff"
         planType="selfAdvocatePlus"
@@ -439,6 +443,42 @@ const styles = StyleSheet.create({
     marginRight: 10,
     resizeMode: 'contain',
   },
+  findDateButton: {
+    backgroundColor: '#F2C8E4',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    width: 300,
+    height: 120,
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '600',
+  },
+
+  buttonIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 15,
+  }
 });
 
 export default SubscriptionOptionsScreen; 

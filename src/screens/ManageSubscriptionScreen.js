@@ -1,0 +1,217 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+const ManageSubscriptionScreen = () => {
+  const navigation = useNavigation();
+  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserSubscription();
+  }, []);
+
+  const fetchUserSubscription = async () => {
+    try {
+      const userId = auth.currentUser.uid.toLowerCase();
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        setCurrentSubscription(userDoc.data().subscriptionType);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+      Alert.alert('Error', 'Failed to load subscription information');
+      setLoading(false);
+    }
+  };
+
+  const handleSubscriptionChange = async (newType) => {
+    try {
+      // For all subscription changes, use the customer portal
+      const portalLink = 'https://billing.stripe.com/p/login/test_7sI025bCyfKp9ryfYY';
+      
+      const supported = await Linking.canOpenURL(portalLink);
+      
+      if (supported) {
+        await Linking.openURL(portalLink);
+        Alert.alert(
+          'Subscription Management',
+          'After making changes to your subscription, please return to the app and restart it to see your updated features.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'MainApp' }],
+                });
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Could not open subscription management page');
+      }
+    } catch (error) {
+      console.error('Subscription change error:', error);
+      Alert.alert('Error', 'Failed to open subscription management');
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Loading subscription info...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Manage Your Subscription</Text>
+      
+      <View style={styles.currentPlanCard}>
+        <Text style={styles.currentPlanTitle}>Current Plan:</Text>
+        <Text style={styles.currentPlanName}>
+          {currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus' :
+           currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating' :
+           'Self Advocate - Free'}
+        </Text>
+      </View>
+
+      <Text style={styles.sectionTitle}>Change Your Plan</Text>
+
+      {currentSubscription !== 'selfAdvocateFree' && (
+        <TouchableOpacity 
+          style={styles.planButton}
+          onPress={() => handleSubscriptionChange('selfAdvocateFree')}
+        >
+          <Text style={styles.planTitle}>Downgrade to Self Advocate - Free</Text>
+          <Text style={styles.planPrice}>Free</Text>
+          <Text style={styles.planDescription}>You'll lose access to the dating feature and supporters. You'll still be able to chat and post wins.</Text>
+        </TouchableOpacity>
+      )}
+
+      {currentSubscription !== 'selfAdvocatePlus' && (
+        <TouchableOpacity 
+          style={styles.planButton}
+          onPress={() => handleSubscriptionChange('selfAdvocatePlus')}
+        >
+          <Text style={styles.planTitle}>Downgrade to Self Advocate - Plus</Text>
+          <Text style={styles.planPrice}>$10/month</Text>
+          <Text style={styles.planDescription}>You'll lose access to the dating feature. You'll still be able to add supporters, chat, and post wins.</Text>
+        </TouchableOpacity>
+      )}
+
+      {currentSubscription !== 'selfAdvocateDating' && (
+        <TouchableOpacity 
+          style={styles.planButton}
+          onPress={() => handleSubscriptionChange('selfAdvocateDating')}
+        >
+          <Text style={styles.planTitle}>Switch to Self Advocate Dating</Text>
+          <Text style={styles.planPrice}>$9.99/month</Text>
+          <Text style={styles.planDescription}>All Plus features and dating access</Text>
+        </TouchableOpacity>
+      )}
+
+      {currentSubscription !== 'selfAdvocateFree' && (
+        <TouchableOpacity 
+          style={styles.cancelButton}
+          onPress={() => handleSubscriptionChange('cancel')}
+        >
+          <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#333',
+  },
+  currentPlanCard: {
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 30,
+  },
+  currentPlanTitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+  },
+  currentPlanName: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 20,
+    color: '#333',
+  },
+  planButton: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.0,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#000000',
+  },
+  planTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  planPrice: {
+    fontSize: 16,
+    color: '#FF69B4',
+    fontWeight: '500',
+  },
+  cancelButton: {
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 20,
+    backgroundColor: '#f8f8f8',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#ff4444',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  planDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+});
+
+export default ManageSubscriptionScreen; 

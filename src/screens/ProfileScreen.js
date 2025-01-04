@@ -315,44 +315,43 @@ const ProfileScreen = () => {
         )}
 
         <Modal
-          animationType="slide"
-          transparent={true}
           visible={modalVisible}
+          transparent={true}
+          animationType="slide"
           onRequestClose={() => setModalVisible(false)}
         >
-          <View style={styles.modalView}>
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setModalVisible(false)}
+          >
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Your State</Text>
-              <ScrollView>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Your State</Text>
+                <TouchableOpacity 
+                  style={styles.closeModalButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.closeModalButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.stateListContainer}>
                 {US_STATES.map((state) => (
                   <TouchableOpacity
                     key={state}
-                    style={[
-                      styles.stateOption,
-                      selectedState === state && styles.selectedStateOption
-                    ]}
+                    style={styles.stateItem}
                     onPress={() => {
                       setSelectedState(state);
                       setModalVisible(false);
                     }}
                   >
-                    <Text style={[
-                      styles.stateOptionText,
-                      selectedState === state && styles.selectedStateOptionText
-                    ]}>
-                      {state}
-                    </Text>
+                    <Text style={styles.stateItemText}>{state}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         </Modal>
       </View>
     );
@@ -1334,26 +1333,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  modalView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    width: '80%',
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#24269B',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
+  // modalView: {
+  //   flex: 1,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   backgroundColor: 'rgba(0,0,0,0.5)',
+  // },
+  // modalContent: {
+  //   backgroundColor: '#fff',
+  //   borderRadius: 10,
+  //   padding: 20,
+  //   width: '80%',
+  //   maxHeight: '80%',
+  // },
+  // modalTitle: {
+  //   fontSize: 18,
+  //   fontWeight: '600',
+  //   color: '#24269B',
+  //   marginBottom: 15,
+  //   textAlign: 'center',
+  // },
   stateOption: {
     padding: 15,
     borderBottomWidth: 1,
@@ -1395,7 +1394,9 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   commentModalContent: {
     backgroundColor: '#fff',

@@ -22,6 +22,7 @@ import AddSupporterScreen from './src/screens/AddSupporterScreen';
 import SupporterDashboardScreen from './src/screens/SupporterDashboardScreen';
 import SubscriptionOptionsScreen from './src/screens/SubscriptionOptionsScreen';
 import FindADateScreen from './src/screens/FindADateScreen';
+import ManageSubscriptionScreen from './src/screens/ManageSubscriptionScreen';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useEffect } from 'react';
 
@@ -158,6 +159,11 @@ export default function App() {
               name="FindADate"
               component={FindADateScreen}
               options={{ title: 'Find a Date' }}
+            />
+            <Stack.Screen
+              name="ManageSubscription"
+              component={ManageSubscriptionScreen}
+              options={{ title: 'Manage Subscription' }}
             />
           
 

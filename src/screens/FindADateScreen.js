@@ -410,6 +410,7 @@ const styles = StyleSheet.create({
     color: '#24269B',
     marginBottom: 15,
   },
+  
   questionContainer: {
     marginBottom: 20,
     marginTop: 20,
@@ -421,6 +422,7 @@ const styles = StyleSheet.create({
     color: '#24269B',
     marginBottom: 15,
   },
+
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -431,6 +433,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#24269B',
   },
+
   wordsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -450,8 +453,6 @@ const styles = StyleSheet.create({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-
-
   },
   selectedWord: {
     backgroundColor: '#24269B',
