@@ -519,12 +519,6 @@ const ProfileScreen = () => {
       presetWords: ["bowling", "cooking", "dancing", "dining out", "hiking", "movies", "music", "sports", "walking", "watching movies"],
       isDatingQuestion: true
     },
-    {
-      id: 10,
-      question: "I would like to meet people in these states 🗺️:",
-      presetWords: ["California", "Florida", "Illinois", "Massachusetts", "New York", "Texas"],
-      isDatingQuestion: true
-    }
   ];
 
   const getLatestAnswer = (question) => {

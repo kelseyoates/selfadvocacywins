@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Alert,
 } from 'react-native';
 import { searchIndex, adminIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
@@ -38,6 +39,16 @@ const allQuestions = [
   {
     id: 'dating_3',
     question: "My favorite date activities are 🎉:",
+    words: [
+      "watching movies", "dining out", "cooking together", 
+      "playing games", "sports", "shopping", "hiking", 
+      "visiting museums", "trying new things", "traveling", 
+      "going to events", "listening to music"
+    ]
+  },
+  {
+    id: 'dating_4',
+    question: "I would like to meet people in these places 🗺️:",
     words: [
       "watching movies", "dining out", "cooking together", 
       "playing games", "sports", "shopping", "hiking", 
@@ -188,6 +199,32 @@ const FindADateScreen = ({ navigation }) => {
     setupAlgolia();
   }, []);
 
+  const handleMinAgeChange = (text) => {
+    const newMin = parseInt(text) || 18;
+    if (newMin < 18) {
+      Alert.alert('Invalid Age', 'Minimum age must be at least 18');
+      return;
+    }
+    if (newMin > selectedAgeRange.max) {
+      Alert.alert('Invalid Age', 'Minimum age cannot be greater than maximum age');
+      return;
+    }
+    setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
+  };
+
+  const handleMaxAgeChange = (text) => {
+    const newMax = parseInt(text) || 99;
+    if (newMax > 99) {
+      Alert.alert('Invalid Age', 'Maximum age cannot exceed 99');
+      return;
+    }
+    if (newMax < selectedAgeRange.min) {
+      Alert.alert('Invalid Age', 'Maximum age cannot be less than minimum age');
+      return;
+    }
+    setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
+  };
+
   const renderUserCard = (user) => (
     <TouchableOpacity 
       key={user.id} 
@@ -227,52 +264,50 @@ const FindADateScreen = ({ navigation }) => {
       <View style={styles.searchSection}>
         <Text style={styles.sectionTitle}>Age Range</Text>
         <View style={styles.ageRangeContainer}>
-          <View style={styles.ageInput}>
-            <Text style={styles.ageLabel}>Min Age:</Text>
-            <TouchableOpacity
-              style={styles.ageButton}
-              onPress={() => {
-                const newMin = Math.max(18, (selectedAgeRange?.min || 18) - 1);
-                setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
-              }}
-            >
-              <Text style={styles.ageButtonText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.ageValue}>{selectedAgeRange?.min || 18}</Text>
-            <TouchableOpacity
-              style={styles.ageButton}
-              onPress={() => {
-                const newMin = Math.min((selectedAgeRange?.max || 99) - 1, (selectedAgeRange?.min || 18) + 1);
-                setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
-              }}
-            >
-              <Text style={styles.ageButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
+          <View style={styles.ageInputRow}>
+            <View style={styles.ageInputContainer}>
+              <Text style={styles.ageLabel}>Min Age:</Text>
+              <TextInput
+                style={styles.ageInput}
+                value={selectedAgeRange.min.toString()}
+                onChangeText={handleMinAgeChange}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="18"
+              />
+            </View>
 
-          <View style={styles.ageInput}>
-            <Text style={styles.ageLabel}>Max Age:</Text>
-            <TouchableOpacity
-              style={styles.ageButton}
-              onPress={() => {
-                const newMax = Math.max((selectedAgeRange?.min || 18) + 1, (selectedAgeRange?.max || 99) - 1);
-                setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
-              }}
-            >
-              <Text style={styles.ageButtonText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.ageValue}>{selectedAgeRange?.max || 99}</Text>
-            <TouchableOpacity
-              style={styles.ageButton}
-              onPress={() => {
-                const newMax = Math.min(99, (selectedAgeRange?.max || 99) + 1);
-                setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
-              }}
-            >
-              <Text style={styles.ageButtonText}>+</Text>
-            </TouchableOpacity>
+            <View style={styles.ageSeparator}>
+              <Text style={styles.ageSeparatorText}>to</Text>
+            </View>
+
+            <View style={styles.ageInputContainer}>
+              <Text style={styles.ageLabel}>Max Age:</Text>
+              <TextInput
+                style={styles.ageInput}
+                value={selectedAgeRange.max.toString()}
+                onChangeText={handleMaxAgeChange}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="99"
+              />
+            </View>
           </View>
         </View>
+
+
+
+        <View style={styles.searchSection}>
+        <Text style={styles.sectionTitle}>Search by Text</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Type in topics to search..."
+          value={textAnswer}
+          onChangeText={setTextAnswer}
+          multiline
+        />
+      </View>
+
 
         <Text style={styles.sectionTitle}>Select Words</Text>
         <View style={styles.wordsContainer}>
@@ -303,16 +338,7 @@ const FindADateScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.searchSection}>
-        <Text style={styles.sectionTitle}>Search by Text</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter topics to search..."
-          value={textAnswer}
-          onChangeText={setTextAnswer}
-          multiline
-        />
-      </View>
+    
 
       {error && <Text style={styles.error}>{error}</Text>}
       
@@ -581,39 +607,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ageRangeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
     backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
-  ageInput: {
+  ageInputRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  ageInputContainer: {
+    flex: 1,
   },
   ageLabel: {
     fontSize: 16,
-    color: '#24269B',
     marginBottom: 8,
+    color: '#000000',
   },
-  ageButton: {
-    backgroundColor: '#24269B',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: 8,
+  ageInput: {
+    borderWidth: 1,
+    borderColor: '#24269B',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    textAlign: 'center',
+    backgroundColor: '#f8f8f8',
   },
-  ageButtonText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
+  ageSeparator: {
+    paddingHorizontal: 16,
   },
-  ageValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#24269B',
+  ageSeparatorText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
 

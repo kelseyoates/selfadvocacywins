@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Alert,
 } from 'react-native';
 import { searchIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
@@ -22,6 +23,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const [users, setUsers] = useState([]);
   const currentUser = auth.currentUser;
+  const [selectedAgeRange, setSelectedAgeRange] = useState({ min: 18, max: 99 });
 
   // Handle state selection
   const handleStateSelect = (state) => {
@@ -132,6 +134,32 @@ const FindYourFriendsScreen = ({ navigation }) => {
     setupAlgolia();
   }, []);
 
+  const handleMinAgeChange = (text) => {
+    const newMin = parseInt(text) || 18;
+    if (newMin < 18) {
+      Alert.alert('Invalid Age', 'Minimum age must be at least 18');
+      return;
+    }
+    if (newMin > selectedAgeRange.max) {
+      Alert.alert('Invalid Age', 'Minimum age cannot be greater than maximum age');
+      return;
+    }
+    setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
+  };
+
+  const handleMaxAgeChange = (text) => {
+    const newMax = parseInt(text) || 99;
+    if (newMax > 99) {
+      Alert.alert('Invalid Age', 'Maximum age cannot exceed 99');
+      return;
+    }
+    if (newMax < selectedAgeRange.min) {
+      Alert.alert('Invalid Age', 'Maximum age cannot be less than minimum age');
+      return;
+    }
+    setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
+  };
+
   const renderUserCard = (user) => (
     <TouchableOpacity 
       key={user.id} 
@@ -168,6 +196,42 @@ const FindYourFriendsScreen = ({ navigation }) => {
         onStateChange={setSelectedState}
       />
       
+
+ {/* Age Range Selection */}
+ <Text style={styles.sectionTitle}>Age Range</Text>
+ <View style={styles.ageRangeContainer}>
+        <View style={styles.ageInputRow}>
+          <View style={styles.ageInputContainer}>
+            <Text style={styles.ageLabel}>Min Age:</Text>
+            <TextInput
+              style={styles.ageInput}
+              value={selectedAgeRange.min.toString()}
+              onChangeText={handleMinAgeChange}
+              keyboardType="number-pad"
+              maxLength={2}
+              placeholder="18"
+            />
+          </View>
+
+          <View style={styles.ageSeparator}>
+            <Text style={styles.ageSeparatorText}>to</Text>
+          </View>
+
+          <View style={styles.ageInputContainer}>
+            <Text style={styles.ageLabel}>Max Age:</Text>
+            <TextInput
+              style={styles.ageInput}
+              value={selectedAgeRange.max.toString()}
+              onChangeText={handleMaxAgeChange}
+              keyboardType="number-pad"
+              maxLength={2}
+              placeholder="99"
+            />
+          </View>
+        </View>
+      </View>
+
+
       <View style={styles.searchSection}>
         <Text style={styles.sectionTitle}>Search by Text</Text>
         <TextInput
@@ -211,6 +275,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
         </View>
       </View>
 
+     
 
       {error && <Text style={styles.error}>{error}</Text>}
       
@@ -282,6 +347,7 @@ const styles = StyleSheet.create({
     color: '#24269B',
     marginBottom: 15,
   },
+  
   questionContainer: {
     marginBottom: 20,
     marginTop: 20,
@@ -293,6 +359,7 @@ const styles = StyleSheet.create({
     color: '#24269B',
     marginBottom: 15,
   },
+
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -303,6 +370,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#24269B',
   },
+
   wordsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -322,8 +390,6 @@ const styles = StyleSheet.create({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-
-
   },
   selectedWord: {
     backgroundColor: '#24269B',
@@ -477,6 +543,52 @@ const styles = StyleSheet.create({
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  ageRangeContainer: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+  ageInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  ageInputContainer: {
+    flex: 1,
+  },
+  ageLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    color: '#000000',
+  },
+  ageInput: {
+    borderWidth: 1,
+    borderColor: '#24269B',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    textAlign: 'center',
+    backgroundColor: '#f8f8f8',
+  },
+  ageSeparator: {
+    paddingHorizontal: 16,
+  },
+  ageSeparatorText: {
+    fontSize: 16,
+    color: '#666',
   },
 });
 
