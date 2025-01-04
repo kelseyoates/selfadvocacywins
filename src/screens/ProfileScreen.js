@@ -22,7 +22,7 @@ import globalStyles from '../styles/styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';
 import { CometChat } from '@cometchat-pro/react-native-chat';
@@ -517,7 +517,7 @@ const ProfileScreen = () => {
     {
       id: 2,
       question: "What I like to do for fun 🎉:",
-      presetWords: ["Special Olympics", "Best Buddies", "sports", "theater", "watching movies", "art", "dancing", "playing with my dog", "gaming", "listening to music", "hang with friends", "traveling", "reading", "cooking", "photography", "writing", "playing with my dog"]
+      presetWords: ["Special Olympics", "Best Buddies", "sports", "theater", "watching movies", "art", "dancing", "playing with my dog", "gaming", "listening to music", "hang with friends", "traveling", "reading", "cooking", "photography", "writing"]
     },
     {
       id: 3,
@@ -1024,6 +1024,29 @@ const ProfileScreen = () => {
     }
   };
 
+  useFocusEffect(
+    React.useCallback(() => {
+      const refreshUserData = async () => {
+        if (!user?.uid) return;
+        
+        try {
+          const userRef = doc(db, 'users', user.uid.toLowerCase());
+          const userDoc = await getDoc(userRef);
+          
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserData(data);
+            console.log('Refreshed user data:', data);
+          }
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
+        }
+      };
+
+      refreshUserData();
+    }, [user])
+  );
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -1132,7 +1155,10 @@ const ProfileScreen = () => {
           <Text style={styles.sectionTitle}>Dating Profile</Text>
           <DatingProfileForm 
             userId={targetUserId}
-            initialData={userData.datingProfile}
+            initialData={{
+              ...userData.datingProfile,
+              datingAnswers: userData.datingAnswers
+            }}
           />
         </View>
       )}

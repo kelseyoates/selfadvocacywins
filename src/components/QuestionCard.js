@@ -19,7 +19,7 @@ import { Video } from 'expo-av';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // Increase to 50MB limit
 const MAX_DURATION = 120; // Increase to 120 seconds (2 minutes)
 
-const QuestionCard = ({ question, presetWords, onSave, existingAnswer, readOnly }) => {
+const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQuestion = false }) => {
   console.log('Question data received:', question);
 
   const [mode, setMode] = useState('text');
@@ -391,6 +391,35 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, readOnly 
 
   const toggleVideo = () => {
     setShowVideo(!showVideo);
+  };
+
+  const handleSave = async () => {
+    try {
+      let saveData = {
+        selectedWords: selectedWords || [], // Ensure it's always an array
+        textAnswer: textAnswer || '',       // Ensure it's always a string
+        timestamp: new Date().toISOString()
+      };
+
+      if (mode === 'video' && video) {
+        setUploading(true);
+        // ... video upload code ...
+        
+        saveData = {
+          ...saveData,
+          mediaType: 'video',
+          mediaUrl: videoUrl
+        };
+      }
+
+      onSave(saveData);
+      setIsEditing(false);
+      setUploading(false);
+    } catch (error) {
+      console.error('Error in QuestionCard save:', error);
+      Alert.alert('Error', 'Failed to save your answer. Please try again.');
+      setUploading(false);
+    }
   };
 
   return (

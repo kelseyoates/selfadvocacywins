@@ -1,18 +1,15 @@
-// Add this function to update dating profile fields
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+
 export const updateUserDatingProfile = async (userId, datingProfile) => {
   try {
-    await firebase.firestore()
-      .collection('users')
-      .doc(userId)
-      .update({
-        datingProfile: {
-          relationshipStatus: datingProfile.relationshipStatus,
-          lookingFor: datingProfile.lookingFor,
-          datingInterests: datingProfile.datingInterests || [],
-          datePreferences: datingProfile.datePreferences || {},
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        }
-      });
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      gender: datingProfile.gender,
+      lookingFor: datingProfile.lookingFor,
+      ageRange: datingProfile.ageRange,
+      datingAnswers: datingProfile.datingAnswers
+    });
     return true;
   } catch (error) {
     console.error('Error updating dating profile:', error);

@@ -9,7 +9,6 @@ import ChatConversationScreen from './src/screens/ChatConversationScreen';
 import NewChatScreen from './src/screens/NewChatScreen';
 import UserSearchScreen from './src/screens/UserSearchScreen';
 import GroupChatSetupScreen from './src/screens/GroupChatSetupScreen';
-// import FindFriendScreen from './src/screens/FindFriendScreen';
 import FriendResultsScreen from './src/screens/FriendResultsScreen';
 import FindYourFriendsScreen from './src/screens/FindYourFriendsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -22,6 +21,7 @@ import SupporterManagementScreen from './src/screens/SupporterManagementScreen';
 import AddSupporterScreen from './src/screens/AddSupporterScreen';
 import SupporterDashboardScreen from './src/screens/SupporterDashboardScreen';
 import SubscriptionOptionsScreen from './src/screens/SubscriptionOptionsScreen';
+import FindADateScreen from './src/screens/FindADateScreen';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useEffect } from 'react';
 
@@ -153,6 +153,11 @@ export default function App() {
               name="SubscriptionOptions"
               component={SubscriptionOptionsScreen}
               options={{ title: 'Subscription Options' }}
+            />
+            <Stack.Screen
+              name="FindADate"
+              component={FindADateScreen}
+              options={{ title: 'Find a Date' }}
             />
           
 

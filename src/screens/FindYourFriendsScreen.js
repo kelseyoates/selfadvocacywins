@@ -211,22 +211,10 @@ const FindYourFriendsScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* <TouchableOpacity 
-        style={styles.searchButton}
-        onPress={searchUsers}
-        disabled={loading}
-      >
-        <Text style={styles.searchButtonText}>
-          {loading ? 'Searching...' : 'Search'}
-        </Text>
-      </TouchableOpacity> */}
 
       {error && <Text style={styles.error}>{error}</Text>}
       
-      {/* <View style={styles.resultsContainer}>
-        <Text style={styles.sectionTitle}>Results</Text>
-        {users.map(user => renderUserCard(user))}
-      </View> */}
+  
 
       <View style={styles.resultsContainer}>
         

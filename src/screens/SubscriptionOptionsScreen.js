@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { startStripeCheckout } from '../services/stripe';
 import { getDoc, doc } from 'firebase/firestore';
 import { auth, db, storage } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const SUBSCRIPTION_OPTIONS = {
   selfAdvocate: [
     {
       id: 'selfAdvocatePlus',
       title: 'Self-Advocate Plus',
-      price: '$4.99/month',
+      price: '$10/month',
       description: 'Access to supporters',
       planType: 'selfAdvocatePlus'
     },
     {
       id: 'selfAdvocateDating',
       title: 'Self-Advocate Dating',
-      price: '$9.99/month',
+      price: '$15/month',
       description: 'Access to supporters and dating',
       planType: 'selfAdvocateDating'
     }
@@ -26,26 +27,57 @@ const SUBSCRIPTION_OPTIONS = {
     {
       id: 'supporterOne',
       title: 'Supporter One',
-      price: '$1/month',
+      price: '$10/month',
       description: 'Support one self-advocate',
       planType: 'supporterOne'
     },
     {
       id: 'supporterFive',
       title: 'Supporter Five',
-      price: '$5/month',
+      price: '$15/month',
       description: 'Support up to five self-advocates',
       planType: 'supporterFive'
     },
     {
       id: 'supporterTen',
       title: 'Supporter Ten',
-      price: '$10/month',
-      description: 'Support up toten self-advocates',
+      price: '$20/month',
+      description: 'Support up to ten self-advocates',
       planType: 'supporterTen'
     }
   ]
 };
+
+const SubscriptionCard = ({ title, price, features, titleBackgroundColor, planType, onUpgrade }) => (
+  <View style={styles.card}>
+    <View style={[styles.titleContainer, { backgroundColor: titleBackgroundColor }]}>
+      <Text style={styles.title}>{title}</Text>
+    </View>
+    <Text style={styles.price}>{price}</Text>
+    
+    <View style={styles.featuresContainer}>
+      {features.map((feature, index) => (
+        <View key={index} style={styles.featureRow}>
+          <Image 
+            source={feature.image} 
+            style={styles.featureIcon}
+          />
+          <Text style={styles.featureText}>{feature.text}</Text>
+        </View>
+      ))}
+    </View>
+    
+    <TouchableOpacity 
+      style={styles.selectButton}
+      onPress={() => onUpgrade(planType)}
+    >
+      <View style={styles.buttonContent}>
+        <Text style={styles.selectButtonText}>Select Plan</Text>
+        <Icon name="arrow-forward" size={24} color="#FFFFFF" />
+      </View>
+    </TouchableOpacity>
+  </View>
+);
 
 const SubscriptionOptionsScreen = () => {
   const { user } = useAuth();
@@ -111,7 +143,7 @@ const SubscriptionOptionsScreen = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Self-Advocate Plans</Text>
-        {SUBSCRIPTION_OPTIONS.selfAdvocate.map((option) => (
+        {/* {SUBSCRIPTION_OPTIONS.selfAdvocate.map((option) => (
           <TouchableOpacity
             key={option.id}
             style={styles.card}
@@ -126,12 +158,72 @@ const SubscriptionOptionsScreen = () => {
               <Text style={styles.description}>{option.description}</Text>
             </View>
           </TouchableOpacity>
-        ))}
+        ))} */}
+
+
+<SubscriptionCard
+        title="Self-Advocate - Basic"
+        price="$10/month"
+        titleBackgroundColor="#ffffff"
+        planType="selfAdvocatePlus"
+        onUpgrade={handleUpgrade}
+        features={[
+          { 
+            image: require('../../assets/bottom-nav-images/chat-active.png'), 
+            text: "in-app chat" 
+          },
+          { 
+            image: require('../../assets/bottom-nav-images/friends-active.png'), 
+            text: "find friends" 
+          },
+          { 
+            image: require('../../assets/bottom-nav-images/trophy-icon.png'), 
+            text: "post wins" 
+          },
+          { 
+            image: require('../../assets/supporter-1.png'), 
+            text: "add supporters" 
+          },
+         
+        ]}
+      />
+
+
+      <SubscriptionCard
+        title="Self-Advocate - Dating"
+        price="$15/month"
+        titleBackgroundColor="#FF99DC"
+        planType="selfAdvocateDating"
+        onUpgrade={handleUpgrade}
+        features={[
+          { 
+            image: require('../../assets/bottom-nav-images/chat-active.png'), 
+            text: "in-app chat" 
+          },
+          { 
+            image: require('../../assets/bottom-nav-images/friends-active.png'), 
+            text: "find friends" 
+          },
+          { 
+            image: require('../../assets/bottom-nav-images/trophy-icon.png'), 
+            text: "post wins" 
+          },
+          { 
+            image: require('../../assets/supporter-1.png'), 
+            text: "add supporters" 
+          },
+          { 
+            image: require('../../assets/find-a-date.png'), 
+            text: "find a date" 
+          },
+        ]}
+      />
+
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Supporter Plans</Text>
-        {SUBSCRIPTION_OPTIONS.supporter.map((option) => (
+        {/* {SUBSCRIPTION_OPTIONS.supporter.map((option) => (
           <TouchableOpacity
             key={option.id}
             style={styles.card}
@@ -146,8 +238,82 @@ const SubscriptionOptionsScreen = () => {
               <Text style={styles.description}>{option.description}</Text>
             </View>
           </TouchableOpacity>
-        ))}
+        ))} */}
+
+
+<SubscriptionCard
+        title="Supporter - One"
+        price="$10/month"
+        titleBackgroundColor="#62FFD0"
+        planType="supporterOne"
+        onUpgrade={handleUpgrade}
+        features={[
+          { 
+            image: require('../../assets/bottom-nav-images/chat-active.png'), 
+            text: "view your user's chats" 
+          },
+          { 
+            image: require('../../assets/notification.png'), 
+            text: "find friends" 
+          },
+          { 
+            image: require('../../assets/supporter-one-phone.png'), 
+            text: "support one user" 
+          },
+          
+        ]}
+      />
+
+
+<SubscriptionCard
+        title="Supporter - Five"
+        price="$15/month"
+        titleBackgroundColor="#F1AD1F"
+        planType="supporterFive"
+        onUpgrade={handleUpgrade}
+        features={[
+          { 
+            image: require('../../assets/bottom-nav-images/chat-active.png'), 
+            text: "view your users' chats" 
+          },
+          { 
+            image: require('../../assets/notification.png'), 
+            text: "find friends" 
+          },
+          { 
+            image: require('../../assets/supporter-five-phone.png'), 
+            text: "support up to five users" 
+          },
+          
+        ]}
+      />
+
+<SubscriptionCard
+        title="Supporter - Ten"
+        price="$20/month"
+        titleBackgroundColor="#FF8262"
+        planType="supporterTen"
+        onUpgrade={handleUpgrade}
+        features={[
+          { 
+            image: require('../../assets/bottom-nav-images/chat-active.png'), 
+            text: "view your users' chats" 
+          },
+          { 
+            image: require('../../assets/notification.png'), 
+            text: "find friends" 
+          },
+          { 
+            image: require('../../assets/supporter-ten-phone.png'), 
+            text: "support up to ten users" 
+          },
+          
+        ]}
+      />
       </View>
+
+
+      
     </ScrollView>
   );
 };
@@ -167,25 +333,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#333',
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#24269B',
-  },
+  
+ 
   price: {
     fontSize: 16,
     fontWeight: '600',
@@ -205,17 +354,90 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#24269B',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
+
   currentSubscription: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    margin: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#000000',
+    overflow: 'hidden',
+    paddingBottom: 20,
+  },
+  titleContainer: {
+    width: '100%',
+    padding: 15,
+    marginBottom: 15,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#000',
+  },
+  price: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  featuresContainer: {
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  featureText: {
+    fontSize: 18,
+    marginLeft: 10,
+    color: '#333',
+  },
+  selectButton: {
+    backgroundColor: '#24269B',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    marginHorizontal: 20,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  selectButtonText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  featureIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+    resizeMode: 'contain',
   },
 });
 

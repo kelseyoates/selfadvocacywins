@@ -22,6 +22,24 @@ const FindScreen = ({ navigation }) => {
     </View>
 
 
+    <View style={styles.buttonContainer}>
+      <View style={styles.buttonShadow} />
+      <TouchableOpacity 
+        style={styles.findDateButton} 
+        onPress={() => navigation.navigate('FindADate')}
+      >
+        <View style={styles.buttonContent}>
+          <Text style={styles.buttonDateText}>Find a Date</Text>
+          <Image 
+            source={require('../../assets/find-a-date.png')} 
+            style={styles.buttonIcon}
+          />
+        </View>
+      </TouchableOpacity>
+    </View>
+
+
+
     </View>
   );
 };
@@ -46,12 +64,11 @@ const styles = StyleSheet.create({
     width: 300,
   },
 
-  buttonText: {
-    color: '#FFF',
-    fontSize: 18,
-    textAlign: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
+  
+  buttonDateText: {
+    color: '#000000',
+    fontSize: 24,
+    fontWeight: '600',
   },
 
   buttonIcon: {
@@ -76,6 +93,24 @@ const styles = StyleSheet.create({
 
   findFriendButton: {
     backgroundColor: '#24269B',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 5,
+    width: 300,
+    height: 120,
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+
+  findDateButton: {
+    backgroundColor: '#F2C8E4',
     borderRadius: 8,
     padding: 12,
     shadowColor: '#000',

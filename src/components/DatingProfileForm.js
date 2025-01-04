@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,6 +9,10 @@ import {
 } from 'react-native';
 import { updateUserDatingProfile } from '../services/userService';
 import QuestionCard from './QuestionCard';
+import { doc, updateDoc } from 'firebase/firestore';
+import { auth, db, storage } from '../config/firebase';
+import { Alert } from 'react-native';
+import { datingQuestions } from '../constants/datingQuestions';
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
@@ -24,6 +28,9 @@ const US_STATES = [
 ];
 
 const DatingProfileForm = ({ userId, initialData = {} }) => {
+  console.log('DatingProfileForm - Initial Data:', initialData);
+  console.log('DatingProfileForm - datingAnswers:', initialData.datingAnswers);
+  
   const [formData, setFormData] = useState({
     gender: initialData.gender || '',
     lookingFor: initialData.lookingFor || '',
@@ -31,76 +38,71 @@ const DatingProfileForm = ({ userId, initialData = {} }) => {
     datingAnswers: initialData.datingAnswers || {}
   });
 
+  console.log('DatingProfileForm - formData:', formData);
+  console.log('DatingProfileForm - formData.datingAnswers:', formData.datingAnswers);
+
+  useEffect(() => {
+    console.log('Initial Data:', initialData);
+    console.log('Form Data:', formData);
+  }, [initialData]);
+
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showLookingForModal, setShowLookingForModal] = useState(false);
   const [showAgeModal, setShowAgeModal] = useState(false);
 
   const genderOptions = ['Man', 'Woman', 'Non-Binary'];
-  const lookingForOptions = ['Man', 'Woman', 'Both'];
-
-  const datingQuestions = [
-    {
-      id: 'dating1',
-      question: "What I'm looking for in a partner 💝:",
-      presetWords: [
-        "kind", "honest", "funny", "caring", "understanding", 
-        "patient", "supportive", "fun", "active", "creative", 
-        "family-oriented", "ambitious", "adventurous"
-      ]
-    },
-    {
-      id: 'dating2',
-      question: "My ideal first date would be 🌟:",
-      presetWords: [
-        "coffee", "dinner", "movies", "walk in the park", 
-        "museum", "arcade", "bowling", "mini golf", 
-        "ice cream", "picnic", "zoo", "aquarium"
-      ]
-    },
-    {
-      id: 'dating3',
-      question: "My favorite date activities are 🎉:",
-      presetWords: [
-        "watching movies", "dining out", "cooking together", 
-        "playing games", "sports", "shopping", "hiking", 
-        "visiting museums", "trying new things", "traveling", 
-        "going to events", "listening to music"
-      ]
-    },
-    {
-      id: 'dating4',
-      question: "I would like to meet people in these states 🗺️:",
-      presetWords: US_STATES
-    }
-  ];
+  const lookingForOptions = ['Man', 'Woman', 'Any'];
 
   const handleSubmit = async () => {
     try {
+      console.log('Starting profile update with data:', JSON.stringify(formData, null, 2));
       await updateUserDatingProfile(userId, formData);
-      alert('Profile updated successfully');
+      Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
-      console.error('Error saving dating profile:', error);
-      alert('Error updating profile');
+      console.error('Profile update error:', error);
+      Alert.alert(
+        'Error',
+        'Error updating profile: ' + error.message
+      );
     }
   };
 
-  const handleAnswerSave = async (newAnswer) => {
+  const handleAnswerSave = async ({ question, answer }) => {
     try {
-      const updatedData = {
-        ...formData,
-        datingAnswers: {
-          ...(formData.datingAnswers || {}),
-          [newAnswer.question]: {
-            answer: newAnswer.answer,
+      console.log('Starting save process for question:', question);
+      console.log('Answer data:', JSON.stringify(answer, null, 2));
+      console.log('User ID:', userId);
+      
+      const userRef = doc(db, 'users', userId);
+      const updateData = {
+        [`datingAnswers.${question}`]: {
+          answer: {
+            question: question,
+            selectedWords: answer.selectedWords || [],
+            textAnswer: answer.textAnswer || '',
+            mediaType: answer.mediaType || null,
+            mediaUrl: answer.mediaUrl || null,
             timestamp: new Date().toISOString()
-          }
+          },
+          timestamp: new Date().toISOString()
         }
       };
-      setFormData(updatedData);
-      await updateUserDatingProfile(userId, updatedData);
+
+      console.log('Attempting to update with data:', JSON.stringify(updateData, null, 2));
+      
+      await updateDoc(userRef, updateData);
+      console.log('Update successful');
+      
+      // Add a visual confirmation
+      Alert.alert('Success', 'Your answer has been saved!');
+
     } catch (error) {
-      console.error('Error saving answer:', error);
-      alert('Error saving answer');
+      console.error('Error details:', error.code, error.message);
+      console.error('Full error:', error);
+      Alert.alert(
+        'Error',
+        'Failed to save your answer. Please try again. Error: ' + error.message
+      );
     }
   };
 
@@ -143,6 +145,13 @@ const DatingProfileForm = ({ userId, initialData = {} }) => {
     </Modal>
   );
 
+  useEffect(() => {
+    console.log('Current profileData:', formData);
+    if (formData?.datingAnswers) {
+      console.log('Dating Answers:', JSON.stringify(formData.datingAnswers, null, 2));
+    }
+  }, [formData]);
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.label}>I am a:</Text>
@@ -179,18 +188,36 @@ const DatingProfileForm = ({ userId, initialData = {} }) => {
 
       <View style={styles.questionsSection}>
         <Text style={styles.sectionTitle}>Dating Profile Questions</Text>
-        {datingQuestions.map((q) => (
-          <QuestionCard
-            key={q.id}
-            question={q.question}
-            presetWords={q.presetWords}
-            initialAnswer={formData.datingAnswers?.[q.question]?.answer || ''}
-            onSave={(answer) => handleAnswerSave({
-              question: q.question,
-              answer
-            })}
-          />
-        ))}
+        {datingQuestions.map((q) => {
+          const storedAnswer = formData?.datingAnswers?.[q.question]?.answer || null;
+          console.log('Stored answer for question:', q.question, storedAnswer);
+          
+          return (
+            <QuestionCard
+              key={q.id}
+              question={q.question}
+              presetWords={q.presetWords}
+              existingAnswer={{
+                selectedWords: storedAnswer?.selectedWords || [],
+                textAnswer: storedAnswer?.textAnswer || '',
+                mediaUrl: storedAnswer?.mediaUrl,
+                mediaType: storedAnswer?.mediaType
+              }}
+              isDatingQuestion={true}
+              onSave={(answer) => handleAnswerSave({
+                question: q.question,
+                answer: {
+                  question: q.question,
+                  selectedWords: answer.selectedWords,
+                  textAnswer: answer.textAnswer,
+                  mediaType: answer.mediaType,
+                  mediaUrl: answer.mediaUrl,
+                  timestamp: new Date().toISOString()
+                }
+              })}
+            />
+          );
+        })}
       </View>
 
       <TouchableOpacity 

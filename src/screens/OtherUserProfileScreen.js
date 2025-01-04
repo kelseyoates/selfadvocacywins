@@ -20,6 +20,7 @@ import WinCard from '../components/WinCard';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth } from '../config/firebase';
+import { Video } from 'expo-av';
 
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/100';
 
@@ -547,7 +548,53 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
         ))}
       </View>
 
-     
+      {profileData?.subscriptionType === 'selfAdvocateDating' && (
+        <View style={styles.datingSection}>
+          <Text style={styles.sectionTitle}>Dating Profile</Text>
+          
+          <View style={styles.datingInfo}>
+            <Text style={styles.label}>Gender:</Text>
+            <Text style={styles.value}>{profileData.gender || 'Not specified'}</Text>
+
+            <Text style={styles.label}>Looking For:</Text>
+            <Text style={styles.value}>{profileData.lookingFor || 'Not specified'}</Text>
+
+            <Text style={styles.label}>Age Range Preference:</Text>
+            <Text style={styles.value}>
+              {profileData.ageRange ? 
+                `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 
+                'Not specified'}
+            </Text>
+          </View>
+
+          {/* Dating Questions */}
+          {profileData?.datingAnswers && (
+            <View style={styles.datingSection}>
+              <Text style={styles.sectionTitle}>Dating Profile</Text>
+              <View style={styles.datingQuestionsContainer}>
+                {Object.entries(profileData.datingAnswers).map(([question, data]) => {
+                  const answerData = data.answer;
+                  
+                  return (
+                    <OtherUserQuestionCard
+                      key={question}
+                      question={question}
+                      answer={{
+                        selectedWords: answerData.selectedWords || [],
+                        textAnswer: answerData.textAnswer || '',
+                        timestamp: answerData.timestamp
+                      }}
+                      readOnly={true}
+                      style={styles.questionCard}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       <View style={styles.winsContainer}>
         <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
         {wins && wins.length > 0 ? (
@@ -832,6 +879,30 @@ const styles = StyleSheet.create({
   },
   iconStyle: {
     marginLeft: 5,
+  },
+  datingSection: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  datingInfo: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#24269B',
+    marginTop: 10,
+  },
+  value: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 10,
+  },
+  questionCard: {
+    marginBottom: 12,
+  },
+  datingQuestionsContainer: {
+    marginTop: 10,
   },
 });
 
