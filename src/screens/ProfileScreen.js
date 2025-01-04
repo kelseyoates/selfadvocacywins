@@ -18,7 +18,6 @@ import { auth, db, storage } from '../config/firebase';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc, onSnapshot, setDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import globalStyles from '../styles/styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import QuestionCard from '../components/QuestionCard';
@@ -26,8 +25,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';
 import { CometChat } from '@cometchat-pro/react-native-chat';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import DatingProfileForm from '../components/DatingProfileForm';
+
 
 
 
@@ -469,44 +467,7 @@ const ProfileScreen = () => {
     }
   };
 
-  const renderMenuSection = () => (
-    <View style={styles.menuSection}>
-      <TouchableOpacity 
-        style={styles.menuItem}
-        onPress={() => navigation.navigate('EditProfile')}
-      >
-        <MaterialCommunityIcons name="account-edit" size={24} color="#24269B" />
-        <Text style={styles.menuItemText}>Edit Profile</Text>
-        <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.menuItem}
-        onPress={() => navigation.navigate('Settings')}
-      >
-        <MaterialCommunityIcons name="cog" size={24} color="#24269B" />
-        <Text style={styles.menuItemText}>Settings</Text>
-        <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={[styles.menuItem, styles.signOutItem]}
-        onPress={handleSignOut}
-      >
-        <MaterialCommunityIcons name="logout" size={24} color="#FF3B30" />
-        <Text style={[styles.menuItemText, styles.signOutText]}>Sign Out</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      navigation.replace('Login');
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
+ 
 
   const questions = [
     {
@@ -1134,15 +1095,7 @@ const ProfileScreen = () => {
             </Text>
           )}
 
-          
-          {profileUserId === user?.uid && (
-            <TouchableOpacity
-              onPress={handleEditProfile}
-              style={styles.editProfileButton}
-            >
-              <Text style={styles.editButtonText}>Edit Profile</Text>
-            </TouchableOpacity>
-          )}
+    
         </View>
       </View>
 
@@ -1180,24 +1133,10 @@ const ProfileScreen = () => {
         </View>
       </View>
 
-      {/* {userData?.subscriptionType === 'selfAdvocateDating' && (
-        <View style={styles.datingProfileContainer}>
-          <Text style={styles.sectionTitle}>Dating Profile</Text>
-          <DatingProfileForm 
-            userId={targetUserId}
-            initialData={{
-              ...userData.datingProfile,
-              datingAnswers: userData.datingAnswers
-            }}
-          />
-        </View>
-      )} */}
-
       {!profileUserId ? ( // Only show these sections for own profile
         <>
           {renderStateSelector()}
           {renderPersonalInfo()}
-          {renderMenuSection()}
         </>
       ) : null}
 
@@ -1780,18 +1719,11 @@ statsContainer: {
   flexDirection: 'row',
   justifyContent: 'space-around',
   alignItems: 'center',
-  backgroundColor: '#fff',
+ 
   padding: 15,
   marginHorizontal: 10,
   marginVertical: 10,
-  borderRadius: 10,
-  elevation: 2,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  borderWidth: 1,
-  borderColor: '#000000',
+  
 },
 
 statItem: {

@@ -569,18 +569,24 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>Dating Profile</Text>
           
           <View style={styles.datingInfo}>
-            <Text style={styles.label}>Gender:</Text>
-            <Text style={styles.value}>{profileData.gender || 'Not specified'}</Text>
+            <View style={styles.datingInfoItem}>
+              <Text style={styles.label}>My Gender:</Text>
+              <Text style={styles.value}>{profileData.gender || 'Not specified'}</Text>
+            </View>
 
-            <Text style={styles.label}>Looking For:</Text>
-            <Text style={styles.value}>{profileData.lookingFor || 'Not specified'}</Text>
+            <View style={styles.datingInfoItem}>
+              <Text style={styles.label}>I'm Looking For:</Text>
+              <Text style={styles.value}>{profileData.lookingFor || 'Not specified'}</Text>
+            </View>
 
-            <Text style={styles.label}>Age Range Preference:</Text>
-            <Text style={styles.value}>
-              {profileData.ageRange ? 
-                `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 
-                'Not specified'}
-            </Text>
+            <View style={styles.datingInfoItem}>
+              <Text style={styles.label}>Age Range:</Text>
+              <Text style={styles.value}>
+                {profileData.ageRange ? 
+                  `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 
+                  'Not specified'}
+              </Text>
+            </View>
           </View>
 
         </View>
@@ -808,18 +814,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#fff',
     padding: 15,
     marginHorizontal: 10,
     marginVertical: 10,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    borderWidth: 1,
-    borderColor: '#000000',
+   
   },
   statItem: {
     alignItems: 'center',
@@ -887,21 +885,51 @@ const styles = StyleSheet.create({
   },
   datingSection: {
     marginTop: 20,
-    paddingHorizontal: 16,
   },
   datingInfo: {
-    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 0,
+    marginVertical: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
+  
+  datingInfoItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 8,
+    borderRightWidth: 1,
+    borderRightColor: '#eee',
+    ':last-child': {
+      borderRightWidth: 0,
+    },
+
+  },
+  
   label: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#24269B',
-    marginTop: 10,
+    color: '#666',
+    marginBottom: 4,
+    textAlign: 'center',
   },
+  
   value: {
     fontSize: 16,
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 10,
+    textAlign: 'center',
   },
   questionCard: {
     marginBottom: 12,
