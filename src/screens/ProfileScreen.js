@@ -539,6 +539,31 @@ const ProfileScreen = () => {
       question: "If I won the lottery, I would 💰:",
       presetWords: ["travel the world", "buy a house", "buy a car", "buy a boat", "start a business", "buy my friends gifts", "buy my family gifts", "give to charity", "own a sports team", "buy a hot tub", "fly first class"]
     },
+    // Dating questions - only visible with selfAdvocateDating subscription
+    {
+      id: 7,
+      question: "What I'm like as a partner 💝:",
+      presetWords: ["caring", "dependable", "honest", "kind", "loving", "loyal", "respectful", "supportive", "thoughtful", "understanding"],
+      isDatingQuestion: true
+    },
+    {
+      id: 8,
+      question: "My ideal first date would be 🌟:",
+      presetWords: ["coffee", "dinner", "lunch", "movies", "museum", "park", "picnic", "walk", "zoo"],
+      isDatingQuestion: true
+    },
+    {
+      id: 9,
+      question: "My favorite date activities are 🎉:",
+      presetWords: ["bowling", "cooking", "dancing", "dining out", "hiking", "movies", "music", "sports", "walking", "watching movies"],
+      isDatingQuestion: true
+    },
+    {
+      id: 10,
+      question: "I would like to meet people in these states 🗺️:",
+      presetWords: ["California", "Florida", "Illinois", "Massachusetts", "New York", "Texas"],
+      isDatingQuestion: true
+    }
   ];
 
   const getLatestAnswer = (question) => {
@@ -1047,6 +1072,11 @@ const ProfileScreen = () => {
     }, [user])
   );
 
+  // Filter questions based on subscription
+  const visibleQuestions = questions.filter(q => 
+    !q.isDatingQuestion || (q.isDatingQuestion && userData?.subscriptionType === 'selfAdvocateDating')
+  );
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -1150,7 +1180,7 @@ const ProfileScreen = () => {
         </View>
       </View>
 
-      {userData?.subscriptionType === 'selfAdvocateDating' && (
+      {/* {userData?.subscriptionType === 'selfAdvocateDating' && (
         <View style={styles.datingProfileContainer}>
           <Text style={styles.sectionTitle}>Dating Profile</Text>
           <DatingProfileForm 
@@ -1161,7 +1191,7 @@ const ProfileScreen = () => {
             }}
           />
         </View>
-      )}
+      )} */}
 
       {!profileUserId ? ( // Only show these sections for own profile
         <>
@@ -1173,20 +1203,18 @@ const ProfileScreen = () => {
 
       <View style={styles.questionSection}>
         <Text style={styles.sectionTitle}>My Profile</Text>
-        {questions.map(q => {
-          const existingAnswer = getLatestAnswer(q.question);
-          return (
-            <View key={q.id} style={styles.questionContainer}>
-              <QuestionCard
-                question={q.question}
-                presetWords={q.presetWords}
-                onSave={handleAnswerSave}
-                existingAnswer={existingAnswer}
-                readOnly={!!profileUserId} // Make read-only when viewing other profiles
-              />
-            </View>
-          );
-        })}
+        {visibleQuestions.map((question) => (
+          <View key={question.id} style={styles.questionContainer}>
+            <QuestionCard
+              question={question.question}
+              presetWords={question.presetWords}
+              onSave={handleAnswerSave}
+              existingAnswer={getLatestAnswer(question.question)}
+              readOnly={!!profileUserId} // Make read-only when viewing other profiles
+              isDatingQuestion={question.isDatingQuestion}
+            />
+          </View>
+        ))}
       </View>
 
 

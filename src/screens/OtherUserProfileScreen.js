@@ -136,11 +136,11 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     {
       id: 2,
       question: "What I like to do for fun 🎉:",
-      presetWords: ["Special Olympics", "Best Buddies", "sports", "theater", "watching movies", "art", "dancing", "playing with my dog", "gaming", "listening to music", "hang with friends", "traveling", "reading", "cooking", "photography", "writing", "playing with my dog"]
+      presetWords: ["Special Olympics", "Best Buddies", "sports", "theater", "watching movies", "art", "dancing", "playing with my dog", "gaming", "listening to music", "hang with friends", "traveling", "reading", "cooking", "photography", "writing"]
     },
     {
       id: 3,
-      question: "What I\'m like as a friend 🤝:",
+      question: "What I'm like as a friend 🤝:",
       presetWords: ["supportive", "fun", "honest", "loyal", "trustworthy", "caring", "spontaneous", "funny", "dependable", "patient", "open-minded", "positive"]
     },
     {
@@ -158,6 +158,31 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
       question: "If I won the lottery, I would 💰:",
       presetWords: ["travel the world", "buy a house", "buy a car", "buy a boat", "start a business", "buy my friends gifts", "buy my family gifts", "give to charity", "own a sports team", "buy a hot tub", "fly first class"]
     },
+    // Dating questions - only visible with selfAdvocateDating subscription
+    {
+      id: 7,
+      question: "What I'm like as a partner 💝:",
+      presetWords: ["caring", "dependable", "honest", "kind", "loving", "loyal", "respectful", "supportive", "thoughtful", "understanding"],
+      isDatingQuestion: true
+    },
+    {
+      id: 8,
+      question: "My ideal first date would be 🌟:",
+      presetWords: ["coffee", "dinner", "lunch", "movies", "museum", "park", "picnic", "walk", "zoo"],
+      isDatingQuestion: true
+    },
+    {
+      id: 9,
+      question: "My favorite date activities are 🎉:",
+      presetWords: ["bowling", "cooking", "dancing", "dining out", "hiking", "movies", "music", "sports", "walking", "watching movies"],
+      isDatingQuestion: true
+    },
+    {
+      id: 10,
+      question: "I would like to meet people in these states 🗺️:",
+      presetWords: ["California", "Florida", "Illinois", "Massachusetts", "New York", "Texas"],
+      isDatingQuestion: true
+    }
   ];
 
   const formatDate = (timestamp) => {
@@ -537,18 +562,9 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
       <View style={styles.questionsContainer}>
         <Text style={styles.sectionTitle}>My Profile</Text>
-        {questions.map((item) => (
-          <OtherUserQuestionCard
-            key={item.id}
-            question={item.question}
-            questionId={item.id}
-            backgroundColor={item.backgroundColor}
-            userId={route.params?.profileUserId}
-          />
-        ))}
-      </View>
 
-      {profileData?.subscriptionType === 'selfAdvocateDating' && (
+
+        {profileData?.subscriptionType === 'selfAdvocateDating' && (
         <View style={styles.datingSection}>
           <Text style={styles.sectionTitle}>Dating Profile</Text>
           
@@ -567,33 +583,22 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
             </Text>
           </View>
 
-          {/* Dating Questions */}
-          {profileData?.datingAnswers && (
-            <View style={styles.datingSection}>
-              <Text style={styles.sectionTitle}>Dating Profile</Text>
-              <View style={styles.datingQuestionsContainer}>
-                {Object.entries(profileData.datingAnswers).map(([question, data]) => {
-                  const answerData = data.answer;
-                  
-                  return (
-                    <OtherUserQuestionCard
-                      key={question}
-                      question={question}
-                      answer={{
-                        selectedWords: answerData.selectedWords || [],
-                        textAnswer: answerData.textAnswer || '',
-                        timestamp: answerData.timestamp
-                      }}
-                      readOnly={true}
-                      style={styles.questionCard}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-          )}
         </View>
       )}
+
+
+        {questions.map((item) => (
+          <OtherUserQuestionCard
+            key={item.id}
+            question={item.question}
+            questionId={item.id}
+            backgroundColor={item.backgroundColor}
+            userId={route.params?.profileUserId}
+          />
+        ))}
+      </View>
+
+     
 
       <View style={styles.winsContainer}>
         <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
@@ -903,6 +908,16 @@ const styles = StyleSheet.create({
   },
   datingQuestionsContainer: {
     marginTop: 10,
+  },
+  subscriptionBanner: {
+    backgroundColor: '#FFE4E1',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  bannerText: {
+    textAlign: 'center',
+    color: '#FF69B4',
   },
 });
 
