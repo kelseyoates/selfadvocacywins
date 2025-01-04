@@ -99,16 +99,6 @@ const LoginScreen = ({ navigation }) => {
               placeholder="Enter your password"
               secureTextEntry
             />
-
-            {/* <TouchableOpacity 
-              style={styles.loginButton}
-              onPress={handleLogin}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.loginButtonText}>
-                old <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
-              </Text>
-            </TouchableOpacity> */}
           </View>
 
           <View style={styles.container}>
@@ -269,11 +259,9 @@ const styles = StyleSheet.create({
   },
 
   buttonContent: {
-   
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
 
   buttonIcon: {
     width: 90,

@@ -6,6 +6,10 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
+import { Dimensions } from 'react-native';
+
+const windowHeight = Dimensions.get('window').height;
+
 
 const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -90,11 +94,12 @@ const SignUpScreen = ({ navigation }) => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContentContainer}
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <View style={styles.formContainer}>
+        <View style={styles.content}>
           <Image 
             source={require('../../assets/logo.png')} 
             style={styles.headerImage}
@@ -180,6 +185,8 @@ const SignUpScreen = ({ navigation }) => {
 
     </View>
 
+    
+
 
 
           <View style={styles.footerContainer}>
@@ -201,32 +208,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-  },
-  formContainer: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+    minHeight: windowHeight,
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
     justifyContent: 'center',
   },
+
   headerImage: {
     width: '100%',
-    height: 150,
-    marginBottom: 0,
+    height: windowHeight * 0.2, // 20% of screen height
+    marginBottom: 20,
   },
   title: {
     fontSize: 32,
-    fontFamily: 'Jost_600SemiBold',
     marginBottom: 20,
     textAlign: 'center',
+  },
+  formContainer: {
+    width: '100%',
+    marginTop: 0,
   },
   labelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     marginBottom: 8,
-    marginTop: 16,
+    marginTop: 30,
   },
   iconContainer: {
     width: 24,
@@ -237,18 +252,17 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     fontSize: 20,
-    fontFamily: 'Jost_500Medium',
     lineHeight: 24,
   },
   input: {
     width: '100%',
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
+    borderWidth: 2,
+    borderColor: '#000000',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    backgroundColor: '#F8F8F8',
   },
+  
  
   signupButtonText: {
     color: '#fff',
@@ -270,7 +284,7 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 100,
   },
-
+ 
   buttonText: {
     color: '#FFF',
     fontSize: 18,
