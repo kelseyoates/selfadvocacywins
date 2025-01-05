@@ -102,7 +102,7 @@ const SupporterManagementScreen = () => {
       <View 
         style={styles.container}
         accessible={true}
-        accessibilityRole="progressbar"
+        accessibilityRole="text"
         accessibilityLabel="Loading supporter management"
       >
         <Text style={styles.loadingText}>Loading...</Text>
@@ -118,7 +118,7 @@ const SupporterManagementScreen = () => {
       <View 
         style={styles.container}
         accessible={true}
-        accessibilityRole="alert"
+        accessibilityRole="text"
       >
         <Text style={styles.subscriptionMessage}>
           Upgrade to Self Advocate Plus or Dating to add supporters! 💝
@@ -140,19 +140,21 @@ const SupporterManagementScreen = () => {
   return (
     <ScrollView 
       style={styles.container}
-      accessibilityRole="scrollview"
+      accessible={true}
       accessibilityLabel="Supporter Management Screen"
     >
       <View style={styles.content}>
         <Text 
           style={styles.title}
-          accessibilityRole="header"
+          accessible={true}
+          accessibilityRole="text"
         >
           Manage Your Supporters
         </Text>
 
         <Text 
           style={styles.body}
+          accessible={true}
           accessibilityRole="text"
         >
           Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. You can remove a supporter at any time.
@@ -169,13 +171,11 @@ const SupporterManagementScreen = () => {
           <Text style={styles.addButtonText}>Add New Supporter +</Text>
         </TouchableOpacity>
 
-        <View 
-          style={styles.supportersList}
-          accessibilityRole="list"
-        >
+        <View style={styles.supportersList}>
           <Text 
             style={styles.sectionTitle}
-            accessibilityRole="header"
+            accessible={true}
+            accessibilityRole="text"
           >
             Your Current Supporters
           </Text>
@@ -185,7 +185,8 @@ const SupporterManagementScreen = () => {
                 key={index} 
                 style={styles.supporterCard}
                 accessible={true}
-                accessibilityRole="listitem"
+                accessibilityRole="text"
+                accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. Email: ${supporter.email}`}
               >
                 <View style={styles.supporterInfo}>
                   <Image 
@@ -198,12 +199,7 @@ const SupporterManagementScreen = () => {
                     accessibilityRole="image"
                     accessibilityLabel={`${supporter.username || supporter.name || 'Unknown'}'s profile picture`}
                   />
-                  <View 
-                    style={styles.textContainer}
-                    accessible={true}
-                    accessibilityRole="text"
-                    accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. Email: ${supporter.email}`}
-                  >
+                  <View style={styles.textContainer}>
                     <Text style={styles.supporterName}>
                       {supporter.username || supporter.name || 'Unknown'}
                     </Text>
@@ -238,6 +234,7 @@ const SupporterManagementScreen = () => {
           ) : (
             <Text 
               style={styles.noSupportersText}
+              accessible={true}
               accessibilityRole="text"
             >
               You haven't added any supporters yet.

@@ -8,10 +8,23 @@ const CommentModal = ({ visible, onClose, onSelectComment }) => {
       transparent={true}
       animationType="slide"
       onRequestClose={onClose}
+      accessible={true}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Choose a comment modal"
     >
-      <View style={styles.container}>
+      <View 
+        style={styles.container}
+        accessible={true}
+        accessibilityRole="text"
+      >
         <View style={styles.content}>
-          <Text style={styles.title}>Choose a comment</Text>
+          <Text 
+            style={styles.title}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            Choose a comment
+          </Text>
           
           <TouchableOpacity
             style={styles.option}
@@ -19,6 +32,10 @@ const CommentModal = ({ visible, onClose, onSelectComment }) => {
               onSelectComment("Look at you go! 👏✨");
               onClose();
             }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Look at you go with clapping hands and sparkles"
+            accessibilityHint="Double tap to select this comment"
           >
             <Text style={styles.optionText}>Look at you go! 👏✨</Text>
           </TouchableOpacity>
@@ -29,6 +46,10 @@ const CommentModal = ({ visible, onClose, onSelectComment }) => {
               onSelectComment("You're doing big things! 👏💯");
               onClose();
             }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="You're doing big things with clapping hands and hundred points"
+            accessibilityHint="Double tap to select this comment"
           >
             <Text style={styles.optionText}>You're doing big things! 👏💯</Text>
           </TouchableOpacity>
@@ -39,6 +60,10 @@ const CommentModal = ({ visible, onClose, onSelectComment }) => {
               onSelectComment("Keep spreading positivity! 🌈👊");
               onClose();
             }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Keep spreading positivity with rainbow and fist bump"
+            accessibilityHint="Double tap to select this comment"
           >
             <Text style={styles.optionText}>Keep spreading positivity! 🌈👊</Text>
           </TouchableOpacity>
@@ -46,6 +71,10 @@ const CommentModal = ({ visible, onClose, onSelectComment }) => {
           <TouchableOpacity
             style={[styles.option, styles.cancelButton]}
             onPress={onClose}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel comment selection"
+            accessibilityHint="Double tap to close the comment modal"
           >
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
