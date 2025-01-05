@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  FlatList, 
+  Alert,
+  AccessibilityInfo 
+} from 'react-native';
 import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { auth, db} from '../config/firebase';
 
@@ -7,14 +16,43 @@ const AddSupporterScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Check for screen reader
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Helper function for screen reader announcements
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       Alert.alert('Please enter a username to search');
+      announceToScreenReader('Please enter a username to search');
       return;
     }
 
     setLoading(true);
+    announceToScreenReader('Searching for supporters');
+    
     try {
       const usersRef = collection(db, 'users');
       const lowercaseQuery = searchQuery.toLowerCase();
@@ -40,10 +78,14 @@ const AddSupporterScreen = ({ navigation }) => {
 
       setSearchResults(results);
       if (results.length === 0) {
+        announceToScreenReader('No users found. Try searching with a different username');
         Alert.alert('No users found', 'Try searching with a different username');
+      } else {
+        announceToScreenReader(`Found ${results.length} users`);
       }
     } catch (error) {
       console.error('Search error:', error);
+      announceToScreenReader('Error searching for users');
       Alert.alert('Error', 'Failed to search for users');
     }
     setLoading(false);
@@ -51,6 +93,7 @@ const AddSupporterScreen = ({ navigation }) => {
 
   const handleAddSupporter = async (selectedUser) => {
     try {
+      announceToScreenReader('Adding supporter');
       const currentUserId = auth.currentUser.uid.toLowerCase();
       console.log('Current user id:', currentUserId);
       
@@ -81,6 +124,7 @@ const AddSupporterScreen = ({ navigation }) => {
         supporters: [...currentSupporters, newSupporter]
       });
 
+      announceToScreenReader('Supporter added successfully');
       Alert.alert(
         'Success',
         'Supporter added successfully!',
@@ -88,24 +132,45 @@ const AddSupporterScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error('Error adding supporter:', error);
+      announceToScreenReader('Failed to add supporter');
       Alert.alert('Error', 'Failed to add supporter');
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchContainer}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="Add Supporter Screen"
+    >
+      <View 
+        style={styles.searchContainer}
+        accessible={true}
+        accessibilityLabel="Search Section"
+      >
         <TextInput
           style={styles.searchInput}
           placeholder="Search by username"
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
+          accessible={true}
+          accessibilityLabel="Search username input"
+          accessibilityHint="Enter a username to search for supporters"
+          accessibilityRole="search"
         />
         <TouchableOpacity 
-          style={styles.searchButton}
+          style={[
+            styles.searchButton,
+            loading && styles.searchButtonDisabled
+          ]}
           onPress={handleSearch}
           disabled={loading}
+          accessible={true}
+          accessibilityLabel={loading ? "Searching" : "Search"}
+          accessibilityHint="Search for users with the entered username"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: loading }}
         >
           <Text style={styles.searchButtonText}>
             {loading ? 'Searching...' : 'Search'}
@@ -116,19 +181,36 @@ const AddSupporterScreen = ({ navigation }) => {
       <FlatList
         data={searchResults}
         keyExtractor={(item) => item.id}
+        accessible={true}
+        accessibilityLabel="Search Results"
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.resultItem}
             onPress={() => handleAddSupporter(item)}
+            accessible={true}
+            accessibilityLabel={`Add ${item.username || 'Unknown Username'} as supporter`}
+            accessibilityHint="Double tap to add this user as your supporter"
+            accessibilityRole="button"
           >
             <View>
               <Text style={styles.userName}>{item.username || 'Unknown Username'}</Text>
-              {item.name && <Text style={styles.userEmail}>{item.name}</Text>}
+              {item.name && (
+                <Text 
+                  style={styles.userEmail}
+                  accessibilityLabel={`Name: ${item.name}`}
+                >
+                  {item.name}
+                </Text>
+              )}
             </View>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
+          <Text 
+            style={styles.emptyText}
+            accessible={true}
+            accessibilityLabel={searchQuery ? 'No users found' : 'Search for users by username'}
+          >
             {searchQuery ? 'No users found' : 'Search for users by username'}
           </Text>
         }
@@ -185,6 +267,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     marginTop: 20,
+  },
+  searchButtonDisabled: {
+    opacity: 0.7,
   }
 });
 
