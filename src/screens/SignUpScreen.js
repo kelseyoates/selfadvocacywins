@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Image, Alert, AccessibilityInfo } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -15,6 +15,31 @@ const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   const handleUserNameChange = (text) => {
     setUserName(text.toLowerCase());
@@ -23,10 +48,12 @@ const SignUpScreen = ({ navigation }) => {
   const handleSignup = async () => {
     try {
       if (!userName.trim()) {
+        announceToScreenReader('Please enter a username');
         Alert.alert('Error', 'Please enter a username');
         return;
       }
 
+      announceToScreenReader('Creating your account');
       // Firebase Auth Signup
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const originalUid = userCredential.user.uid;
@@ -64,11 +91,13 @@ const SignUpScreen = ({ navigation }) => {
 
       // Navigate to main app screen
       navigation.navigate('Main');
+      announceToScreenReader('Account created successfully');
     } catch (error) {
       console.error('Signup error details:', error);
       
       // Better error messages for users
       if (error.code === 'auth/email-already-in-use') {
+        announceToScreenReader('Email already registered');
         Alert.alert(
           'Email Already Registered',
           'This email address is already registered. Please use a different email or try logging in.',
@@ -82,6 +111,7 @@ const SignUpScreen = ({ navigation }) => {
           ]
         );
       } else {
+        announceToScreenReader('Sign up failed');
         Alert.alert('Signup Failed', error.message);
       }
     }
@@ -98,22 +128,38 @@ const SignUpScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContentContainer}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        accessible={true}
+        accessibilityLabel="Sign up form"
       >
         <View style={styles.content}>
           <Image 
             source={require('../../assets/logo.png')} 
             style={styles.headerImage}
             resizeMode="contain"
+            accessible={true}
+            accessibilityLabel="App logo"
+            accessibilityRole="image"
           />
 
-          <Text style={styles.title}>Create Account</Text>
+          <Text 
+            style={styles.title}
+            accessibilityRole="header"
+          >
+            Create Account
+          </Text>
           
-          <View style={styles.labelContainer}>
+          <View 
+            style={styles.labelContainer}
+            accessible={true}
+            accessibilityRole="text"
+          >
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons 
                 name="email-outline" 
                 size={24} 
-                color="black" 
+                color="black"
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
               />
             </View>
             <Text style={styles.formLabel}>Email:</Text>
@@ -121,18 +167,31 @@ const SignUpScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              announceToScreenReader(`Email set to ${text}`);
+            }}
             placeholder="Enter your email"
             keyboardType="email-address"
             autoCapitalize="none"
+            accessible={true}
+            accessibilityLabel="Email input"
+            accessibilityHint="Enter your email address"
+            accessibilityRole="text"
           />
 
-          <View style={styles.labelContainer}>
+          <View 
+            style={styles.labelContainer}
+            accessible={true}
+            accessibilityRole="text"
+          >
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons 
                 name="account-outline" 
                 size={24} 
-                color="black" 
+                color="black"
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
               />
             </View>
             <Text style={styles.formLabel}>Username:</Text>
@@ -140,18 +199,31 @@ const SignUpScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={userName}
-            onChangeText={handleUserNameChange}
+            onChangeText={(text) => {
+              handleUserNameChange(text);
+              announceToScreenReader(`Username set to ${text}`);
+            }}
             placeholder="choose a username (lowercase)"
             autoCapitalize="none"
             autoCorrect={false}
+            accessible={true}
+            accessibilityLabel="Username input"
+            accessibilityHint="Choose a username in lowercase"
+            accessibilityRole="text"
           />
 
-          <View style={styles.labelContainer}>
+          <View 
+            style={styles.labelContainer}
+            accessible={true}
+            accessibilityRole="text"
+          >
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons 
                 name="lock-outline" 
                 size={24} 
-                color="black" 
+                color="black"
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no"
               />
             </View>
             <Text style={styles.formLabel}>Password:</Text>
@@ -159,39 +231,59 @@ const SignUpScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              announceToScreenReader("Password field updated");
+            }}
             placeholder="Create a password"
             secureTextEntry
+            accessible={true}
+            accessibilityLabel="Password input"
+            accessibilityHint="Create your password"
+            accessibilityRole="text"
           />
 
+          <View style={styles.buttonContainer}>
+            <View style={styles.buttonShadow} />
+            <TouchableOpacity 
+              style={styles.signupButton} 
+              onPress={handleSignup}
+              accessible={true}
+              accessibilityLabel="Sign up button"
+              accessibilityHint="Double tap to create your account"
+              accessibilityRole="button"
+            >
+              <View style={styles.buttonContent}>
+                <Text style={styles.signupButtonText}>
+                  Sign Up 
+                  <MaterialCommunityIcons 
+                    name="arrow-right" 
+                    size={24} 
+                    color="white"
+                    accessibilityElementsHidden={true}
+                    importantForAccessibility="no"
+                  />
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
 
-          <View style={styles.container}>
-    <View style={styles.buttonContainer}>
-      <View style={styles.buttonShadow} />
-
-      <TouchableOpacity 
-        style={styles.signupButton} 
-        onPress={handleSignup}
-      >
-        
-        <View style={styles.buttonContent}>
-        <Text style={styles.signupButtonText}>
-                Sign Up <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
-              </Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-
-
-    </View>
-
-    
-
-
-
-          <View style={styles.footerContainer}>
+          <View 
+            style={styles.footerContainer}
+            accessible={true}
+            accessibilityRole="text"
+          >
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity 
+              onPress={() => {
+                announceToScreenReader("Going to login screen");
+                navigation.navigate('Login');
+              }}
+              accessible={true}
+              accessibilityLabel="Go to login"
+              accessibilityHint="Double tap to go to login screen"
+              accessibilityRole="link"
+            >
               <Text style={styles.footerLink}>Login</Text>
             </TouchableOpacity>
           </View>

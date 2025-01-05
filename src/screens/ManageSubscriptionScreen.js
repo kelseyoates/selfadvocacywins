@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Linking, 
-  Alert,
-  AccessibilityInfo 
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -16,53 +8,28 @@ const ManageSubscriptionScreen = () => {
   const navigation = useNavigation();
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
 
-  // Add screen reader detection
   useEffect(() => {
-    const checkScreenReader = async () => {
-      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
-      setIsScreenReaderEnabled(screenReaderEnabled);
-    };
-
-    checkScreenReader();
-    const subscription = AccessibilityInfo.addEventListener(
-      'screenReaderChanged',
-      setIsScreenReaderEnabled
-    );
-
-    return () => {
-      subscription.remove();
-    };
+    fetchUserSubscription();
   }, []);
-
-  const announceToScreenReader = (message) => {
-    if (isScreenReaderEnabled) {
-      AccessibilityInfo.announceForAccessibility(message);
-    }
-  };
 
   const fetchUserSubscription = async () => {
     try {
-      announceToScreenReader('Loading subscription information');
       const userId = auth.currentUser.uid.toLowerCase();
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
         setCurrentSubscription(userDoc.data().subscriptionType);
       }
       setLoading(false);
-      announceToScreenReader('Subscription information loaded');
     } catch (error) {
       console.error('Error fetching subscription:', error);
       Alert.alert('Error', 'Failed to load subscription information');
       setLoading(false);
-      announceToScreenReader('Failed to load subscription information');
     }
   };
 
   const handleSubscriptionChange = async (newType) => {
     try {
-      announceToScreenReader('Opening subscription management page');
       // For all subscription changes, use the customer portal
       const portalLink = 'https://billing.stripe.com/p/login/test_7sI025bCyfKp9ryfYY';
       
@@ -91,62 +58,57 @@ const ManageSubscriptionScreen = () => {
     } catch (error) {
       console.error('Subscription change error:', error);
       Alert.alert('Error', 'Failed to open subscription management');
-      announceToScreenReader('Failed to open subscription management');
     }
   };
 
   if (loading) {
     return (
-      <View 
-        style={styles.container}
-        accessible={true}
-        accessibilityRole="progressbar"
-        accessibilityLabel="Loading subscription information"
-      >
-        <Text style={styles.loadingText}>Loading subscription info...</Text>
+      <View style={styles.container} accessible={true} accessibilityRole="progressbar">
+        <Text style={styles.loadingText} accessibilityLabel="Loading your subscription information">
+          Loading subscription info...
+        </Text>
       </View>
     );
   }
 
-  const getPlanDescription = (planType) => {
-    switch(planType) {
-      case 'selfAdvocatePlus': return 'Self Advocate Plus - $10 per month';
-      case 'selfAdvocateDating': return 'Self Advocate Dating - $15 per month';
-      case 'supporter1': return 'Supporter 1 - $10 per month';
-      case 'supporter5': return 'Supporter 5 - $15 per month';
-      case 'supporter10': return 'Supporter 10 - $20 per month';
-      default: return 'Self Advocate - Free';
-    }
-  };
-
   return (
-    <View 
-      style={styles.container}
-      accessible={true}
-      accessibilityLabel="Manage Subscription Screen"
-    >
+    <View style={styles.container} accessible={true}>
       <Text 
-        style={styles.title}
-        accessibilityRole="header"
+        style={styles.title} 
+        accessible={true}
+        accessibilityRole="text"
       >
         Manage Your Subscription
       </Text>
       
       <View 
-        style={styles.currentPlanCard}
-        accessible={true}
+        style={styles.currentPlanCard} 
+        accessible={true} 
         accessibilityRole="text"
-        accessibilityLabel={`Current plan: ${getPlanDescription(currentSubscription)}`}
+        accessibilityLabel={`Current plan: ${
+          currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus, ten dollars per month' :
+          currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating, fifteen dollars per month' :
+          currentSubscription === 'supporter1' ? 'Supporter 1, ten dollars per month' :
+          currentSubscription === 'supporter5' ? 'Supporter 5, fifteen dollars per month' :
+          currentSubscription === 'supporter10' ? 'Supporter 10, twenty dollars per month' :
+          'Self Advocate, Free plan'
+        }`}
       >
         <Text style={styles.currentPlanTitle}>Current Plan:</Text>
         <Text style={styles.currentPlanName}>
-          {getPlanDescription(currentSubscription)}
+          {currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus - $10/month' :
+           currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating - $15/month' :
+           currentSubscription === 'supporter1' ? 'Supporter 1 - $10/month' :
+           currentSubscription === 'supporter5' ? 'Supporter 5 - $15/month' :
+           currentSubscription === 'supporter10' ? 'Supporter 10 - $20/month' :
+           'Self Advocate - Free'}
         </Text>
       </View>
 
       <Text 
-        style={styles.sectionTitle}
-        accessibilityRole="header"
+        style={styles.sectionTitle} 
+        accessible={true}
+        accessibilityRole="text"
       >
         Change Your Plan
       </Text>
@@ -160,8 +122,8 @@ const ManageSubscriptionScreen = () => {
               onPress={() => handleSubscriptionChange('selfAdvocateFree')}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Downgrade to Self Advocate Free Plan"
-              accessibilityHint="Basic access to chat and post wins. No monthly fee."
+              accessibilityLabel="Downgrade to Self Advocate Free plan. Basic access to chat and post wins. No monthly cost."
+              accessibilityHint="Double tap to change to the free plan"
             >
               <Text style={styles.planTitle}>Downgrade to Self Advocate - Free</Text>
               <Text style={styles.planPrice}>Free</Text>
@@ -175,8 +137,8 @@ const ManageSubscriptionScreen = () => {
               onPress={() => handleSubscriptionChange('selfAdvocatePlus')}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Switch to Self Advocate Plus Plan"
-              accessibilityHint="Add supporters, chat, and post wins for $10 per month"
+              accessibilityLabel="Switch to Self Advocate Plus plan. Add supporters, chat, and post wins. Monthly cost is ten dollars."
+              accessibilityHint="Double tap to change to the plus plan"
             >
               <Text style={styles.planTitle}>Switch to Self Advocate Plus</Text>
               <Text style={styles.planPrice}>$10/month</Text>
@@ -190,8 +152,8 @@ const ManageSubscriptionScreen = () => {
               onPress={() => handleSubscriptionChange('selfAdvocateDating')}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Switch to Self Advocate Dating Plan"
-              accessibilityHint="All Plus features and dating access for $15 per month"
+              accessibilityLabel="Switch to Self Advocate Dating plan. All Plus features and dating access. Monthly cost is fifteen dollars."
+              accessibilityHint="Double tap to change to the dating plan"
             >
               <Text style={styles.planTitle}>Switch to Self Advocate Dating</Text>
               <Text style={styles.planPrice}>$15/month</Text>
@@ -210,8 +172,8 @@ const ManageSubscriptionScreen = () => {
               onPress={() => handleSubscriptionChange('supporter1')}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Switch to Supporter 1 Plan"
-              accessibilityHint="Support one self-advocate for $10 per month"
+              accessibilityLabel="Switch to Supporter 1 plan. Support one self-advocate. Monthly cost is ten dollars."
+              accessibilityHint="Double tap to change to the supporter 1 plan"
             >
               <Text style={styles.planTitle}>Switch to Supporter - 1</Text>
               <Text style={styles.planPrice}>$10/month</Text>
@@ -225,8 +187,8 @@ const ManageSubscriptionScreen = () => {
               onPress={() => handleSubscriptionChange('supporter5')}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Switch to Supporter 5 Plan"
-              accessibilityHint="Support up to five self-advocates for $15 per month"
+              accessibilityLabel="Switch to Supporter 5 plan. Support up to five self-advocates. Monthly cost is fifteen dollars."
+              accessibilityHint="Double tap to change to the supporter 5 plan"
             >
               <Text style={styles.planTitle}>Switch to Supporter - 5</Text>
               <Text style={styles.planPrice}>$15/month</Text>
@@ -240,8 +202,8 @@ const ManageSubscriptionScreen = () => {
               onPress={() => handleSubscriptionChange('supporter10')}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Switch to Supporter 10 Plan"
-              accessibilityHint="Support up to ten self-advocates for $20 per month"
+              accessibilityLabel="Switch to Supporter 10 plan. Support up to ten self-advocates. Monthly cost is twenty dollars."
+              accessibilityHint="Double tap to change to the supporter 10 plan"
             >
               <Text style={styles.planTitle}>Switch to Supporter - 10</Text>
               <Text style={styles.planPrice}>$20/month</Text>
@@ -258,7 +220,7 @@ const ManageSubscriptionScreen = () => {
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel="Cancel subscription"
-          accessibilityHint="Opens subscription management page to cancel your subscription"
+          accessibilityHint="Double tap to begin subscription cancellation process"
         >
           <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
         </TouchableOpacity>
