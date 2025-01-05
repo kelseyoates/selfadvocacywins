@@ -12,7 +12,8 @@ import {
   FlatList,
   ActivityIndicator,
   SafeAreaView,
-  Platform
+  Platform,
+  AccessibilityInfo
 } from 'react-native';
 import { auth, db, storage } from '../config/firebase';
 import { signOut } from 'firebase/auth';
@@ -49,14 +50,21 @@ const ProfileScreen = () => {
   const route = useRoute();
   const { profileUserId } = route.params || {};
   const { user } = useAuth();
+  
+  // Accessibility-related state and refs
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [lastAnnouncedMessage, setLastAnnouncedMessage] = useState('');
+  const profileImageRef = useRef(null);
+  const statsRef = useRef(null);
+
+  // Other state variables
   const [userData, setUserData] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [wins, setWins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedState, setSelectedState] = useState('');
-
-  
 
   // Add birthdate state variables
   const [showMonthPicker, setShowMonthPicker] = useState(false);
@@ -65,6 +73,33 @@ const ProfileScreen = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
+
+
+
+  // Add accessibility check effect
+  useEffect(() => {
+    const checkAccessibility = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkAccessibility();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Add accessibility announcement helper
+  const announceUpdate = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   // Generate arrays for the pickers
   const months = [
@@ -295,12 +330,20 @@ const ProfileScreen = () => {
 
   const renderStateSelector = () => {
     return (
-      <View style={styles.stateContainer}>
+      <View 
+        style={styles.stateContainer}
+        accessible={true}
+        accessibilityLabel="State selection section"
+      >
         <Text style={styles.stateLabel}>📍 Your State</Text>
         
         <TouchableOpacity 
           style={styles.stateButton}
           onPress={() => setModalVisible(true)}
+          accessible={true}
+          accessibilityLabel={`Current state: ${selectedState || 'None selected'}. Double tap to change`}
+          accessibilityHint="Opens state selection modal"
+          accessibilityRole="button"
         >
           <Text style={styles.stateButtonText}>
             {selectedState || 'Select your state'}
@@ -387,10 +430,18 @@ const ProfileScreen = () => {
   // Update your picker render code to use these new handlers
   const renderBirthdateSelectors = () => {
     return (
-      <View style={styles.birthdateContainer}>
+      <View 
+        style={styles.birthdateContainer}
+        accessible={true}
+        accessibilityLabel="Birthday selection section"
+      >
         <TouchableOpacity 
           style={styles.pickerButton}
           onPress={() => setShowMonthPicker(true)}
+          accessible={true}
+          accessibilityLabel={`Month: ${selectedMonth || 'Not selected'}. Double tap to change`}
+          accessibilityHint="Opens month selection picker"
+          accessibilityRole="button"
         >
           <Text style={styles.pickerButtonText}>
             {selectedMonth || 'Month'}
@@ -400,6 +451,10 @@ const ProfileScreen = () => {
         <TouchableOpacity 
           style={styles.pickerButton}
           onPress={() => setShowDayPicker(true)}
+          accessible={true}
+          accessibilityLabel={`Day: ${selectedDay || 'Not selected'}. Double tap to change`}
+          accessibilityHint="Opens day selection picker"
+          accessibilityRole="button"
         >
           <Text style={styles.pickerButtonText}>
             {selectedDay || 'Day'}
@@ -409,6 +464,10 @@ const ProfileScreen = () => {
         <TouchableOpacity 
           style={styles.pickerButton}
           onPress={() => setShowYearPicker(true)}
+          accessible={true}
+          accessibilityLabel={`Year: ${selectedYear || 'Not selected'}. Double tap to change`}
+          accessibilityHint="Opens year selection picker"
+          accessibilityRole="button"
         >
           <Text style={styles.pickerButtonText}>
             {selectedYear || 'Year'}
@@ -468,7 +527,8 @@ const ProfileScreen = () => {
     }
   };
 
- 
+
+
 
   const questions = [
     {
@@ -825,6 +885,7 @@ const ProfileScreen = () => {
 
   const handleProfilePictureUpdate = async () => {
     try {
+      announceUpdate('Opening image picker');
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
@@ -840,6 +901,7 @@ const ProfileScreen = () => {
       });
 
       if (!result.canceled) {
+        announceUpdate('Uploading new profile picture');
         setIsUploading(true);
         const imageUri = result.assets[0].uri;
 
@@ -1047,6 +1109,121 @@ const ProfileScreen = () => {
     };
   }, []);
 
+  // Add this useEffect to check for screen reader
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+
+    // Listen for screen reader changes
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      // Clean up subscription on unmount
+      subscription.remove();
+    };
+  }, []);
+
+  // Add helper function for accessibility announcements
+  const announceMessage = (message) => {
+    if (isScreenReaderEnabled && message !== lastAnnouncedMessage) {
+      AccessibilityInfo.announceForAccessibility(message);
+      setLastAnnouncedMessage(message);
+    }
+  };
+
+  // Add these accessibility helper functions
+  const announceDateSelection = (type, value) => {
+    if (isScreenReaderEnabled) {
+      let message = '';
+      switch (type) {
+        case 'month':
+          message = `Selected month: ${value}`;
+          break;
+        case 'day':
+          message = `Selected day: ${value}`;
+          break;
+        case 'year':
+          message = `Selected year: ${value}`;
+          break;
+      }
+      AccessibilityInfo.announceForAccessibility(message);
+      setLastAnnouncedMessage(message);
+    }
+  };
+
+  const formatDateForAccessibility = () => {
+    if (selectedMonth && selectedDay && selectedYear) {
+      return `Birth date: ${selectedMonth} ${selectedDay}, ${selectedYear}`;
+    }
+    return 'Birth date not set';
+  };
+
+  // Add this function to handle picker visibility with accessibility
+  const togglePicker = (pickerType, isVisible) => {
+    switch (pickerType) {
+      case 'month':
+        setShowMonthPicker(isVisible);
+        if (isScreenReaderEnabled) {
+          AccessibilityInfo.announceForAccessibility(
+            isVisible ? 'Month picker opened' : 'Month picker closed'
+          );
+        }
+        break;
+      case 'day':
+        setShowDayPicker(isVisible);
+        if (isScreenReaderEnabled) {
+          AccessibilityInfo.announceForAccessibility(
+            isVisible ? 'Day picker opened' : 'Day picker closed'
+          );
+        }
+        break;
+      case 'year':
+        setShowYearPicker(isVisible);
+        if (isScreenReaderEnabled) {
+          AccessibilityInfo.announceForAccessibility(
+            isVisible ? 'Year picker opened' : 'Year picker closed'
+          );
+        }
+        break;
+    }
+  };
+
+  // Add this function to handle profile updates with accessibility
+  const handleProfileUpdate = async () => {
+    try {
+      setIsUpdatingProfile(true);
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Updating profile...');
+      }
+
+      // Your existing profile update logic here
+
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Profile updated successfully');
+      }
+    } catch (error) {
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Error updating profile');
+      }
+      console.error('Error updating profile:', error);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  // Add to your utility functions
+  const hasGoodContrast = (color1, color2) => {
+    // Implement WCAG contrast ratio calculation
+    // Return true if contrast ratio is at least 4.5:1
+  };
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -1064,12 +1241,21 @@ const ProfileScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="Profile screen"
+    >
       <View style={styles.profileHeader}>
         <TouchableOpacity 
+          ref={profileImageRef}
           onPress={handleProfilePictureUpdate}
           disabled={isUploading}
           style={styles.profileImageContainer}
+          accessible={true}
+          accessibilityLabel={`Profile picture for ${userData?.username || 'User'}. Double tap to change`}
+          accessibilityHint="Opens image picker to select new profile picture"
+          accessibilityRole="button"
         >
           <Image
             source={{ 
@@ -1088,7 +1274,11 @@ const ProfileScreen = () => {
           )}
         </TouchableOpacity>
         
-        <View style={styles.userInfo}>
+        <View 
+          style={styles.userInfo}
+          accessible={true}
+          accessibilityLabel={`Profile information for ${userData?.username || 'User'}`}
+        >
           <Text style={styles.username}>{userData?.username || 'User'}</Text>
           
          
@@ -1109,7 +1299,11 @@ const ProfileScreen = () => {
       </View>
 
 
-      <View style={styles.statsContainer}>
+      <View 
+        style={styles.statsContainer}
+        accessible={true}
+        accessibilityLabel={`Profile statistics: ${wins.length} wins, ${calculateStats(wins).totalCheers} cheers, and ${calculateStats(wins).totalComments} comments`}
+      >
         <View style={styles.statItem}>
           <Image 
             source={require('../../assets/wins.png')} 
