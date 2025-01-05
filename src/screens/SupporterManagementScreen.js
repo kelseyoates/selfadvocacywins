@@ -99,7 +99,12 @@ const SupporterManagementScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View 
+        style={styles.container}
+        accessible={true}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading supporter management"
+      >
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -110,13 +115,21 @@ const SupporterManagementScreen = () => {
 
   if (!canManageSupporters) {
     return (
-      <View style={styles.container}>
+      <View 
+        style={styles.container}
+        accessible={true}
+        accessibilityRole="alert"
+      >
         <Text style={styles.subscriptionMessage}>
           Upgrade to Self Advocate Plus or Dating to add supporters! 💝
         </Text>
         <TouchableOpacity 
           style={styles.upgradeButton}
           onPress={() => navigation.navigate('Subscription')}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Upgrade subscription to add supporters"
+          accessibilityHint="Navigates to subscription management screen"
         >
           <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
         </TouchableOpacity>
@@ -125,26 +138,55 @@ const SupporterManagementScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      accessibilityRole="scrollview"
+      accessibilityLabel="Supporter Management Screen"
+    >
       <View style={styles.content}>
-        <Text style={styles.title}>Manage Your Supporters</Text>
+        <Text 
+          style={styles.title}
+          accessibilityRole="header"
+        >
+          Manage Your Supporters
+        </Text>
 
-        <Text style={styles.body}>Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. You can remove a supporter at any time.</Text>
+        <Text 
+          style={styles.body}
+          accessibilityRole="text"
+        >
+          Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. You can remove a supporter at any time.
+        </Text>
 
-
-        
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => navigation.navigate('AddSupporter')}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Add new supporter"
+          accessibilityHint="Opens screen to add a new supporter"
         >
           <Text style={styles.addButtonText}>Add New Supporter +</Text>
         </TouchableOpacity>
 
-        <View style={styles.supportersList}>
-          <Text style={styles.sectionTitle}>Your Current Supporters</Text>
+        <View 
+          style={styles.supportersList}
+          accessibilityRole="list"
+        >
+          <Text 
+            style={styles.sectionTitle}
+            accessibilityRole="header"
+          >
+            Your Current Supporters
+          </Text>
           {userData?.supporters?.length > 0 ? (
             userData.supporters.map((supporter, index) => (
-              <View key={index} style={styles.supporterCard}>
+              <View 
+                key={index} 
+                style={styles.supporterCard}
+                accessible={true}
+                accessibilityRole="listitem"
+              >
                 <View style={styles.supporterInfo}>
                   <Image 
                     source={
@@ -153,8 +195,15 @@ const SupporterManagementScreen = () => {
                         : require('../../assets/default-avatar.png')
                     }
                     style={styles.profilePicture}
+                    accessibilityRole="image"
+                    accessibilityLabel={`${supporter.username || supporter.name || 'Unknown'}'s profile picture`}
                   />
-                  <View style={styles.textContainer}>
+                  <View 
+                    style={styles.textContainer}
+                    accessible={true}
+                    accessibilityRole="text"
+                    accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. Email: ${supporter.email}`}
+                  >
                     <Text style={styles.supporterName}>
                       {supporter.username || supporter.name || 'Unknown'}
                     </Text>
@@ -177,13 +226,20 @@ const SupporterManagementScreen = () => {
                       ]
                     );
                   }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${supporter.username || supporter.name || 'Unknown'}`}
+                  accessibilityHint="Double tap to remove this supporter"
                 >
                   <Text style={styles.removeButtonText}>Remove</Text>
                 </TouchableOpacity>
               </View>
             ))
           ) : (
-            <Text style={styles.noSupportersText}>
+            <Text 
+              style={styles.noSupportersText}
+              accessibilityRole="text"
+            >
               You haven't added any supporters yet.
             </Text>
           )}
