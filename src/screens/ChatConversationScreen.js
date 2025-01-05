@@ -11,7 +11,8 @@ import {
   Image,
   Alert,
   Keyboard,
-  Dimensions
+  Dimensions,
+  ScrollView
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -45,6 +46,8 @@ const ChatConversationScreen = ({ route, navigation }) => {
   const { height: screenHeight } = Dimensions.get('window');
   const [isUploading, setIsUploading] = useState(false);
   const [reportedUsers, setReportedUsers] = useState(new Set());
+  const [smartReplies, setSmartReplies] = useState([]);
+  const [isLoadingSmartReplies, setIsLoadingSmartReplies] = useState(false);
 
   // Fetch initial messages
   const fetchMessages = useCallback(async () => {
@@ -572,6 +575,89 @@ const ChatConversationScreen = ({ route, navigation }) => {
     setNavigationHeader();
   }, [navigation, uid, name]);
 
+  // Add this function to handle smart replies
+  const getSmartReplies = async (message) => {
+    try {
+      setIsLoadingSmartReplies(true);
+      if (!message || !message.text) return;
+
+      const smartReplyObject = new CometChat.SmartRepliesBuilder()
+        .setMessage(message)
+        .build();
+
+      const replies = await smartReplyObject.fetchReplies();
+      console.log('Smart replies:', replies);
+      setSmartReplies(replies || []);
+    } catch (error) {
+      console.error('Error getting smart replies:', error);
+      setSmartReplies([]);
+    } finally {
+      setIsLoadingSmartReplies(false);
+    }
+  };
+
+  // Update your message listener to get smart replies for the last message
+  useEffect(() => {
+    const listenerID = "CHAT_SCREEN_" + Date.now();
+    
+    CometChat.addMessageListener(
+      listenerID,
+      new CometChat.MessageListener({
+        onTextMessageReceived: message => {
+          console.log("Message received:", message);
+          setMessages(prev => [...prev, message]);
+          // Get smart replies for the received message
+          getSmartReplies(message);
+          
+          // Scroll to bottom
+          requestAnimationFrame(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          });
+        }
+      })
+    );
+
+    return () => {
+      CometChat.removeMessageListener(listenerID);
+    };
+  }, []);
+
+  // Add this function to handle smart reply selection
+  const handleSmartReplyPress = async (reply) => {
+    try {
+      setInputText(reply);
+      setSmartReplies([]); // Clear smart replies
+      await sendMessage(reply);
+    } catch (error) {
+      console.error('Error sending smart reply:', error);
+    }
+  };
+
+  // Add the smart replies component to your render
+  const renderSmartReplies = () => {
+    if (smartReplies.length === 0) return null;
+
+    return (
+      <View style={styles.smartRepliesContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.smartRepliesContent}
+        >
+          {smartReplies.map((reply, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.smartReplyButton}
+              onPress={() => handleSmartReplyPress(reply)}
+            >
+              <Text style={styles.smartReplyText}>{reply}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { height: screenHeight }]} 
@@ -593,6 +679,9 @@ const ChatConversationScreen = ({ route, navigation }) => {
           <Text style={styles.emptyText}>No messages yet</Text>
         )}
       />
+      
+      {renderSmartReplies()}
+
       <View style={styles.inputContainer}>
         <TouchableOpacity 
           style={styles.attachButton} 
@@ -748,6 +837,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#000',
+  },
+  smartRepliesContainer: {
+    backgroundColor: '#f5f5f5',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingVertical: 8,
+  },
+  smartRepliesContent: {
+    paddingHorizontal: 8,
+  },
+  smartReplyButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginHorizontal: 4,
+  },
+  smartReplyText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 });
 

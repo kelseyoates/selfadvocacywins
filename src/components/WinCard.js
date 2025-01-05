@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, AccessibilityInfo, Platform } from 'react-native';
 import { Video } from 'expo-av';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { formatDistanceToNow } from 'date-fns';
@@ -140,18 +140,19 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userDoc = await getDoc(doc(db, 'users', win.userId));
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+        const userRef = doc(db, 'users', win.userId);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+          setUserData(userSnap.data());
+          console.log('Fetched user data:', userSnap.data());
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
       }
     };
 
-    if (win.userId) {
-      fetchUserData();
-    }
+    fetchUserData();
   }, [win.userId]);
 
   const togglePlayback = async () => {
@@ -243,16 +244,25 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
         <Image
           source={{ uri: userData.profilePicture }}
           style={styles.profilePic}
+          accessible={true}
+          accessibilityLabel={`${win.username}'s profile picture`}
+          accessibilityRole="image"
         />
       );
     }
 
     return (
-      <View style={[styles.profilePic, styles.defaultProfilePic]}>
+      <View 
+        style={[styles.profilePic, styles.defaultProfilePic]}
+        accessible={true}
+        accessibilityLabel={`${win.username}'s default profile picture`}
+        accessibilityRole="image"
+      >
         <MaterialCommunityIcons 
           name="account" 
           size={24} 
           color="#fff" 
+          accessibilityElementsHidden={true}
         />
       </View>
     );
@@ -367,32 +377,55 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
     );
   };
 
+  // Add this helper function for better screen reader announcements
+  const formatDateForAccessibility = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric'
+    });
+  };
+
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          {userData?.profilePicture ? (
-            <Image 
-              source={{ uri: userData.profilePicture }} 
-              style={styles.profilePicture}
-            />
-          ) : (
-            <MaterialCommunityIcons 
-              name="account-circle" 
-              size={40} 
-              color="#24269B" 
-            />
-          )}
-          <View style={styles.nameTimeContainer}>
-            <Text style={styles.username}>{win.username}</Text>
-            <Text style={styles.timestamp}>
-              {formatDistanceToNow(new Date(win.createdAt), { addSuffix: true })}
-            </Text>
-          </View>
+    <View 
+      style={styles.card}
+      accessible={true}
+      accessibilityRole="none"
+      accessibilityLabel={`Win posted by ${win.username}`}
+    >
+      <View 
+        style={styles.userInfo}
+        accessible={true}
+        accessibilityRole="header"
+      >
+        {renderProfilePicture()}
+        <View accessible={true}>
+          <Text style={styles.username}>
+            {win.username}
+          </Text>
+          <Text 
+            style={styles.timestamp}
+            accessibilityLabel={`Posted ${formatDateForAccessibility(win.createdAt)}`}
+          >
+            {formatDistanceToNow(new Date(win.createdAt), { addSuffix: true })}
+          </Text>
         </View>
       </View>
 
-      {win.text && <Text style={styles.text}>{win.text}</Text>}
+      {win.text && (
+        <Text 
+          style={styles.text}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={`Win description: ${win.text}`}
+        >
+          {win.text}
+        </Text>
+      )}
       
       {renderMedia()}
 
@@ -720,7 +753,22 @@ const styles = StyleSheet.create({
   tapToLoadText: {
     color: 'white',
     marginTop: 10,
-  }
+  },
+  altTextIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginTop: 4,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    opacity: 0.9,
+  },
+  altTextLabel: {
+    marginLeft: 8,
+    color: '#24269B',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
 
 export default WinCard; 

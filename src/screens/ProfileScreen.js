@@ -26,6 +26,7 @@ import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { checkCometChatState, cleanupCometChat } from '../services/cometChat';
+import StateDropdown from '../components/StateDropdown';
 
 
 
@@ -414,7 +415,7 @@ const ProfileScreen = () => {
           </Text>
         </TouchableOpacity>
 
-        {/* Add Save button */}
+        {/* Add Save button
         {selectedMonth && selectedDay && selectedYear && (
           <TouchableOpacity 
             style={styles.saveButton}
@@ -422,7 +423,7 @@ const ProfileScreen = () => {
           >
             <Text style={styles.saveButtonText}>Save Birthday</Text>
           </TouchableOpacity>
-        )}
+        )} */}
 
         {/* Your existing picker modals with updated handlers */}
         {showMonthPicker && renderPicker(
@@ -1143,7 +1144,11 @@ const ProfileScreen = () => {
 
       {!profileUserId ? ( // Only show these sections for own profile
         <>
-          {renderStateSelector()}
+          <StateDropdown
+            selectedState={userData.state}
+            onStateSelect={(state) => setUserData(prev => ({ ...prev, state }))}
+            style={styles.stateDropdown}
+          />
           {renderPersonalInfo()}
         </>
       ) : null}
@@ -1532,7 +1537,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: '#24269B',
   },
   datePickersRow: {
     flexDirection: 'row',
@@ -1544,10 +1549,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 10,
     marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   datePickerButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: '#000000',
     textAlign: 'center',
   },
   modalOverlay: {
@@ -1561,11 +1568,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   pickerItem: {
-    padding: 15,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#24269B',
   },
   selectedPickerItem: {
     backgroundColor: '#f0f0f0',
@@ -1583,7 +1592,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 16,
-    color: '#666',
+    color: '#000000',
     marginBottom: 5,
   },
   infoText: {
@@ -1860,6 +1869,10 @@ datingProfileContainer: {
   shadowRadius: 3.84,
   borderWidth: 1,
   borderColor: '#000000',
+},
+
+stateDropdown: {
+  marginBottom: 16,
 },
 });
 

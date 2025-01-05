@@ -18,6 +18,54 @@ import { collection, addDoc, doc, serverTimestamp, runTransaction, setDoc, updat
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigation } from '@react-navigation/native';
 
+const generateAltText = async (imageUrl, setLoading) => {
+  try {
+    setLoading(true);
+    const API_KEY = 'AIzaSyBKoHkKtY1qVFkY__Kl4TfjdlzOXVbTWAo';
+    
+    const imageResponse = await fetch(imageUrl);
+    const imageBlob = await imageResponse.blob();
+    const base64data = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result.split(',')[1];
+        resolve(base64String);
+      };
+      reader.readAsDataURL(imageBlob);
+    });
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: "Generate a brief, descriptive alt text for this image that would be helpful for screen readers."
+          }, {
+            inline_data: {
+              mime_type: "image/jpeg",
+              data: base64data
+            }
+          }]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.candidates && data.candidates[0]?.content?.parts) {
+      return data.candidates[0].content.parts[0].text;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error generating alt text:', error);
+    return null;
+  } finally {
+    setLoading(false);
+  }
+};
+
 const NewWinScreen = ({ navigation }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState(null);
@@ -26,6 +74,7 @@ const NewWinScreen = ({ navigation }) => {
   const [mediaType, setMediaType] = useState(null);
   const [imageHeight, setImageHeight] = useState(0);
   const [media, setMedia] = useState([]);
+  const [isGeneratingAltText, setIsGeneratingAltText] = useState(false);
   const screenWidth = Dimensions.get('window').width - 40;
 
   const clearForm = () => {
@@ -68,6 +117,7 @@ const NewWinScreen = ({ navigation }) => {
       };
 
       let mediaUrl = null;
+      let altText = null;
 
       if (image) {
         const imageRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
@@ -76,6 +126,10 @@ const NewWinScreen = ({ navigation }) => {
         await uploadBytes(imageRef, blob);
         mediaUrl = await getDownloadURL(imageRef);
         console.log('Image uploaded, URL:', mediaUrl);
+        
+        console.log('Generating alt text...');
+        altText = await generateAltText(mediaUrl, setIsGeneratingAltText);
+        console.log('Generated alt text:', altText);
       } else if (video) {
         const videoRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
         const response = await fetch(video.uri);
@@ -94,6 +148,7 @@ const NewWinScreen = ({ navigation }) => {
         cheers: 0,
         mediaType,
         mediaUrl,
+        altText,
         comments: []
       };
 
@@ -331,10 +386,11 @@ const NewWinScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={styles.submitButton} 
         onPress={handleSubmit}
-        disabled={isSubmitting}
+        disabled={isSubmitting || isGeneratingAltText}
       >
         <Text style={styles.submitButtonText}>
-          {isSubmitting ? 'Posting...' : 'Post Win'}
+          {isGeneratingAltText ? 'Generating Alt Text...' : 
+           isSubmitting ? 'Posting...' : 'Post Win'}
         </Text>
         <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
       </TouchableOpacity>

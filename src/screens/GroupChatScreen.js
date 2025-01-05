@@ -11,6 +11,8 @@ import {
   Alert,
   Modal,
   Image,
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -77,6 +79,8 @@ const GroupChatScreen = ({ route, navigation }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [reportedUsers, setReportedUsers] = useState(new Set());
   const [memberProfiles, setMemberProfiles] = useState({});
+  const [smartReplies, setSmartReplies] = useState([]);
+  const [isLoadingSmartReplies, setIsLoadingSmartReplies] = useState(false);
 
   // Test function to verify modal visibility
   const toggleModal = () => {
@@ -384,6 +388,36 @@ const GroupChatScreen = ({ route, navigation }) => {
     }
   };
 
+  const getSmartReplies = async (message) => {
+    try {
+      if (!message || !message.text) return;
+      
+      setIsLoadingSmartReplies(true);
+      const smartReplyObject = new CometChat.SmartRepliesBuilder()
+        .setMessage(message)
+        .build();
+
+      const replies = await smartReplyObject.fetchReplies();
+      console.log('Smart replies:', replies);
+      setSmartReplies(replies || []);
+    } catch (error) {
+      console.error('Error getting smart replies:', error);
+      setSmartReplies([]);
+    } finally {
+      setIsLoadingSmartReplies(false);
+    }
+  };
+
+  const handleSmartReplyPress = async (reply) => {
+    try {
+      setInputText(reply);
+      setSmartReplies([]); // Clear smart replies
+      await sendMessage(reply);
+    } catch (error) {
+      console.error('Error sending smart reply:', error);
+    }
+  };
+
   const renderMessage = ({ item }) => {
     const isMyMessage = item.sender?.uid === currentUser?.uid;
 
@@ -465,6 +499,38 @@ const GroupChatScreen = ({ route, navigation }) => {
     );
   };
 
+  const renderSmartReplies = () => {
+    if (isLoadingSmartReplies) {
+      return (
+        <View style={styles.smartRepliesContainer}>
+          <ActivityIndicator size="small" color="#007AFF" />
+        </View>
+      );
+    }
+
+    if (smartReplies.length === 0) return null;
+
+    return (
+      <View style={styles.smartRepliesContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.smartRepliesContent}
+        >
+          {smartReplies.map((reply, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.smartReplyButton}
+              onPress={() => handleSmartReplyPress(reply)}
+            >
+              <Text style={styles.smartReplyText}>{reply}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   // Add this useEffect to pass the toggle method to navigation params
   useEffect(() => {
     navigation.setParams({
@@ -507,6 +573,8 @@ const GroupChatScreen = ({ route, navigation }) => {
           flatListRef.current?.scrollToEnd({ animated: false });
         }}
       />
+
+      {renderSmartReplies()}
 
       <View style={styles.inputContainer}>
         <TouchableOpacity 
@@ -885,6 +953,27 @@ const styles = StyleSheet.create({
   otherTimestamp: {
     color: '#666',
     opacity: 0.8,
+  },
+  smartRepliesContainer: {
+    backgroundColor: '#f5f5f5',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingVertical: 8,
+    minHeight: 56,
+  },
+  smartRepliesContent: {
+    paddingHorizontal: 8,
+  },
+  smartReplyButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginHorizontal: 4,
+  },
+  smartReplyText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 });
 

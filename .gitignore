@@ -37,3 +37,6 @@ yarn-error.*
 
 # Environment variables
 .env
+
+# google api key
+serviceAccountKey.json
