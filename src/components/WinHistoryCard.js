@@ -30,27 +30,55 @@ const WinHistoryCard = ({ win, onPress }) => {
     }
   };
 
+  const formattedTime = win.localTimestamp ? formatTime(win.localTimestamp.time) : '';
+  const cheersDescription = win.cheers > 0 ? `${win.cheers} cheers` : '';
+  const commentsCount = win.comments?.length || 0;
+
   return (
     <TouchableOpacity 
       style={styles.container} 
       onPress={onPress}
       activeOpacity={0.7}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`Win: ${win.text}${formattedTime ? `, posted at ${formattedTime}` : ''}${cheersDescription ? `, received ${cheersDescription}` : ''}${commentsCount ? `, has ${commentsCount} comments` : ''}`}
+      accessibilityHint="Double tap to view win details"
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>{win.text}</Text>
+      <View 
+        style={styles.content}
+        accessible={true}
+        accessibilityRole="text"
+      >
+        <Text 
+          style={styles.title}
+          accessibilityRole="header"
+        >
+          {win.text}
+        </Text>
         {win.localTimestamp && (
-          <Text style={styles.timestamp}>
-            {formatTime(win.localTimestamp.time)}
+          <Text 
+            style={styles.timestamp}
+            accessibilityRole="text"
+          >
+            {formattedTime}
           </Text>
         )}
       </View>
       
       {win.mediaUrl && win.mediaType === 'photo' && (
-        <View style={styles.imageContainer}>
+        <View 
+          style={styles.imageContainer}
+          accessible={true}
+          accessibilityRole="image"
+          accessibilityLabel={win.altText || "Photo attached to win"}
+        >
           <Image
             source={{ uri: win.mediaUrl }}
             style={styles.image}
             resizeMode="cover"
+            accessible={true}
+            accessibilityRole="image"
+            accessibilityLabel={win.altText || "Photo attached to win"}
             onError={(error) => console.log('Image loading error:', error.nativeEvent.error)}
             onLoad={() => console.log('Image loaded successfully:', win.mediaUrl)}
           />
@@ -58,9 +86,18 @@ const WinHistoryCard = ({ win, onPress }) => {
       )}
 
       {win.comments && win.comments.length > 0 && (
-        <View style={styles.commentsContainer}>
+        <View 
+          style={styles.commentsContainer}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={`${win.comments.length} comments`}
+        >
           {win.comments.map((comment, index) => (
-            <Text key={index} style={styles.comment}>
+            <Text 
+              key={index} 
+              style={styles.comment}
+              accessibilityRole="text"
+            >
               {comment.text}
             </Text>
           ))}
@@ -68,8 +105,19 @@ const WinHistoryCard = ({ win, onPress }) => {
       )}
 
       {win.cheers > 0 && (
-        <View style={styles.cheersContainer}>
-          <MaterialCommunityIcons name="heart" size={16} color="#FF4B4B" />
+        <View 
+          style={styles.cheersContainer}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={`${win.cheers} cheers`}
+        >
+          <MaterialCommunityIcons 
+            name="heart" 
+            size={16} 
+            color="#FF4B4B"
+            accessibilityRole="image"
+            accessibilityLabel="Heart icon"
+          />
           <Text style={styles.cheersText}>{win.cheers}</Text>
         </View>
       )}
@@ -94,6 +142,7 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: '#eee',
+    minHeight: 80, // Ensure minimum touch target size
   },
   content: {
     marginBottom: 10,

@@ -186,12 +186,17 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
           <TouchableOpacity 
             style={styles.mediaContainer}
             onPress={() => setShouldLoadVideo(true)}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Load video"
+            accessibilityHint="Double tap to load and play the video"
           >
             <View style={styles.videoPlaceholder}>
               <MaterialCommunityIcons 
                 name="play-circle" 
                 size={50} 
-                color="white" 
+                color="white"
+                accessibilityRole="image"
               />
               <Text style={styles.tapToLoadText}>Tap to load video</Text>
             </View>
@@ -200,7 +205,12 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
       }
 
       return (
-        <View style={styles.mediaContainer}>
+        <View 
+          style={styles.mediaContainer}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Video content"
+        >
           <Video
             ref={videoRef}
             source={{ uri: win.mediaUrl }}
@@ -212,11 +222,16 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
           <TouchableOpacity
             style={styles.playButton}
             onPress={togglePlayback}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
+            accessibilityHint={`Double tap to ${isPlaying ? 'pause' : 'play'} the video`}
           >
             <MaterialCommunityIcons
               name={isPlaying ? 'pause' : 'play'}
               size={50}
               color="white"
+              accessibilityRole="image"
             />
           </TouchableOpacity>
         </View>
@@ -225,11 +240,19 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
 
     if (win.mediaType === 'photo') {
       return (
-        <View style={styles.mediaContainer}>
+        <View 
+          style={styles.mediaContainer}
+          accessible={true}
+          accessibilityRole="image"
+          accessibilityLabel={win.altText || "Photo shared with win"}
+        >
           <Image
             source={{ uri: win.mediaUrl }}
             style={styles.media}
             resizeMode="contain"
+            accessible={true}
+            accessibilityRole="image"
+            accessibilityLabel={win.altText || "Photo shared with win"}
           />
         </View>
       );
@@ -325,25 +348,6 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
   };
 
 
-
-  // const animateCheer = () => {
-  //   cheerScale.value = withSequence(
-  //     withSpring(1, { damping: 5 }),
-  //     withTiming(0, { duration: 500 })
-  //   );
-  //   cheerOpacity.value = withSequence(
-  //     withTiming(1, { duration: 100 }),
-  //     withTiming(0, { duration: 500 })
-  //   );
-  // };
-
-  // const cheerAnimatedStyle = useAnimatedStyle(() => {
-  //   return {
-  //     transform: [{ scale: cheerScale.value }],
-  //     opacity: cheerOpacity.value,
-  //   };
-  // });
-
   const renderComments = () => {
     if (comments.length === 0) return null;
 
@@ -394,7 +398,7 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
     <View 
       style={styles.card}
       accessible={true}
-      accessibilityRole="none"
+      accessibilityRole="text"
       accessibilityLabel={`Win posted by ${win.username}`}
     >
       <View 
@@ -429,37 +433,57 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
       
       {renderMedia()}
 
-      {/* <Animated.View style={[styles.cheerOverlay, cheerAnimatedStyle]}>
-        <Text style={styles.bigCheerEmoji}>👏</Text>
-      </Animated.View> */}
-
+   
       <View style={styles.footer}>
         <TouchableOpacity 
           style={[styles.cheerButton, isUpdating && styles.cheerButtonDisabled]}
           onPress={handleCheer}
           disabled={isUpdating}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Cheer this win. Current cheers: ${cheerCount}`}
+          accessibilityHint="Double tap to cheer for this win"
+          accessibilityState={{ disabled: isUpdating }}
         >
-          <Text style={styles.cheerEmoji}>👏</Text>
+          <Text style={styles.cheerEmoji} accessibilityLabel="Clapping hands emoji">👏</Text>
           <Text style={styles.cheerCount}>{cheerCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.commentButton}
           onPress={handleShowCommentOptions}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Add comment"
+          accessibilityHint="Double tap to show comment options"
         >
-          <MaterialCommunityIcons name="comment-outline" size={40} color="#24269B" />
+          <MaterialCommunityIcons 
+            name="comment-outline" 
+            size={40} 
+            color="#24269B"
+            accessibilityRole="image"
+          />
         </TouchableOpacity>
       </View>
 
 
 
       {showComments && (
-        <View style={styles.commentOptions}>
+        <View 
+          style={styles.commentOptions}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Comment options"
+        >
           {randomComments.map((comment, index) => (
             <TouchableOpacity
               key={index}
               style={styles.commentOption}
               onPress={() => handleAddComment(comment)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={comment}
+              accessibilityHint="Double tap to add this comment"
             >
               <Text style={styles.commentOptionText}>{comment}</Text>
             </TouchableOpacity>
