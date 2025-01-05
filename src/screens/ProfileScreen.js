@@ -25,6 +25,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { useAuth } from '../contexts/AuthContext';
 import WinCard from '../components/WinCard';
 import { CometChat } from '@cometchat-pro/react-native-chat';
+import { checkCometChatState, cleanupCometChat } from '../services/cometChat';
 
 
 
@@ -1030,6 +1031,20 @@ const ProfileScreen = () => {
   const visibleQuestions = questions.filter(q => 
     !q.isDatingQuestion || (q.isDatingQuestion && userData?.subscriptionType === 'selfAdvocateDating')
   );
+
+  useEffect(() => {
+    const checkChat = async () => {
+      const chatState = await checkCometChatState();
+      console.log('CometChat state in ProfileScreen:', chatState);
+    };
+    
+    checkChat();
+
+    return () => {
+      // Optional: cleanup when leaving profile screen
+      // cleanupCometChat();
+    };
+  }, []);
 
   if (!user && !profileUserId) {
     return (

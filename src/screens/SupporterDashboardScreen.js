@@ -5,33 +5,81 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupporterStats } from '../services/analytics';
 import { LineChart } from 'react-native-chart-kit';
 import { formatDistanceToNow } from 'date-fns';
+import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore';
+import { auth, db} from '../config/firebase';
 
-const SupporterDashboardScreen = () => {
+const SupporterDashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({
+    lastActive: null,
+    totalSupportedUsers: 0,
+    activeChats: 0,
+    totalMessagesViewed: 0
+  });
+  const [supportedUsers, setSupportedUsers] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('week');
 
   useEffect(() => {
-    fetchStats();
-  }, [selectedPeriod]);
+    fetchUserData();
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchUserData = async () => {
     try {
       setLoading(true);
-      const supporterStats = await getSupporterStats(user.uid);
-      setStats(supporterStats);
+
+      const usersRef = collection(db, 'users');
+      const allUsersSnapshot = await getDocs(usersRef);
+      
+      let supportedUsersData = [];
+      allUsersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        if (userData.supporters?.some(supporter => 
+          supporter.id.toLowerCase() === user.uid.toLowerCase()
+        )) {
+          supportedUsersData.push({
+            id: doc.id,
+            username: userData.username || 'Anonymous',
+            profilePicture: userData.profilePicture || null,
+            unreadMessages: userData.unreadMessages || 0,
+            // Add any other user data you want to display
+          });
+        }
+      });
+
+      setSupportedUsers(supportedUsersData);
+      setStats(prev => ({
+        ...prev,
+        totalSupportedUsers: supportedUsersData.length
+      }));
+
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error fetching user data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSupportedUserPress = (supportedUser) => {
+    // Convert Firebase user format to what CometChat expects
+    const cometChatUser = {
+      uid: supportedUser.id.toLowerCase(), // CometChat uses lowercase UIDs
+      username: supportedUser.username,
+      // Add any other needed fields
+    };
+    
+    console.log('Navigating to supported user chats with:', cometChatUser);
+    
+    navigation.navigate('SupportedUserChat', {
+      supportedUser: cometChatUser
+    });
   };
 
   if (loading) {
@@ -47,83 +95,60 @@ const SupporterDashboardScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Supporter Dashboard</Text>
         <Text style={styles.subtitle}>
-          Last active: {stats?.lastActive 
-            ? formatDistanceToNow(stats.lastActive.toDate(), { addSuffix: true })
+          Last active: {stats.lastActive 
+            ? formatDistanceToNow(
+                stats.lastActive.toDate ? stats.lastActive.toDate() : new Date(stats.lastActive),
+                { addSuffix: true }
+              )
             : 'Never'}
         </Text>
       </View>
 
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats?.totalSupportedUsers || 0}</Text>
+          <Text style={styles.statNumber}>{stats.totalSupportedUsers}</Text>
           <Text style={styles.statLabel}>Supported Users</Text>
         </View>
 
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats?.activeChats || 0}</Text>
+          <Text style={styles.statNumber}>{stats.activeChats}</Text>
           <Text style={styles.statLabel}>Active Chats</Text>
         </View>
 
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>
-            {stats?.totalMessagesViewed || 0}
-          </Text>
+          <Text style={styles.statNumber}>{stats.totalMessagesViewed}</Text>
           <Text style={styles.statLabel}>Messages Viewed</Text>
         </View>
       </View>
 
-      <View style={styles.chartContainer}>
-        <View style={styles.periodSelector}>
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === 'week' && styles.selectedPeriod
-            ]}
-            onPress={() => setSelectedPeriod('week')}
-          >
-            <Text style={styles.periodButtonText}>Week</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === 'month' && styles.selectedPeriod
-            ]}
-            onPress={() => setSelectedPeriod('month')}
-          >
-            <Text style={styles.periodButtonText}>Month</Text>
-          </TouchableOpacity>
-        </View>
+      <Text style={styles.sectionTitle}>Your Supported Users</Text>
+      
+      {supportedUsers.map(supportedUser => (
+        <TouchableOpacity 
+          key={supportedUser.id}
+          style={styles.userCard}
+          onPress={() => handleSupportedUserPress(supportedUser)}
+        >
+          <Image 
+            source={supportedUser.profilePicture 
+              ? { uri: supportedUser.profilePicture }
+              : require('../../assets/default-avatar.png')}
+            style={styles.userAvatar}
+          />
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{supportedUser.username}</Text>
+            {supportedUser.unreadMessages > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {supportedUser.unreadMessages}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      ))}
 
-        <LineChart
-          data={{
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [{
-              data: [
-                Math.random() * 100,
-                Math.random() * 100,
-                Math.random() * 100,
-                Math.random() * 100,
-                Math.random() * 100,
-                Math.random() * 100,
-                Math.random() * 100
-              ]
-            }]
-          }}
-          width={350}
-          height={220}
-          chartConfig={{
-            backgroundColor: '#ffffff',
-            backgroundGradientFrom: '#ffffff',
-            backgroundGradientTo: '#ffffff',
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(36, 38, 155, ${opacity})`,
-            style: {
-              borderRadius: 16
-            }
-          }}
-          style={styles.chart}
-        />
-      </View>
+      {/* Temporarily remove chart until we implement proper data */}
     </ScrollView>
   );
 };
@@ -219,6 +244,61 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: 8,
     borderRadius: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    padding: 20,
+    paddingBottom: 10,
+  },
+  userCard: {
+    flexDirection: 'row',
+    padding: 15,
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginVertical: 5,
+    borderRadius: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  userAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+  },
+  userInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  badge: {
+    backgroundColor: '#24269B',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

@@ -46,7 +46,7 @@ const ManageSubscriptionScreen = () => {
               onPress: () => {
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'MainApp' }],
+                  routes: [{ name: 'Main' }],
                 });
               }
             }
@@ -78,43 +78,89 @@ const ManageSubscriptionScreen = () => {
         <Text style={styles.currentPlanName}>
           {currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus - $10/month' :
            currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating - $15/month' :
+           currentSubscription === 'supporter1' ? 'Supporter 1 - $10/month' :
+           currentSubscription === 'supporter5' ? 'Supporter 5 - $15/month' :
+           currentSubscription === 'supporter10' ? 'Supporter 10 - $20/month' :
            'Self Advocate - Free'}
         </Text>
       </View>
 
       <Text style={styles.sectionTitle}>Change Your Plan</Text>
 
-      {currentSubscription !== 'selfAdvocateFree' && (
-        <TouchableOpacity 
-          style={styles.planButton}
-          onPress={() => handleSubscriptionChange('selfAdvocateFree')}
-        >
-          <Text style={styles.planTitle}>Downgrade to Self Advocate - Free</Text>
-          <Text style={styles.planPrice}>Free</Text>
-          <Text style={styles.planDescription}>You'll lose access to the dating feature and supporters. You'll still be able to chat and post wins.</Text>
-        </TouchableOpacity>
+      {/* Self Advocate Plans */}
+      {!currentSubscription.startsWith('supporter') && (
+        <>
+          {currentSubscription !== 'selfAdvocateFree' && (
+            <TouchableOpacity 
+              style={styles.planButton}
+              onPress={() => handleSubscriptionChange('selfAdvocateFree')}
+            >
+              <Text style={styles.planTitle}>Downgrade to Self Advocate - Free</Text>
+              <Text style={styles.planPrice}>Free</Text>
+              <Text style={styles.planDescription}>Basic access to chat and post wins.</Text>
+            </TouchableOpacity>
+          )}
+
+          {currentSubscription !== 'selfAdvocatePlus' && (
+            <TouchableOpacity 
+              style={styles.planButton}
+              onPress={() => handleSubscriptionChange('selfAdvocatePlus')}
+            >
+              <Text style={styles.planTitle}>Switch to Self Advocate Plus</Text>
+              <Text style={styles.planPrice}>$10/month</Text>
+              <Text style={styles.planDescription}>Add supporters, chat, and post wins.</Text>
+            </TouchableOpacity>
+          )}
+
+          {currentSubscription !== 'selfAdvocateDating' && (
+            <TouchableOpacity 
+              style={styles.planButton}
+              onPress={() => handleSubscriptionChange('selfAdvocateDating')}
+            >
+              <Text style={styles.planTitle}>Switch to Self Advocate Dating</Text>
+              <Text style={styles.planPrice}>$15/month</Text>
+              <Text style={styles.planDescription}>All Plus features and dating access</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
 
-      {currentSubscription !== 'selfAdvocatePlus' && (
-        <TouchableOpacity 
-          style={styles.planButton}
-          onPress={() => handleSubscriptionChange('selfAdvocatePlus')}
-        >
-          <Text style={styles.planTitle}>Switch to Self Advocate - Plus</Text>
-          <Text style={styles.planPrice}>$10/month</Text>
-          <Text style={styles.planDescription}>You'll lose access to the dating feature. You'll still be able to add supporters, chat, and post wins.</Text>
-        </TouchableOpacity>
-      )}
+      {/* Supporter Plans */}
+      {!currentSubscription.includes('selfAdvocate') && (
+        <>
+          {currentSubscription !== 'supporter1' && (
+            <TouchableOpacity 
+              style={styles.planButton}
+              onPress={() => handleSubscriptionChange('supporter1')}
+            >
+              <Text style={styles.planTitle}>Switch to Supporter - 1</Text>
+              <Text style={styles.planPrice}>$10/month</Text>
+              <Text style={styles.planDescription}>Support one self-advocate</Text>
+            </TouchableOpacity>
+          )}
 
-      {currentSubscription !== 'selfAdvocateDating' && (
-        <TouchableOpacity 
-          style={styles.planButton}
-          onPress={() => handleSubscriptionChange('selfAdvocateDating')}
-        >
-          <Text style={styles.planTitle}>Switch to Self Advocate Dating</Text>
-          <Text style={styles.planPrice}>$15/month</Text>
-          <Text style={styles.planDescription}>All Plus features and dating access</Text>
-        </TouchableOpacity>
+          {currentSubscription !== 'supporter5' && (
+            <TouchableOpacity 
+              style={styles.planButton}
+              onPress={() => handleSubscriptionChange('supporter5')}
+            >
+              <Text style={styles.planTitle}>Switch to Supporter - 5</Text>
+              <Text style={styles.planPrice}>$15/month</Text>
+              <Text style={styles.planDescription}>Support up to five self-advocates</Text>
+            </TouchableOpacity>
+          )}
+
+          {currentSubscription !== 'supporter10' && (
+            <TouchableOpacity 
+              style={styles.planButton}
+              onPress={() => handleSubscriptionChange('supporter10')}
+            >
+              <Text style={styles.planTitle}>Switch to Supporter - 10</Text>
+              <Text style={styles.planPrice}>$20/month</Text>
+              <Text style={styles.planDescription}>Support up to ten self-advocates</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
 
       {currentSubscription !== 'selfAdvocateFree' && (

@@ -135,6 +135,25 @@ const SettingsScreen = () => {
               color="#666" 
             />
           </TouchableOpacity>
+
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('SupporterDashboard')}
+          >
+            <Image 
+              source={require('../../assets/people.png')}
+              style={styles.menuIcon}
+            />
+            <Text style={styles.menuItemText}>Who I'm Supporting</Text>
+            <MaterialCommunityIcons 
+              name="chevron-right" 
+              size={24} 
+              color="#666" 
+            />
+          </TouchableOpacity>
+
+
           
         </View>
       </View>

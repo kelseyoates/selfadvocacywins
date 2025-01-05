@@ -23,6 +23,8 @@ import SupporterDashboardScreen from './src/screens/SupporterDashboardScreen';
 import SubscriptionOptionsScreen from './src/screens/SubscriptionOptionsScreen';
 import FindADateScreen from './src/screens/FindADateScreen';
 import ManageSubscriptionScreen from './src/screens/ManageSubscriptionScreen';
+import SupportedUserChatScreen from './src/screens/SupportedUserChatScreen';
+
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useEffect } from 'react';
 
@@ -165,6 +167,12 @@ export default function App() {
               component={ManageSubscriptionScreen}
               options={{ title: 'Manage Subscription' }}
             />
+            <Stack.Screen
+              name="SupportedUserChat"
+              component={SupportedUserChatScreen}
+              options={{ title: 'Chat' }}
+            />
+            
           
 
           </Stack.Navigator>
