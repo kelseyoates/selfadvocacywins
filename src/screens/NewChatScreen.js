@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Image, Alert, AccessibilityInfo } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,15 +11,41 @@ const NewChatScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   const searchUsers = async (text) => {
     if (text.length < 3) {
       setSearchResults([]);
+      announceToScreenReader('Enter at least 3 characters to search');
       return;
     }
 
     try {
+      announceToScreenReader('Searching for users');
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef,
@@ -33,8 +59,9 @@ const NewChatScreen = ({ navigation }) => {
         .filter(u => u.id !== user.uid);
       
       setSearchResults(users);
+      announceToScreenReader(`Found ${users.length} users`);
     } catch (error) {
-      console.error('Error searching users:', error);
+      announceToScreenReader('Error searching for users');
     }
   };
 
@@ -166,19 +193,34 @@ const NewChatScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.tabContainer}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="New Chat Screen"
+    >
+      <View 
+        style={styles.tabContainer}
+        accessible={true}
+        accessibilityRole="tablist"
+      >
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'individual' && styles.activeTab]}
-          onPress={() => setActiveTab('individual')}
+          onPress={() => {
+            setActiveTab('individual');
+            announceToScreenReader('Switched to individual chat');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Individual Chat tab"
+          accessibilityState={{ selected: activeTab === 'individual' }}
         >
           <View style={styles.tabContent}>
             <Image 
               source={require('../../assets/individual-chat.png')} 
-              style={[
-                styles.tabIcon,
-                activeTab === 'individual' && styles.activeTabIcon
-              ]}
+              style={[styles.tabIcon, activeTab === 'individual' && styles.activeTabIcon]}
+              accessible={true}
+              accessibilityLabel="Individual chat icon"
+              accessibilityRole="image"
             />
             <Text style={[styles.tabText, activeTab === 'individual' && styles.activeTabText]}>
               Individual Chat
@@ -188,7 +230,14 @@ const NewChatScreen = ({ navigation }) => {
 
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'group' && styles.activeTab]}
-          onPress={() => setActiveTab('group')}
+          onPress={() => {
+            setActiveTab('group');
+            announceToScreenReader('Switched to group chat');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Group Chat tab"
+          accessibilityState={{ selected: activeTab === 'group' }}
         >
           <View style={styles.tabContent}>
             <Image 
@@ -205,8 +254,11 @@ const NewChatScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <MaterialCommunityIcons name="magnify" size={24} color="#666" />
+      <View 
+        style={styles.searchContainer}
+        accessible={true}
+        accessibilityRole="search"
+      >
         <TextInput
           style={styles.searchInput}
           placeholder={`Search ${activeTab === 'individual' ? 'users' : 'for group members'}...`}
@@ -215,11 +267,18 @@ const NewChatScreen = ({ navigation }) => {
             setSearchQuery(text);
             searchUsers(text);
           }}
+          accessible={true}
+          accessibilityLabel={`Search ${activeTab === 'individual' ? 'users' : 'group members'}`}
+          accessibilityHint="Enter at least 3 characters to search"
         />
       </View>
 
       {activeTab === 'group' && selectedMembers.length > 0 && (
-        <View style={styles.selectedMembersContainer}>
+        <View 
+          style={styles.selectedMembersContainer}
+          accessible={true}
+          accessibilityLabel={`Selected members: ${selectedMembers.length}`}
+        >
           <Text style={styles.selectedMembersTitle}>
             Selected Members ({selectedMembers.length}):
           </Text>
@@ -230,10 +289,16 @@ const NewChatScreen = ({ navigation }) => {
             renderItem={({ item }) => (
               <TouchableOpacity 
                 style={styles.selectedMemberChip}
-                onPress={() => toggleMemberSelection(item)}
+                onPress={() => {
+                  toggleMemberSelection(item);
+                  announceToScreenReader(`Removed ${item.username} from selection`);
+                }}
+                accessible={true}
+                accessibilityLabel={`${item.username}, selected member`}
+                accessibilityHint="Double tap to remove from selection"
+                accessibilityRole="button"
               >
                 <Text style={styles.selectedMemberText}>{item.username}</Text>
-                <MaterialCommunityIcons name="close" size={16} color="#fff" />
               </TouchableOpacity>
             )}
             contentContainerStyle={styles.selectedMembersList}
@@ -255,24 +320,46 @@ const NewChatScreen = ({ navigation }) => {
             onPress={() => {
               if (activeTab === 'individual') {
                 createIndividualChat(item);
+                announceToScreenReader(`Opening chat with ${item.username}`);
               } else {
                 toggleMemberSelection(item);
+                const isSelected = selectedMembers.some(member => member.id === item.id);
+                announceToScreenReader(
+                  isSelected ? 
+                  `Removed ${item.username} from selection` : 
+                  `Added ${item.username} to selection`
+                );
               }
             }}
+            accessible={true}
+            accessibilityLabel={`${item.username}${
+              activeTab === 'group' && 
+              selectedMembers.some(member => member.id === item.id) 
+                ? ', selected' 
+                : ''
+            }`}
+            accessibilityHint={
+              activeTab === 'individual' 
+                ? 'Double tap to start chat' 
+                : 'Double tap to toggle selection'
+            }
+            accessibilityRole="button"
           >
             <Text style={styles.username}>{item.username}</Text>
-            {activeTab === 'group' && 
-              selectedMembers.some(member => member.id === item.id) && (
-              <MaterialCommunityIcons name="check" size={24} color="#24269B" />
-            )}
           </TouchableOpacity>
         )}
+        accessible={true}
+        accessibilityLabel={`Search results: ${searchResults.length} users found`}
       />
 
       {activeTab === 'group' && selectedMembers.length >= 2 && (
         <TouchableOpacity 
           style={styles.createGroupButton}
           onPress={createGroupChat}
+          accessible={true}
+          accessibilityLabel={`Create group chat with ${selectedMembers.length} members`}
+          accessibilityHint="Double tap to create group chat"
+          accessibilityRole="button"
         >
           <Text style={styles.createGroupButtonText}>
             Create Group Chat ({selectedMembers.length} members)
