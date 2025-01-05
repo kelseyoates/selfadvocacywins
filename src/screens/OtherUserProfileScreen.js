@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  AccessibilityInfo
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { getAuth } from 'firebase/auth';
@@ -41,6 +42,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
   const [commentUsers, setCommentUsers] = useState({});
   const [userData, setUserData] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
 
   console.log('Current user data:', userData);
   console.log('Current profile data:', profileData);
@@ -400,9 +402,34 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     checkFollowStatus();
   }, [profileUserId, auth.currentUser]);
 
-  // Update the handleFollowPress function
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
+
+  // Update handleFollowPress with accessibility
   const handleFollowPress = async () => {
     try {
+      announceToScreenReader(`${isFollowing ? 'Unfollowing' : 'Following'} ${profileData?.username}`);
       const currentUserRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
       const targetUserRef = doc(db, 'users', profileUserId.toLowerCase());
       
@@ -438,7 +465,9 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
       if (userDoc.exists()) {
         setProfileData(userDoc.data());
       }
+      announceToScreenReader(`Successfully ${isFollowing ? 'unfollowed' : 'followed'} ${profileData?.username}`);
     } catch (error) {
+      announceToScreenReader('Failed to update follow status');
       console.error('Error updating follow status:', error);
       Alert.alert('Error', 'Failed to update follow status');
     }
@@ -446,7 +475,12 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View 
+        style={styles.loadingContainer}
+        accessible={true}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading profile"
+      >
         <ActivityIndicator size="large" color="#24269B" />
       </View>
     );
@@ -454,15 +488,27 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
+      <View 
+        style={styles.errorContainer}
+        accessible={true}
+        accessibilityRole="alert"
+      >
         <Text style={styles.errorText}>{error}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileHeader}>
+    <ScrollView 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel={`Profile of ${profileData?.username || 'User'}`}
+    >
+      <View 
+        style={styles.profileHeader}
+        accessible={true}
+        accessibilityRole="header"
+      >
         <Image
           source={
             profileData?.profilePicture
@@ -470,17 +516,44 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
               : { uri: DEFAULT_PROFILE_IMAGE }
           }
           style={styles.profilePicture}
+          accessible={true}
+          accessibilityLabel={`Profile picture of ${profileData?.username || 'User'}`}
+          accessibilityRole="image"
         />
-        <Text style={styles.username}>{profileData?.username || 'User'}</Text>
-        <Text style={styles.bio}> 🎂 {formatBirthday(profileData?.birthdate || '')}</Text>
-        <Text style={styles.location}>{profileData?.state || ''}</Text>
+        <Text 
+          style={styles.username}
+          accessibilityRole="text"
+        >
+          {profileData?.username || 'User'}
+        </Text>
+        <Text 
+          style={styles.bio}
+          accessibilityLabel={`Birthday: ${formatBirthday(profileData?.birthdate || '')}`}
+        >
+          🎂 {formatBirthday(profileData?.birthdate || '')}
+        </Text>
+        <Text 
+          style={styles.location}
+          accessibilityLabel={`Location: ${profileData?.state || 'Not specified'}`}
+        >
+          {profileData?.state || ''}
+        </Text>
       </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
+      <View 
+        style={styles.statsContainer}
+        accessible={true}
+        accessibilityLabel="User statistics"
+      >
+        <View 
+          style={styles.statItem}
+          accessible={true}
+          accessibilityLabel={`${wins.length} Wins`}
+        >
           <Image 
             source={require('../../assets/wins.png')} 
             style={styles.statIcon}
+            accessibilityRole="image"
           />
           <Text style={styles.statNumber}>{wins.length}</Text>
           <Text style={styles.statLabel}>Wins</Text>
@@ -514,19 +587,16 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
           <TouchableOpacity 
             style={[styles.button, styles.chatButton]}
             onPress={() => {
-              if (!profileUserId || !auth.currentUser) {
-                console.log('Missing required IDs:', { profileUserId, currentUser: auth.currentUser?.uid });
-                return;
-              }
-              
-              const chatParams = {
+              announceToScreenReader(`Starting chat with ${profileData?.username}`);
+              navigation.navigate('ChatConversation', {
                 uid: profileUserId,
                 name: profileData?.username || 'User'
-              };
-              
-              console.log('Starting chat with params:', chatParams);
-              navigation.navigate('ChatConversation', chatParams);
+              });
             }}
+            accessible={true}
+            accessibilityLabel="Start chat"
+            accessibilityHint={`Start a conversation with ${profileData?.username}`}
+            accessibilityRole="button"
           >
             <View style={styles.buttonContent}>
               <Text style={styles.buttonText}>
@@ -536,17 +606,15 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[
-              styles.button, 
-              isFollowing ? styles.followingButton : styles.followButton
-            ]}
+            style={[styles.button, isFollowing ? styles.followingButton : styles.followButton]}
             onPress={handleFollowPress}
+            accessible={true}
+            accessibilityLabel={isFollowing ? 'Unfollow' : 'Follow'}
+            accessibilityHint={`${isFollowing ? 'Stop' : 'Start'} following ${profileData?.username}`}
+            accessibilityRole="button"
           >
             <View style={styles.buttonContent}>
-              <Text style={[
-                styles.buttonText,
-                isFollowing && styles.followingButtonText
-              ]}>
+              <Text style={[styles.buttonText, isFollowing && styles.followingButtonText]}>
                 {isFollowing ? 'Unfollow' : 'Follow'}
               </Text>
               <MaterialCommunityIcons 
@@ -565,21 +633,37 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
 
         {profileData?.subscriptionType === 'selfAdvocateDating' && (
-        <View style={styles.datingSection}>
+        <View 
+          style={styles.datingSection}
+          accessible={true}
+          accessibilityLabel="Dating Profile Information"
+        >
           <Text style={styles.sectionTitle}>Dating Profile</Text>
           
           <View style={styles.datingInfo}>
-            <View style={styles.datingInfoItem}>
+            <View 
+              style={styles.datingInfoItem}
+              accessible={true}
+              accessibilityLabel={`Gender: ${profileData.gender || 'Not specified'}`}
+            >
               <Text style={styles.label}>My Gender:</Text>
               <Text style={styles.value}>{profileData.gender || 'Not specified'}</Text>
             </View>
 
-            <View style={styles.datingInfoItem}>
+            <View 
+              style={styles.datingInfoItem}
+              accessible={true}
+              accessibilityLabel={`Looking For: ${profileData.lookingFor || 'Not specified'}`}
+            >
               <Text style={styles.label}>I'm Looking For:</Text>
               <Text style={styles.value}>{profileData.lookingFor || 'Not specified'}</Text>
             </View>
 
-            <View style={styles.datingInfoItem}>
+            <View 
+              style={styles.datingInfoItem}
+              accessible={true}
+              accessibilityLabel={`Age Range: ${profileData.ageRange ? `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 'Not specified'}`}
+            >
               <Text style={styles.label}>Age Range:</Text>
               <Text style={styles.value}>
                 {profileData.ageRange ? 
@@ -606,20 +690,41 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
      
 
-      <View style={styles.winsContainer}>
+      <View 
+        style={styles.winsContainer}
+        accessible={true}
+        accessibilityLabel={`Wins section: ${wins.length} wins`}
+      >
         <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
         {wins && wins.length > 0 ? (
           wins.map((win) => (
-            <WinCard 
-              key={win.id} 
-              win={win}
-              onCheersPress={() => handleCheersPress(win)}
-              onCommentsPress={() => handleCommentsPress(win)}
-              lazyLoad={true}
-            />
+            <View 
+              key={win.id}
+              accessible={true}
+              accessibilityLabel={`Win by ${win.userName}`}
+            >
+              <WinCard 
+                win={win}
+                onCheersPress={() => {
+                  handleCheersPress(win);
+                  announceToScreenReader('Cheering for win');
+                }}
+                onCommentsPress={() => {
+                  handleCommentsPress(win);
+                  announceToScreenReader('Opening comments');
+                }}
+                lazyLoad={true}
+              />
+            </View>
           ))
         ) : (
-          <Text style={styles.noWinsText}>No wins yet</Text>
+          <Text 
+            style={styles.noWinsText}
+            accessible={true}
+            accessibilityLabel="No wins posted yet"
+          >
+            No wins yet
+          </Text>
         )}
       </View>
 
