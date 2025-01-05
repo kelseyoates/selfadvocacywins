@@ -23,18 +23,36 @@ import * as ImagePicker from 'expo-image-picker';
 
 const containsProfanity = (text) => {
   const profanityList = [
-    'shit', 'fuck', 'damn', 'ass', 'bitch', 'crap', 'piss', 'dick', 'pussy', 'cock',
-    'bastard', 'hell', 'whore', 'slut', 'asshole', 'cunt', 'fucker', 'fucking',
-    // Add more words as needed
+    'shit', 'fuck', 'damn', 'ass', 'bitch', 'crap', 'piss',
+    'dick', 'pussy', 'cock',
+    'bastard', 'hell', 'whore', 'slut', 'asshole', 'cunt',
+    'fucker', 'fucking',
   ];
 
+  // Check for email pattern
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  if (emailPattern.test(text)) {
+    throw new Error('PERSONAL_INFO_EMAIL');
+  }
+
+  // Check for phone number patterns
+  const phonePatterns = [
+    /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/, // 123-456-7890, 123.456.7890, 1234567890
+    /\(\d{3}\)\s*\d{3}[-.]?\d{4}/, // (123) 456-7890
+    /\b\d{3}\s*[-.]?\s*\d{3}\s*[-.]?\s*\d{4}\b/, // 123 456 7890
+  ];
+
+  if (phonePatterns.some(pattern => pattern.test(text))) {
+    throw new Error('PERSONAL_INFO_PHONE');
+  }
+
+  // Check for profanity
   const words = text.toLowerCase().split(/\s+/);
-  return words.some(word => 
-    profanityList.some(profanity => 
-      word.includes(profanity) || 
-      word.replace(/[^a-zA-Z]/g, '').includes(profanity)
-    )
-  );
+  if (words.some(word => profanityList.includes(word))) {
+    throw new Error('PROFANITY');
+  }
+
+  return false;
 };
 
 const ChatConversationScreen = ({ route, navigation }) => {
@@ -173,10 +191,11 @@ const ChatConversationScreen = ({ route, navigation }) => {
   const sendMessage = async () => {
     if (!inputText.trim() || !currentUser) return;
 
-    setIsLoading(true);
-    announceToScreenReader('Sending message');
-
     try {
+      containsProfanity(inputText);
+      setIsLoading(true);
+      announceToScreenReader('Sending message');
+
       const messageText = inputText.trim();
       const textMessage = new CometChat.TextMessage(
         uid,
@@ -240,57 +259,32 @@ const ChatConversationScreen = ({ route, navigation }) => {
       });
       announceToScreenReader('Message sent successfully');
     } catch (error) {
-      console.log("Detailed error information:", {
-        code: error.code,
-        message: error.message,
-        details: error.details || {},
-        metadata: error.metadata || {}
-      });
-      
-      if (error.code === "ERR_DATA_MASKING" || 
-          error.message?.includes("data-masking") ||
-          error.message?.includes("personal information")) {
-        Alert.alert(
-          'Cannot Send Personal Information',
-          'Your message contains personal information (like phone numbers or email addresses) which cannot be shared.'
-        );
-      } else if (error.code === "ERR_PROFANITY_FOUND" || 
-                 error.message?.includes("profanity")) {
-        Alert.alert(
-          'Inappropriate Language',
-          'Your message contains inappropriate language and cannot be sent.'
-        );
-      } else if (error.code === "ERR_CONNECTION_ERROR") {
-        Alert.alert(
-          'Connection Error',
-          'Please check your internet connection and try again.'
-        );
-      } else {
-        // Create a new message object for unknown errors
-        const newMessage = {
-          id: Date.now().toString(),
-          text: messageText,
-          sender: { 
-            uid: currentUser.uid 
-          },
-          category: "message",
-          type: "text",
-          receiverId: uid,
-          sentAt: Date.now()
-        };
-
-        setMessages(prev => {
-          const newMessages = [...prev, newMessage];
-          requestAnimationFrame(() => {
-            if (flatListRef.current) {
-              flatListRef.current.scrollToEnd({ animated: true });
-            }
-          });
-          return newMessages;
-        });
-        setInputText('');
+      switch (error.message) {
+        case 'PERSONAL_INFO_EMAIL':
+          announceToScreenReader('Message blocked: Contains email address');
+          Alert.alert(
+            'Personal Information Detected',
+            'For your safety, please do not share email addresses in chat messages.'
+          );
+          return;
+        case 'PERSONAL_INFO_PHONE':
+          announceToScreenReader('Message blocked: Contains phone number');
+          Alert.alert(
+            'Personal Information Detected',
+            'For your safety, please do not share phone numbers in chat messages.'
+          );
+          return;
+        case 'PROFANITY':
+          announceToScreenReader('Message contains inappropriate language');
+          Alert.alert(
+            'Inappropriate Content',
+            'Your message contains inappropriate language. Please revise and try again.'
+          );
+          return;
+        default:
+          console.error('Error sending message:', error);
+          Alert.alert('Error', 'Failed to send message');
       }
-      announceToScreenReader('Failed to send message');
     } finally {
       setIsLoading(false);
     }
