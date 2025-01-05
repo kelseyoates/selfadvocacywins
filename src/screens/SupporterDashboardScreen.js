@@ -9,23 +9,13 @@ import {
   Image
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { getSupporterStats } from '../services/analytics';
-import { LineChart } from 'react-native-chart-kit';
-import { formatDistanceToNow } from 'date-fns';
-import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore';
-import { auth, db} from '../config/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const SupporterDashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    lastActive: null,
-    totalSupportedUsers: 0,
-    activeChats: 0,
-    totalMessagesViewed: 0
-  });
   const [supportedUsers, setSupportedUsers] = useState([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
 
   useEffect(() => {
     fetchUserData();
@@ -34,7 +24,6 @@ const SupporterDashboardScreen = ({ navigation }) => {
   const fetchUserData = async () => {
     try {
       setLoading(true);
-
       const usersRef = collection(db, 'users');
       const allUsersSnapshot = await getDocs(usersRef);
       
@@ -49,17 +38,11 @@ const SupporterDashboardScreen = ({ navigation }) => {
             username: userData.username || 'Anonymous',
             profilePicture: userData.profilePicture || null,
             unreadMessages: userData.unreadMessages || 0,
-            // Add any other user data you want to display
           });
         }
       });
 
       setSupportedUsers(supportedUsersData);
-      setStats(prev => ({
-        ...prev,
-        totalSupportedUsers: supportedUsersData.length
-      }));
-
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -68,14 +51,10 @@ const SupporterDashboardScreen = ({ navigation }) => {
   };
 
   const handleSupportedUserPress = (supportedUser) => {
-    // Convert Firebase user format to what CometChat expects
     const cometChatUser = {
-      uid: supportedUser.id.toLowerCase(), // CometChat uses lowercase UIDs
+      uid: supportedUser.id.toLowerCase(),
       username: supportedUser.username,
-      // Add any other needed fields
     };
-    
-    console.log('Navigating to supported user chats with:', cometChatUser);
     
     navigation.navigate('SupportedUserChat', {
       supportedUser: cometChatUser
@@ -84,61 +63,60 @@ const SupporterDashboardScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View 
+        style={styles.loadingContainer}
+        accessible={true}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading supported users"
+      >
         <ActivityIndicator size="large" color="#24269B" />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Supporter Dashboard</Text>
-        <Text style={styles.subtitle}>
-          Last active: {stats.lastActive 
-            ? formatDistanceToNow(
-                stats.lastActive.toDate ? stats.lastActive.toDate() : new Date(stats.lastActive),
-                { addSuffix: true }
-              )
-            : 'Never'}
-        </Text>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.totalSupportedUsers}</Text>
-          <Text style={styles.statLabel}>Supported Users</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.activeChats}</Text>
-          <Text style={styles.statLabel}>Active Chats</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.totalMessagesViewed}</Text>
-          <Text style={styles.statLabel}>Messages Viewed</Text>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Your Supported Users</Text>
+    <ScrollView 
+      style={styles.container}
+      accessibilityRole="scrollview"
+      accessibilityLabel="Supported Users List"
+    >
+      <Text 
+        style={styles.title}
+        accessibilityRole="header"
+      >
+        Your Supported Users
+      </Text>
       
       {supportedUsers.map(supportedUser => (
         <TouchableOpacity 
           key={supportedUser.id}
           style={styles.userCard}
           onPress={() => handleSupportedUserPress(supportedUser)}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${supportedUser.username}${
+            supportedUser.unreadMessages > 0 
+              ? `, ${supportedUser.unreadMessages} unread messages` 
+              : ''
+          }`}
+          accessibilityHint="Double tap to view chat history"
         >
           <Image 
             source={supportedUser.profilePicture 
               ? { uri: supportedUser.profilePicture }
               : require('../../assets/default-avatar.png')}
             style={styles.userAvatar}
+            accessibilityRole="image"
+            accessibilityLabel={`${supportedUser.username}'s profile picture`}
           />
           <View style={styles.userInfo}>
             <Text style={styles.username}>{supportedUser.username}</Text>
             {supportedUser.unreadMessages > 0 && (
-              <View style={styles.badge}>
+              <View 
+                style={styles.badge}
+                accessible={true}
+                accessibilityRole="text"
+              >
                 <Text style={styles.badgeText}>
                   {supportedUser.unreadMessages}
                 </Text>
@@ -147,8 +125,6 @@ const SupporterDashboardScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
       ))}
-
-      {/* Temporarily remove chart until we implement proper data */}
     </ScrollView>
   );
 };
@@ -163,94 +139,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    padding: 20,
-    backgroundColor: '#24269B',
-  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
-    marginTop: 5,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-  },
-  statCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    flex: 1,
-    marginHorizontal: 5,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
     color: '#24269B',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-    textAlign: 'center',
-  },
-  chartContainer: {
-    backgroundColor: '#fff',
-    margin: 20,
-    padding: 15,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  periodSelector: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 15,
-  },
-  periodButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginHorizontal: 5,
-  },
-  selectedPeriod: {
-    backgroundColor: '#24269B',
-  },
-  periodButtonText: {
-    color: '#24269B',
-  },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
     padding: 20,
-    paddingBottom: 10,
   },
   userCard: {
     flexDirection: 'row',
