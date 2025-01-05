@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   Alert,
+  AccessibilityInfo
 } from 'react-native';
 import { searchIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
@@ -24,19 +25,50 @@ const FindYourFriendsScreen = ({ navigation }) => {
   const [users, setUsers] = useState([]);
   const currentUser = auth.currentUser;
   const [selectedAgeRange, setSelectedAgeRange] = useState({ min: 18, max: 99 });
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   // Handle state selection
   const handleStateSelect = (state) => {
     setSelectedState(state);
+    announceToScreenReader(`Selected state: ${state}`);
   };
 
   // Handle word selection
   const toggleWord = (word) => {
     setSelectedWords(prev => {
-      if (prev.includes(word)) {
-        return prev.filter(w => w !== word);
-      }
-      return [...prev, word];
+      const newWords = prev.includes(word) 
+        ? prev.filter(w => w !== word)
+        : [...prev, word];
+      
+      announceToScreenReader(prev.includes(word) 
+        ? `Removed ${word}` 
+        : `Added ${word}`);
+      
+      return newWords;
     });
   };
 
@@ -46,6 +78,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
     
     try {
       setLoading(true);
+      announceToScreenReader('Searching for friends');
       setError(null);
 
       const searchParams = {
@@ -94,10 +127,12 @@ const FindYourFriendsScreen = ({ navigation }) => {
       );
       
       console.log('DEBUG: Users after client filtering:', filteredResults.length);
+      announceToScreenReader(`Found ${filteredResults.length} potential friends`);
       setUsers(filteredResults);
 
     } catch (err) {
       console.error('Error searching users:', err);
+      announceToScreenReader('Error searching for friends');
       setError('Failed to search users');
     } finally {
       setLoading(false);
@@ -137,6 +172,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
   const handleMinAgeChange = (text) => {
     const newMin = parseInt(text) || 18;
     if (newMin < 18) {
+      announceToScreenReader('Minimum age must be at least 18');
       Alert.alert('Invalid Age', 'Minimum age must be at least 18');
       return;
     }
@@ -145,6 +181,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
       return;
     }
     setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
+    announceToScreenReader(`Minimum age set to ${newMin}`);
   };
 
   const handleMaxAgeChange = (text) => {
@@ -158,6 +195,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
       return;
     }
     setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
+    announceToScreenReader(`Maximum age set to ${newMax}`);
   };
 
   const renderUserCard = (user) => (
@@ -190,49 +228,69 @@ const FindYourFriendsScreen = ({ navigation }) => {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="Find Friends Screen"
+    >
       <StateDropdown 
         selectedState={selectedState}
-        onStateChange={setSelectedState}
+        onStateChange={handleStateSelect}
       />
       
 
  {/* Age Range Selection */}
- <Text style={styles.sectionTitle}>Age Range</Text>
- <View style={styles.ageRangeContainer}>
-        <View style={styles.ageInputRow}>
-          <View style={styles.ageInputContainer}>
-            <Text style={styles.ageLabel}>Min Age:</Text>
-            <TextInput
-              style={styles.ageInput}
-              value={selectedAgeRange.min.toString()}
-              onChangeText={handleMinAgeChange}
-              keyboardType="number-pad"
-              maxLength={2}
-              placeholder="18"
-            />
-          </View>
+ <View 
+        style={styles.searchSection}
+        accessible={true}
+        accessibilityLabel="Age Range Section"
+      >
+        <Text style={styles.sectionTitle}>Age Range</Text>
+        <View style={styles.ageRangeContainer}>
+          <View style={styles.ageInputRow}>
+            <View style={styles.ageInputContainer}>
+              <Text style={styles.ageLabel}>Min Age:</Text>
+              <TextInput
+                style={styles.ageInput}
+                value={selectedAgeRange.min.toString()}
+                onChangeText={handleMinAgeChange}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="18"
+                accessible={true}
+                accessibilityLabel={`Minimum age: ${selectedAgeRange.min}`}
+                accessibilityHint="Enter minimum age, must be at least 18"
+              />
+            </View>
 
-          <View style={styles.ageSeparator}>
-            <Text style={styles.ageSeparatorText}>to</Text>
-          </View>
+            <View style={styles.ageSeparator}>
+              <Text style={styles.ageSeparatorText}>to</Text>
+            </View>
 
-          <View style={styles.ageInputContainer}>
-            <Text style={styles.ageLabel}>Max Age:</Text>
-            <TextInput
-              style={styles.ageInput}
-              value={selectedAgeRange.max.toString()}
-              onChangeText={handleMaxAgeChange}
-              keyboardType="number-pad"
-              maxLength={2}
-              placeholder="99"
-            />
+            <View style={styles.ageInputContainer}>
+              <Text style={styles.ageLabel}>Max Age:</Text>
+              <TextInput
+                style={styles.ageInput}
+                value={selectedAgeRange.max.toString()}
+                onChangeText={handleMaxAgeChange}
+                keyboardType="number-pad"
+                maxLength={2}
+                placeholder="99"
+                accessible={true}
+                accessibilityLabel={`Maximum age: ${selectedAgeRange.max}`}
+                accessibilityHint="Enter maximum age, up to 99"
+              />
+            </View>
           </View>
         </View>
       </View>
 
 
-      <View style={styles.searchSection}>
+      <View 
+        style={styles.searchSection}
+        accessible={true}
+        accessibilityLabel="Text Search Section"
+      >
         <Text style={styles.sectionTitle}>Search by Text</Text>
         <TextInput
           style={styles.textInput}
@@ -240,15 +298,27 @@ const FindYourFriendsScreen = ({ navigation }) => {
           value={textAnswer}
           onChangeText={setTextAnswer}
           multiline
+          accessible={true}
+          accessibilityLabel="Search text input"
+          accessibilityHint="Enter topics to search for friends"
         />
       </View>
 
-      <View style={styles.searchSection}>
+      <View 
+        style={styles.searchSection}
+        accessible={true}
+        accessibilityLabel="Word Selection Section"
+      >
         <Text style={styles.sectionTitle}>Select Words</Text>
         <View style={styles.wordsContainer}>
           {questions.map(question => 
             question.words ? (
-              <View key={question.id} style={styles.questionCard}>
+              <View 
+                key={question.id} 
+                style={styles.questionCard}
+                accessible={true}
+                accessibilityLabel={question.text}
+              >
                 <Text style={styles.questionText}>{question.text}</Text>
                 <View style={styles.wordsGrid}>
                   {question.words.map((word) => (
@@ -259,6 +329,11 @@ const FindYourFriendsScreen = ({ navigation }) => {
                         selectedWords.includes(word) && styles.selectedWord
                       ]}
                       onPress={() => toggleWord(word)}
+                      accessible={true}
+                      accessibilityLabel={`${word}, ${selectedWords.includes(word) ? 'selected' : 'not selected'}`}
+                      accessibilityHint={`Double tap to ${selectedWords.includes(word) ? 'remove' : 'add'} this word`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: selectedWords.includes(word) }}
                     >
                       <Text style={[
                         styles.wordText,
@@ -277,7 +352,16 @@ const FindYourFriendsScreen = ({ navigation }) => {
 
      
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <Text 
+          style={styles.error}
+          accessible={true}
+          accessibilityLabel={`Error: ${error}`}
+          accessibilityRole="alert"
+        >
+          {error}
+        </Text>
+      )}
       
   
 
@@ -288,27 +372,32 @@ const FindYourFriendsScreen = ({ navigation }) => {
             <View style={styles.cardShadow} />
             <TouchableOpacity 
               style={styles.userCard}
-              onPress={() => navigation.navigate('OtherUserProfile', { 
-                profileUserId: user.path.split('/')[1],
-                isCurrentUser: false
-              })}
+              onPress={() => {
+                announceToScreenReader(`Opening profile for ${user.username}`);
+                navigation.navigate('OtherUserProfile', { 
+                  profileUserId: user.path.split('/')[1],
+                  isCurrentUser: false
+                });
+              }}
+              accessible={true}
+              accessibilityLabel={`${user.username}, ${user.age} years old, from ${user.state}`}
+              accessibilityHint="Double tap to view full profile"
+              accessibilityRole="button"
             >
               <View style={styles.cardContent}>
-                <View style={styles.avatarContainer}>
-                  {user.profilePicture ? (
-                    <Image 
-                      source={{ uri: user.profilePicture }} 
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <View style={[styles.avatar, styles.defaultAvatar]}>
-                      <Text style={styles.defaultAvatarText}>
-                        {user.name ? user.name[0].toUpperCase() : '?'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.userInfo}>
+                <Image 
+                  source={{ uri: user.profilePicture }} 
+                  style={styles.avatar}
+                  accessible={true}
+                  accessibilityLabel={`${user.username}'s profile picture`}
+                  accessibilityRole="image"
+                />
+                <View 
+                  style={styles.userInfo}
+                  accessible={true}
+                  accessibilityElementsHidden={true}
+                  importantForAccessibility="no-hide-descendants"
+                >
                   <Text style={styles.username}>{user.username}</Text>
                   <Text style={styles.infoText}>{user.age} years old</Text>
                   <Text style={styles.infoText}>{user.state}</Text>
