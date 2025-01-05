@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   TextInput, 
@@ -10,7 +10,8 @@ import {
   Platform, 
   Image, 
   Alert,
-  Dimensions 
+  Dimensions,
+  AccessibilityInfo 
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -23,9 +24,35 @@ const windowHeight = Dimensions.get('window').height;
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   const handleLogin = async () => {
     try {
+      announceToScreenReader('Logging in');
       // Firebase Login
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const originalUid = userCredential.user.uid;
@@ -60,18 +87,33 @@ const LoginScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContentContainer}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        accessible={true}
+        accessibilityLabel="Login form"
       >
         <View style={styles.content}>
           <Image 
             source={require('../../assets/logo.png')} 
             style={styles.headerImage}
             resizeMode="contain"
+            accessible={true}
+            accessibilityLabel="App logo"
+            accessibilityRole="image"
           />
 
-          <Text style={styles.title}>Login</Text>
+          <Text 
+            style={styles.title}
+            accessible={true}
+            accessibilityRole="header"
+          >
+            Login
+          </Text>
           
           <View style={styles.formContainer}>
-            <View style={styles.labelContainer}>
+            <View 
+              style={styles.labelContainer}
+              accessible={true}
+              accessibilityElementsHidden={true}
+            >
               <View style={styles.iconContainer}>
                 <MaterialCommunityIcons name="email-outline" size={24} color="#000000" />
               </View>
@@ -84,9 +126,17 @@ const LoginScreen = ({ navigation }) => {
               placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
+              accessible={true}
+              accessibilityLabel="Email input"
+              accessibilityHint="Enter your email address"
+              accessibilityRole="text"
             />
 
-            <View style={styles.labelContainer}>
+            <View 
+              style={styles.labelContainer}
+              accessible={true}
+              accessibilityElementsHidden={true}
+            >
               <View style={styles.iconContainer}>
                 <MaterialCommunityIcons name="lock-outline" size={24} color="#000000" />
               </View>
@@ -98,36 +148,46 @@ const LoginScreen = ({ navigation }) => {
               onChangeText={setPassword}
               placeholder="Enter your password"
               secureTextEntry
+              accessible={true}
+              accessibilityLabel="Password input"
+              accessibilityHint="Enter your password"
+              accessibilityRole="text"
             />
           </View>
 
-          <View style={styles.container}>
-    <View style={styles.buttonContainer}>
-      <View style={styles.buttonShadow} />
+          <View style={styles.buttonContainer}>
+            <View style={styles.buttonShadow} />
+            <TouchableOpacity 
+              style={styles.loginButton} 
+              onPress={handleLogin}
+              accessible={true}
+              accessibilityLabel="Login button"
+              accessibilityHint="Double tap to log in"
+              accessibilityRole="button"
+            >
+              <View style={styles.buttonContent}>
+                <Text style={styles.loginButtonText}>
+                  Login <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
 
-      <TouchableOpacity 
-        style={styles.loginButton} 
-        onPress={handleLogin}
-      >
-        
-        <View style={styles.buttonContent}>
-        <Text style={styles.loginButtonText}>
-                Login <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
-              </Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-
-
-    </View>
-
-          <View style={styles.footerContainer}>
+          <View 
+            style={styles.footerContainer}
+            accessible={true}
+            accessibilityRole="text"
+          >
             <Text style={styles.footerText}>Don't have an account? </Text>
             <TouchableOpacity 
               onPress={() => {
-                console.log('Attempting to navigate to SignUp screen');
+                announceToScreenReader('Going to sign up screen');
                 navigation.navigate('SignUp');
               }}
+              accessible={true}
+              accessibilityLabel="Sign up"
+              accessibilityHint="Double tap to go to sign up screen"
+              accessibilityRole="link"
             >
               <Text style={styles.footerLink}>Sign up</Text>
             </TouchableOpacity>
