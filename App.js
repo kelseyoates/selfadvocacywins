@@ -24,6 +24,7 @@ import FindADateScreen from './src/screens/FindADateScreen';
 import ManageSubscriptionScreen from './src/screens/ManageSubscriptionScreen';
 import SupportedUserChatScreen from './src/screens/SupportedUserChatScreen';
 import SupportedUserChatDetailsScreen from './src/screens/SupportedUserChatDetailsScreen';
+import SupportedUserGroupChatDetailsScreen from './src/screens/SupportedUserGroupChatDetailsScreen';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useEffect } from 'react';
@@ -173,7 +174,11 @@ export default function App() {
               component={SupportedUserChatDetailsScreen}
               options={{ title: 'Chat Details' }}
             />
-            
+            <Stack.Screen
+              name="SupportedUserGroupChatDetails"
+              component={SupportedUserGroupChatDetailsScreen}
+              options={{ title: 'Group Chat Details' }}
+            />
           
 
           </Stack.Navigator>

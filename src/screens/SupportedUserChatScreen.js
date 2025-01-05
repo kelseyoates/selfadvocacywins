@@ -103,14 +103,18 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
   const renderConversation = ({ item }) => {
     const otherUser = item.conversationWith;
     const lastMessage = item.lastMessage;
+    const isGroupChat = item.conversationType === 'group';
 
     return (
       <TouchableOpacity 
         style={styles.conversationItem}
-        onPress={() => navigation.navigate('SupportedUserChatDetails', {
-          conversation: item,
-          supportedUser: supportedUser
-        })}
+        onPress={() => navigation.navigate(
+          isGroupChat ? 'SupportedUserGroupChatDetails' : 'SupportedUserChatDetails',
+          {
+            conversation: item,
+            supportedUser: supportedUser
+          }
+        )}
       >
         <View style={styles.conversationHeader}>
           <Text style={styles.userName}>
@@ -125,7 +129,9 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
         <Text style={styles.lastMessage}>
           {lastMessage?.text || 'No messages'}
         </Text>
-        <Text style={styles.readOnlyBadge}>Read Only</Text>
+        <Text style={styles.readOnlyBadge}>
+          {isGroupChat ? 'Read Only Group' : 'Read Only'}
+        </Text>
       </TouchableOpacity>
     );
   };
