@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
 
@@ -105,7 +105,13 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
     const lastMessage = item.lastMessage;
 
     return (
-      <View style={styles.conversationItem}>
+      <TouchableOpacity 
+        style={styles.conversationItem}
+        onPress={() => navigation.navigate('SupportedUserChatDetails', {
+          conversation: item,
+          supportedUser: supportedUser
+        })}
+      >
         <View style={styles.conversationHeader}>
           <Text style={styles.userName}>
             {otherUser?.name || 'Unknown User'}
@@ -120,7 +126,7 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
           {lastMessage?.text || 'No messages'}
         </Text>
         <Text style={styles.readOnlyBadge}>Read Only</Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
