@@ -63,7 +63,13 @@ const StateDropdown = ({ selectedState, onStateChange }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityRole="combobox"
+      accessibilityLabel="State selection dropdown"
+      accessibilityHint="Select your state from the list"
+    >
       <SelectList
         setSelected={handleSelect}
         data={states}
@@ -77,6 +83,22 @@ const StateDropdown = ({ selectedState, onStateChange }) => {
         dropdownItemStyles={styles.dropdownItemStyle}
         dropdownTextStyles={styles.dropdownTextStyle}
         search={true}
+        ariaLabel="State selection"
+        accessibilityLabel="Select your state"
+        accessibilityHint="Opens a list of US states to choose from"
+        accessibilityRole="combobox"
+        accessible={true}
+        accessibilityState={{
+          expanded: false,
+          selected: !!selectedState
+        }}
+        searchAccessibilityLabel="Search states"
+        searchAccessibilityHint="Type to filter states list"
+        optionProps={{
+          accessible: true,
+          accessibilityRole: "option",
+          accessibilityHint: "Double tap to select this state"
+        }}
       />
     </View>
   );
@@ -92,6 +114,8 @@ const styles = StyleSheet.create({
     borderColor: '#24269B',
     borderRadius: 8,
     backgroundColor: '#fff',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   inputStyle: {
     color: '#24269B',
@@ -108,6 +132,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderColor: '#000000',
     marginTop: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: 12,
   },
   dropdownTextStyle: {
     color: '#24269B',
