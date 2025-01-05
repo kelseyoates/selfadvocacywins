@@ -104,6 +104,9 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
     const otherUser = item.conversationWith;
     const lastMessage = item.lastMessage;
     const isGroupChat = item.conversationType === 'group';
+    const timestamp = lastMessage?.sentAt ? 
+      new Date(lastMessage.sentAt * 1000).toLocaleDateString() : 
+      'No date';
 
     return (
       <TouchableOpacity 
@@ -115,21 +118,30 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
             supportedUser: supportedUser
           }
         )}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${isGroupChat ? 'Group chat' : 'Chat'} with ${otherUser?.name || 'Unknown User'}. Last message: ${lastMessage?.text || 'No messages'}. ${timestamp}`}
+        accessibilityHint={`Double tap to view ${isGroupChat ? 'group chat' : 'chat'} details`}
       >
-        <View style={styles.conversationHeader}>
+        <View 
+          style={styles.conversationHeader}
+          accessible={true}
+          accessibilityRole="text"
+        >
           <Text style={styles.userName}>
             {otherUser?.name || 'Unknown User'}
           </Text>
           <Text style={styles.timestamp}>
-            {lastMessage?.sentAt ? 
-              new Date(lastMessage.sentAt * 1000).toLocaleDateString() : 
-              'No date'}
+            {timestamp}
           </Text>
         </View>
         <Text style={styles.lastMessage}>
           {lastMessage?.text || 'No messages'}
         </Text>
-        <Text style={styles.readOnlyBadge}>
+        <Text 
+          style={styles.readOnlyBadge}
+          accessibilityRole="text"
+        >
           {isGroupChat ? 'Read Only Group' : 'Read Only'}
         </Text>
       </TouchableOpacity>
@@ -138,23 +150,39 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View 
+        style={styles.loadingContainer}
+        accessible={true}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading conversations"
+      >
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityRole="text"
+    >
       {conversations.length > 0 ? (
         <FlatList
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.conversationId}
           contentContainerStyle={styles.listContainer}
+          accessibilityRole="list"
+          accessibilityLabel={`${supportedUser.username}'s conversations`}
         />
       ) : (
-        <View style={styles.emptyContainer}>
+        <View 
+          style={styles.emptyContainer}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="No conversations found"
+        >
           <Text style={styles.emptyText}>No conversations found</Text>
         </View>
       )}
