@@ -328,6 +328,9 @@ const NewWinScreen = ({ navigation }) => {
     <ScrollView 
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      accessible={true}
+      accessibilityLabel="Create a new win"
+      accessibilityHint="Screen for sharing your win with text and media"
     >
       <TextInput
         style={styles.input}
@@ -335,66 +338,133 @@ const NewWinScreen = ({ navigation }) => {
         value={text}
         onChangeText={setText}
         multiline
+        accessible={true}
+        accessibilityLabel="Share your win"
+        accessibilityHint="Enter text to describe your win"
       />
       
       {image && (
-        <Image
-          source={{ uri: image.uri }}
-          style={styles.previewImage}
-          resizeMode="contain"
-        />
+        <View
+          accessible={true}
+          accessibilityLabel="Selected image preview"
+        >
+          <Image
+            source={{ uri: image.uri }}
+            style={styles.previewImage}
+            resizeMode="contain"
+            accessibilityElementsHidden={true}
+          />
+          <TouchableOpacity 
+            style={styles.removeMediaButton}
+            onPress={() => {
+              setImage(null);
+              setMediaType(null);
+            }}
+            accessible={true}
+            accessibilityLabel="Remove selected image"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to remove the selected image"
+          >
+            <MaterialCommunityIcons 
+              name="close" 
+              size={24} 
+              color="#fff" 
+              accessibilityElementsHidden={true}
+            />
+          </TouchableOpacity>
+        </View>
       )}
 
-      <View style={styles.mediaButtons}>
-
-
-
-      {/* <View style={styles.buttonContainer}>
+      <View 
+        style={styles.mediaButtons}
+        accessible={true}
+        accessibilityLabel="Media options"
+      >
+        <View style={styles.buttonContainer}>
           <View style={styles.buttonShadow} />
           <TouchableOpacity 
-            style={styles.mediaButton}
-            onPress={handleSelectPhoto}
+            style={styles.mediaButton} 
+            onPress={() => pickMedia('photo')}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Add photo"
+            accessibilityHint="Double tap to select a photo from your library"
           >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonText}>Photo</Text>
-              <MaterialCommunityIcons name="camera" size={24} color="#24269B" />
-            </View>
+            <MaterialCommunityIcons 
+              name="camera" 
+              size={24} 
+              color="#24269B" 
+              accessibilityElementsHidden={true}
+            />
+            <Text 
+              style={styles.buttonText}
+              accessibilityElementsHidden={true}
+            >
+              Photo
+            </Text>
           </TouchableOpacity>
-        </View> */}
-
-
-        <View style={styles.buttonContainer}>
-          <View style={styles.buttonShadow} />
-
-        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('photo')}>
-          <MaterialCommunityIcons name="camera" size={24} color="#24269B" />
-          <Text style={styles.buttonText}>Photo</Text>
-        </TouchableOpacity>
         </View>
 
-
         <View style={styles.buttonContainer}>
           <View style={styles.buttonShadow} />
-
-        <TouchableOpacity style={styles.mediaButton} onPress={() => pickMedia('video')}>
-          <MaterialCommunityIcons name="video" size={24} color="#24269B" />
-          <Text style={styles.buttonText}>Video</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.mediaButton} 
+            onPress={() => pickMedia('video')}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Add video"
+            accessibilityHint="Double tap to select a video from your library"
+          >
+            <MaterialCommunityIcons 
+              name="video" 
+              size={24} 
+              color="#24269B" 
+              accessibilityElementsHidden={true}
+            />
+            <Text 
+              style={styles.buttonText}
+              accessibilityElementsHidden={true}
+            >
+              Video
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
       <TouchableOpacity 
-        style={styles.submitButton} 
+        style={[
+          styles.submitButton,
+          (!text.trim() && !image) && styles.submitButtonDisabled
+        ]}
         onPress={handleSubmit}
-        disabled={isSubmitting || isGeneratingAltText}
+        disabled={isSubmitting || (!text.trim() && !image)}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isSubmitting ? "Posting your win..." : 
+          (!text.trim() && !image) ? "Post win button - disabled. Add text or media to enable" :
+          "Post win"
+        }
+        accessibilityHint={
+          (!text.trim() && !image) ? 
+          "Add text or select media to share your win" :
+          "Double tap to share your win"
+        }
+        accessibilityState={{
+          disabled: isSubmitting || (!text.trim() && !image),
+          busy: isSubmitting
+        }}
       >
         <Text style={styles.submitButtonText}>
-          {isGeneratingAltText ? 'Generating Alt Text...' : 
-           isSubmitting ? 'Posting...' : 'Post Win'}
+          {isSubmitting ? 'Posting...' : 'Post Win'}
         </Text>
-        <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
+        <MaterialCommunityIcons 
+          name="arrow-right" 
+          size={24} 
+          color="white" 
+          accessibilityElementsHidden={true}
+        />
       </TouchableOpacity>
-
 
     </ScrollView>
   );
@@ -523,6 +593,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 20,
     padding: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#cccccc',
   },
 });
 
