@@ -12,7 +12,8 @@ import {
   Modal,
   Image,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  AccessibilityInfo
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -27,16 +28,11 @@ const containsProfanity = (text) => {
     'dick', 'pussy', 'cock',
     'bastard', 'hell', 'whore', 'slut', 'asshole', 'cunt',
     'fucker', 'fucking',
-    // Add more words as needed
   ];
 
+  // Split into words and check each word exactly
   const words = text.toLowerCase().split(/\s+/);
-  return words.some(word =>
-    profanityList.some(profanity =>
-      word.includes(profanity) ||
-      word.replace(/[^a-zA-Z]/g, '').includes(profanity)
-    )
-  );
+  return words.some(word => profanityList.includes(word));
 };
 
 // Create a separate header component for better control
@@ -81,6 +77,31 @@ const GroupChatScreen = ({ route, navigation }) => {
   const [memberProfiles, setMemberProfiles] = useState({});
   const [smartReplies, setSmartReplies] = useState([]);
   const [isLoadingSmartReplies, setIsLoadingSmartReplies] = useState(false);
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   // Test function to verify modal visibility
   const toggleModal = () => {
@@ -137,13 +158,24 @@ const GroupChatScreen = ({ route, navigation }) => {
         setCurrentUser(user);
         await fetchMessages();
         await fetchGroupInfo();
+
+        // Set the navigation header title to the group name
+        navigation.setOptions({
+          title: groupName || 'Group Chat',
+          headerTitleStyle: {
+            color: '#24269B',
+            fontSize: 18,
+            fontWeight: '600',
+          }
+        });
+
       } catch (error) {
         console.log("Initialization error:", error);
       }
     };
 
     initializeChat();
-  }, []);
+  }, [navigation, groupName]); // Add navigation and groupName to dependencies
 
   const fetchMessages = async () => {
     try {
@@ -162,8 +194,8 @@ const GroupChatScreen = ({ route, navigation }) => {
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
-    // First check for profanity with our local filter
     if (containsProfanity(inputText)) {
+      announceToScreenReader('Message contains inappropriate language');
       Alert.alert(
         'Inappropriate Content',
         'Your message contains inappropriate language. Please revise and try again.'
@@ -172,6 +204,7 @@ const GroupChatScreen = ({ route, navigation }) => {
     }
 
     try {
+      announceToScreenReader('Sending message');
       // Create message with data masking enabled
       const textMessage = new CometChat.TextMessage(
         groupId,
@@ -194,7 +227,13 @@ const GroupChatScreen = ({ route, navigation }) => {
       if (flatListRef.current) {
         flatListRef.current.scrollToEnd({ animated: true });
       }
+      announceToScreenReader('Message sent');
     } catch (error) {
+      if (error.code === 'ERR_BLOCKED_BY_EXTENSION') {
+        announceToScreenReader('Message was blocked by content filter');
+      } else {
+        announceToScreenReader('Failed to send message');
+      }
       // Handle CometChat's profanity filter error without logging
       if (error.code === 'ERR_BLOCKED_BY_EXTENSION' && 
           error.details?.action === 'do_not_propagate') {
@@ -545,14 +584,20 @@ const GroupChatScreen = ({ route, navigation }) => {
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      accessible={true}
+      accessibilityLabel="Group Chat Screen"
     >
       <View style={styles.infoButtonContainer}>
         <TouchableOpacity
           onPress={() => {
-            console.log('Info button pressed');
+            announceToScreenReader('Opening group information');
             setIsModalVisible(true);
           }}
           style={styles.infoButton}
+          accessible={true}
+          accessibilityLabel="Group Information"
+          accessibilityHint="Double tap to view group details and members"
+          accessibilityRole="button"
         >
           <MaterialCommunityIcons 
             name="information"
@@ -569,18 +614,27 @@ const GroupChatScreen = ({ route, navigation }) => {
         renderItem={renderMessage}
         keyExtractor={item => item.id?.toString()}
         contentContainerStyle={styles.messageList}
-        onContentSizeChange={() => {
-          flatListRef.current?.scrollToEnd({ animated: false });
-        }}
+        accessible={true}
+        accessibilityLabel={`${messages.length} messages`}
+        accessibilityHint="Scroll to read messages"
       />
 
       {renderSmartReplies()}
 
-      <View style={styles.inputContainer}>
+      <View 
+        style={styles.inputContainer}
+        accessible={true}
+        accessibilityLabel="Message input section"
+      >
         <TouchableOpacity 
           style={styles.attachButton}
           onPress={handleAttachment}
           disabled={isUploading}
+          accessible={true}
+          accessibilityLabel="Attach media"
+          accessibilityHint="Double tap to attach an image or file"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isUploading }}
         >
           <MaterialCommunityIcons 
             name="attachment" 
@@ -596,12 +650,22 @@ const GroupChatScreen = ({ route, navigation }) => {
           placeholder="Type a message..."
           multiline
           editable={!isUploading}
+          accessible={true}
+          accessibilityLabel="Message input"
+          accessibilityHint="Enter your message here"
         />
         
         <TouchableOpacity 
           style={styles.sendButton} 
           onPress={sendMessage}
           disabled={isUploading || !inputText.trim()}
+          accessible={true}
+          accessibilityLabel="Send message"
+          accessibilityHint="Double tap to send your message"
+          accessibilityRole="button"
+          accessibilityState={{ 
+            disabled: isUploading || !inputText.trim() 
+          }}
         >
           <MaterialCommunityIcons 
             name="send" 
@@ -616,44 +680,69 @@ const GroupChatScreen = ({ route, navigation }) => {
         animationType="slide"
         transparent={true}
         onRequestClose={() => {
-          console.log('Modal closing');
+          announceToScreenReader('Closing group information');
           setIsModalVisible(false);
         }}
       >
-        <View style={styles.modalOverlay}>
+        <View 
+          style={styles.modalOverlay}
+          accessible={true}
+          accessibilityLabel="Group Information Modal"
+          accessibilityViewIsModal={true}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Group Information</Text>
               <TouchableOpacity 
                 onPress={() => {
-                  console.log('Close button pressed');
+                  announceToScreenReader('Closing group information');
                   setIsModalVisible(false);
                 }}
                 style={styles.closeButton}
+                accessible={true}
+                accessibilityLabel="Close group information"
+                accessibilityRole="button"
               >
                 <MaterialCommunityIcons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
             
             {groupInfo?.owner === currentUser?.uid && (
-              <View style={styles.groupNameContainer}>
+              <View 
+                style={styles.groupNameContainer}
+                accessible={true}
+                accessibilityLabel="Group name section"
+              >
                 <TextInput
                   style={styles.groupNameInput}
                   value={newGroupName}
                   onChangeText={setNewGroupName}
                   placeholder="Enter new group name"
                   placeholderTextColor="#666"
+                  accessible={true}
+                  accessibilityLabel="New group name input"
+                  accessibilityHint="Enter a new name for the group"
                 />
                 <TouchableOpacity 
                   style={styles.updateButton}
-                  onPress={updateGroupName}
+                  onPress={() => {
+                    announceToScreenReader('Updating group name');
+                    updateGroupName();
+                  }}
+                  accessible={true}
+                  accessibilityLabel="Update group name"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.updateButtonText}>Update Name</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            <Text style={styles.membersTitle}>
+            <Text 
+              style={styles.membersTitle}
+              accessible={true}
+              accessibilityRole="header"
+            >
               Members ({members.length}):
             </Text>
             
@@ -664,14 +753,23 @@ const GroupChatScreen = ({ route, navigation }) => {
                 <TouchableOpacity 
                   style={styles.memberItem}
                   onPress={() => {
-                    console.log('Navigating to profile for user:', item.uid.toLowerCase());
+                    announceToScreenReader(`Opening profile for ${memberProfiles[item.uid]?.username || item.name}`);
                     setIsModalVisible(false);
                     navigation.navigate('OtherUserProfile', {
                       profileUserId: item.uid.toLowerCase(),
                       isCurrentUser: item.uid === currentUser?.uid
                     });
                   }}
-                  activeOpacity={0.7}
+                  accessible={true}
+                  accessibilityLabel={`${memberProfiles[item.uid]?.username || item.name}, ${
+                    item.uid === groupInfo?.owner 
+                      ? 'Owner' 
+                      : item.scope === 'admin' 
+                        ? 'Admin' 
+                        : 'Member'
+                  }`}
+                  accessibilityHint="Double tap to view member profile"
+                  accessibilityRole="button"
                 >
                   <View style={styles.memberContent}>
                     <Image
@@ -704,11 +802,20 @@ const GroupChatScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
               )}
               style={styles.membersList}
+              accessible={true}
+              accessibilityLabel="Group members list"
             />
 
             <TouchableOpacity 
               style={styles.leaveButton}
-              onPress={leaveGroup}
+              onPress={() => {
+                announceToScreenReader('Leaving group');
+                leaveGroup();
+              }}
+              accessible={true}
+              accessibilityLabel="Leave group"
+              accessibilityHint="Double tap to leave this group"
+              accessibilityRole="button"
             >
               <Text style={styles.leaveButtonText}>Leave Group</Text>
             </TouchableOpacity>

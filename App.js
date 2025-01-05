@@ -9,7 +9,6 @@ import ChatConversationScreen from './src/screens/ChatConversationScreen';
 import NewChatScreen from './src/screens/NewChatScreen';
 import UserSearchScreen from './src/screens/UserSearchScreen';
 import GroupChatSetupScreen from './src/screens/GroupChatSetupScreen';
-import FriendResultsScreen from './src/screens/FriendResultsScreen';
 import FindYourFriendsScreen from './src/screens/FindYourFriendsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import OtherUserProfileScreen from './src/screens/OtherUserProfileScreen';
@@ -107,11 +106,7 @@ export default function App() {
               component={FindYourFriendsScreen}
               options={{ title: 'Find Your Friends' }}
             />
-            <Stack.Screen
-              name="FriendResults"
-              component={FriendResultsScreen}
-              options={{ title: 'Potential Friends' }}
-            />
+          
             <Stack.Screen
               name="Profile"
               component={ProfileScreen}
