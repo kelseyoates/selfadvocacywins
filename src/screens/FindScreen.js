@@ -1,45 +1,108 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Button, Image } from 'react-native';
-
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Image,
+  AccessibilityInfo 
+} from 'react-native';
 
 const FindScreen = ({ navigation }) => {
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
+
   return (
-    <View style={styles.container}>
-    <View style={styles.buttonContainer}>
-      <View style={styles.buttonShadow} />
-      <TouchableOpacity 
-        style={styles.findFriendButton} 
-        onPress={() => navigation.navigate('FindYourFriends')}
-      >
-        <View style={styles.buttonContent}>
-          <Text style={styles.buttonText}>Find a Friend</Text>
-          <Image 
-            source={require('../../assets/friends-active.png')} 
-            style={styles.buttonIcon}
-          />
-        </View>
-      </TouchableOpacity>
-    </View>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="Find Screen"
+      accessibilityRole="menu"
+    >
+      <View style={styles.buttonContainer}>
+        <View style={styles.buttonShadow} />
+        <TouchableOpacity 
+          style={styles.findFriendButton} 
+          onPress={() => {
+            announceToScreenReader('Opening Find a Friend screen');
+            navigation.navigate('FindYourFriends');
+          }}
+          accessible={true}
+          accessibilityLabel="Find a Friend"
+          accessibilityHint="Navigate to screen to search for friends"
+          accessibilityRole="button"
+        >
+          <View 
+            style={styles.buttonContent}
+            accessible={true}
+            accessibilityElementsHidden={true}
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Text style={styles.buttonText}>Find a Friend</Text>
+            <Image 
+              source={require('../../assets/friends-active.png')} 
+              style={styles.buttonIcon}
+              accessible={true}
+              accessibilityLabel="Friends icon"
+              accessibilityRole="image"
+            />
+          </View>
+        </TouchableOpacity>
+      </View>
 
-
-    <View style={styles.buttonContainer}>
-      <View style={styles.buttonShadow} />
-      <TouchableOpacity 
-        style={styles.findDateButton} 
-        onPress={() => navigation.navigate('FindADate')}
-      >
-        <View style={styles.buttonContent}>
-          <Text style={styles.buttonDateText}>Find a Date</Text>
-          <Image 
-            source={require('../../assets/find-a-date.png')} 
-            style={styles.buttonIcon}
-          />
-        </View>
-      </TouchableOpacity>
-    </View>
-
-
-
+      <View style={styles.buttonContainer}>
+        <View style={styles.buttonShadow} />
+        <TouchableOpacity 
+          style={styles.findDateButton} 
+          onPress={() => {
+            announceToScreenReader('Opening Find a Date screen');
+            navigation.navigate('FindADate');
+          }}
+          accessible={true}
+          accessibilityLabel="Find a Date"
+          accessibilityHint="Navigate to screen to search for potential dates"
+          accessibilityRole="button"
+        >
+          <View 
+            style={styles.buttonContent}
+            accessible={true}
+            accessibilityElementsHidden={true}
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Text style={styles.buttonDateText}>Find a Date</Text>
+            <Image 
+              source={require('../../assets/find-a-date.png')} 
+              style={styles.buttonIcon}
+              accessible={true}
+              accessibilityLabel="Dating icon"
+              accessibilityRole="image"
+            />
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
