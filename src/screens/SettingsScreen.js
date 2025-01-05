@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   SafeAreaView,
+  AccessibilityInfo
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,6 +21,31 @@ import { db } from '../config/firebase';
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const [userSubscription, setUserSubscription] = useState(null);
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   const fetchUserSubscription = async () => {
     try {
@@ -61,17 +87,18 @@ const SettingsScreen = () => {
       [
         {
           text: "Cancel",
-          style: "cancel"
+          style: "cancel",
+          onPress: () => announceToScreenReader("Sign out cancelled")
         },
         {
           text: "Sign Out",
           style: "destructive",
           onPress: async () => {
             try {
+              announceToScreenReader("Signing out");
               await signOut(auth);
-              // Navigation will be handled by your AuthProvider/Navigator
             } catch (error) {
-              console.error('Error signing out:', error);
+              announceToScreenReader("Failed to sign out");
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           }
@@ -81,32 +108,62 @@ const SettingsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="Settings Screen"
+    >
+      <View 
+        style={styles.content}
+        accessible={true}
+        accessibilityRole="menu"
+      >
         <View style={styles.section}>
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => navigation.navigate('People')}
+            onPress={() => {
+              announceToScreenReader("Opening People screen");
+              navigation.navigate('People');
+            }}
+            accessible={true}
+            accessibilityRole="menuitem"
+            accessibilityLabel="People"
+            accessibilityHint="Navigate to manage your followers and following"
           >
             <Image 
               source={require('../../assets/people.png')}
               style={styles.menuIcon}
+              accessible={true}
+              accessibilityLabel="People icon"
+              accessibilityRole="image"
             />
             <Text style={styles.menuItemText}>People</Text>
             <MaterialCommunityIcons 
               name="chevron-right" 
               size={24} 
-              color="#666" 
+              color="#666"
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no"
             />
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={handleSubscriptionPress}
+            onPress={() => {
+              announceToScreenReader(`Opening ${!userSubscription || userSubscription === 'selfAdvocateFree' ? 'subscription options' : 'subscription management'}`);
+              handleSubscriptionPress();
+            }}
+            accessible={true}
+            accessibilityRole="menuitem"
+            accessibilityLabel={!userSubscription || userSubscription === 'selfAdvocateFree' ? 'Upgrade Subscription' : 'Manage Subscription'}
+            accessibilityHint={!userSubscription || userSubscription === 'selfAdvocateFree' ? 'View subscription upgrade options' : 'Manage your current subscription'}
           >
             <Image 
               source={require('../../assets/credit-card.png')}
               style={styles.menuIcon}
+              accessible={true}
+              accessibilityLabel="Subscription icon"
+              accessibilityRole="image"
             />
             <Text style={styles.menuItemText}>
               {!userSubscription || userSubscription === 'selfAdvocateFree' 
@@ -116,53 +173,83 @@ const SettingsScreen = () => {
             <MaterialCommunityIcons 
               name="chevron-right" 
               size={24} 
-              color="#666" 
+              color="#666"
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no"
             />
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => navigation.navigate('SupporterManagement')}
+            onPress={() => {
+              announceToScreenReader("Opening Supporters management");
+              navigation.navigate('SupporterManagement');
+            }}
+            accessible={true}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Supporters"
+            accessibilityHint="Manage your supporters"
           >
             <Image 
               source={require('../../assets/supporter-1.png')}
               style={styles.menuIcon}
+              accessible={true}
+              accessibilityLabel="Supporters icon"
+              accessibilityRole="image"
             />
             <Text style={styles.menuItemText}>Supporters</Text>
             <MaterialCommunityIcons 
               name="chevron-right" 
               size={24} 
-              color="#666" 
+              color="#666"
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no"
             />
           </TouchableOpacity>
 
-
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => navigation.navigate('SupporterDashboard')}
+            onPress={() => {
+              announceToScreenReader("Opening Who I'm Supporting dashboard");
+              navigation.navigate('SupporterDashboard');
+            }}
+            accessible={true}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Who I'm Supporting"
+            accessibilityHint="View people you are supporting"
           >
             <Image 
               source={require('../../assets/people.png')}
               style={styles.menuIcon}
+              accessible={true}
+              accessibilityLabel="Supporting icon"
+              accessibilityRole="image"
             />
             <Text style={styles.menuItemText}>Who I'm Supporting</Text>
             <MaterialCommunityIcons 
               name="chevron-right" 
               size={24} 
-              color="#666" 
+              color="#666"
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no"
             />
           </TouchableOpacity>
-
-
-          
         </View>
       </View>
 
-      <View style={styles.signOutWrapper}>
+      <View 
+        style={styles.signOutWrapper}
+        accessible={true}
+        accessibilityRole="button"
+      >
         <SafeAreaView edges={['bottom']}>
           <TouchableOpacity 
             style={styles.signOutButton}
             onPress={handleSignOut}
+            accessible={true}
+            accessibilityLabel="Sign Out"
+            accessibilityHint="Double tap to sign out of your account"
+            accessibilityRole="button"
           >
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
