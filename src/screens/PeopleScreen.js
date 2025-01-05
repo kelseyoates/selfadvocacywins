@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
+  AccessibilityInfo
 } from 'react-native';
 import { 
   collection, 
@@ -28,7 +29,32 @@ const PeopleScreen = () => {
   const [activeTab, setActiveTab] = useState('followers');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const { user } = useAuth();
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -36,6 +62,7 @@ const PeopleScreen = () => {
 
   const fetchUsers = async () => {
     try {
+      announceToScreenReader(`Loading ${activeTab} list`);
       setLoading(true);
       const usersRef = collection(db, 'users');
       const userDocRef = doc(db, 'users', user.uid.toLowerCase());
@@ -80,15 +107,18 @@ const PeopleScreen = () => {
       }
       
       setUsers(usersList);
+      announceToScreenReader(`Loaded ${usersList.length} ${activeTab}`);
     } catch (error) {
+      announceToScreenReader(`Error loading ${activeTab}`);
       console.error('Error fetching users:', error);
     } finally {
       setLoading(false);
     }
   };
   
-  const handleFollow = async (userId) => {
+  const handleFollow = async (userId, username) => {
     try {
+      announceToScreenReader(`Following ${username}`);
       const userRef = doc(db, 'users', user.uid.toLowerCase());
       await updateDoc(userRef, {
         following: arrayUnion(userId.toLowerCase()) // Ensure lowercase when following
@@ -96,13 +126,16 @@ const PeopleScreen = () => {
       setUsers(users.map(u => 
         u.id === userId ? { ...u, isFollowing: true } : u
       ));
+      announceToScreenReader(`Successfully followed ${username}`);
     } catch (error) {
+      announceToScreenReader('Failed to follow user');
       console.error('Error following user:', error);
     }
   };
   
-  const handleUnfollow = async (userId) => {
+  const handleUnfollow = async (userId, username) => {
     try {
+      announceToScreenReader(`Unfollowing ${username}`);
       const userRef = doc(db, 'users', user.uid.toLowerCase());
       await updateDoc(userRef, {
         following: arrayRemove(userId.toLowerCase()) // Ensure lowercase when unfollowing
@@ -110,28 +143,59 @@ const PeopleScreen = () => {
       setUsers(users.map(u => 
         u.id === userId ? { ...u, isFollowing: false } : u
       ));
+      announceToScreenReader(`Successfully unfollowed ${username}`);
     } catch (error) {
+      announceToScreenReader('Failed to unfollow user');
       console.error('Error unfollowing user:', error);
     }
   };
 
 // Update the renderUser function
 const renderUser = ({ item }) => (
-    <View style={styles.userItem}>
+    <View 
+      style={styles.userItem}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.username}${item.state ? ` from ${item.state}` : ''}`}
+    >
       <Image
         source={item.profilePicture ? { uri: item.profilePicture } : require('../../assets/default-profile.png')}
         style={styles.profilePicture}
+        accessible={true}
+        accessibilityLabel={`${item.username}'s profile picture`}
+        accessibilityRole="image"
       />
-      <View style={styles.userInfo}>
+      <View 
+        style={styles.userInfo}
+        accessible={true}
+        accessibilityRole="text"
+      >
         <Text style={styles.username}>{item.username}</Text>
-        {item.state && <Text style={styles.userState}>📍 {item.state}</Text>}
+        {item.state && (
+          <Text 
+            style={styles.userState}
+            accessibilityLabel={`Located in ${item.state}`}
+          >
+            📍 {item.state}
+          </Text>
+        )}
       </View>
       <TouchableOpacity
         style={[
           styles.followButton,
           item.isFollowing && styles.followingButton
         ]}
-        onPress={() => item.isFollowing ? handleUnfollow(item.id) : handleFollow(item.id)}
+        onPress={() => item.isFollowing ? 
+          handleUnfollow(item.id, item.username) : 
+          handleFollow(item.id, item.username)
+        }
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.isFollowing ? 'Unfollow' : 'Follow'} ${item.username}`}
+        accessibilityHint={item.isFollowing ? 
+          'Double tap to stop following this user' : 
+          'Double tap to start following this user'
+        }
       >
         <View style={styles.buttonContent}>
           <Text style={[
@@ -152,11 +216,26 @@ const renderUser = ({ item }) => (
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.tabContainer}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="People Screen"
+    >
+      <View 
+        style={styles.tabContainer}
+        accessible={true}
+        accessibilityRole="tablist"
+      >
         <TouchableOpacity
           style={[styles.tab, activeTab === 'followers' && styles.activeTab]}
-          onPress={() => setActiveTab('followers')}
+          onPress={() => {
+            setActiveTab('followers');
+            announceToScreenReader('Switched to followers tab');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Followers tab"
+          accessibilityState={{ selected: activeTab === 'followers' }}
         >
           <Text style={[styles.tabText, activeTab === 'followers' && styles.activeTabText]}>
             Followers
@@ -164,7 +243,14 @@ const renderUser = ({ item }) => (
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'following' && styles.activeTab]}
-          onPress={() => setActiveTab('following')}
+          onPress={() => {
+            setActiveTab('following');
+            announceToScreenReader('Switched to following tab');
+          }}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Following tab"
+          accessibilityState={{ selected: activeTab === 'following' }}
         >
           <Text style={[styles.tabText, activeTab === 'following' && styles.activeTabText]}>
             Following
@@ -173,15 +259,28 @@ const renderUser = ({ item }) => (
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.loader} size="large" color="#24269B" />
+        <View 
+          style={styles.loader}
+          accessible={true}
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Loading ${activeTab}`}
+        >
+          <ActivityIndicator size="large" color="#24269B" />
+        </View>
       ) : (
         <FlatList
           data={users}
           renderItem={renderUser}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          accessible={true}
+          accessibilityLabel={`List of ${activeTab}`}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>
+            <Text 
+              style={styles.emptyText}
+              accessible={true}
+              accessibilityRole="text"
+            >
               {activeTab === 'followers' ? 'No followers yet' : 'Not following anyone'}
             </Text>
           }
