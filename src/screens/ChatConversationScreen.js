@@ -12,7 +12,8 @@ import {
   Alert,
   Keyboard,
   Dimensions,
-  ScrollView
+  ScrollView,
+  AccessibilityInfo
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -48,6 +49,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
   const [reportedUsers, setReportedUsers] = useState(new Set());
   const [smartReplies, setSmartReplies] = useState([]);
   const [isLoadingSmartReplies, setIsLoadingSmartReplies] = useState(false);
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
 
   // Fetch initial messages
   const fetchMessages = useCallback(async () => {
@@ -143,13 +145,39 @@ const ChatConversationScreen = ({ route, navigation }) => {
     };
   }, []);
 
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Add screen reader announcement helper
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim() || !currentUser) return;
 
-    const messageText = inputText.trim();
     setIsLoading(true);
+    announceToScreenReader('Sending message');
 
     try {
+      const messageText = inputText.trim();
       const textMessage = new CometChat.TextMessage(
         uid,
         messageText,
@@ -210,6 +238,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
         });
         return newMessages;
       });
+      announceToScreenReader('Message sent successfully');
     } catch (error) {
       console.log("Detailed error information:", {
         code: error.code,
@@ -261,6 +290,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
         });
         setInputText('');
       }
+      announceToScreenReader('Failed to send message');
     } finally {
       setIsLoading(false);
     }
@@ -337,6 +367,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
             });
             return newMessages;
           });
+          announceToScreenReader('Image sent successfully');
         } catch (error) {
           console.log("Media send error details:", error);
           
@@ -374,6 +405,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
         'Error',
         'Failed to process the image. Please try again.'
       );
+      announceToScreenReader('Failed to send image');
     } finally {
       setIsUploading(false);
     }
@@ -464,57 +496,47 @@ const ChatConversationScreen = ({ route, navigation }) => {
     }
 
     const isMyMessage = item.sender?.uid === currentUser?.uid;
-    
-    console.log("Rendering valid message:", {
-      type: item.type,
-      category: item.category,
-      senderId: item.sender?.uid,
-      url: item.type === 'image' ? item.data?.url : undefined
-    });
+    const senderName = isMyMessage ? 'You' : (item.sender?.name || 'Other User');
+    const timeString = new Date(item.sentAt * 1000).toLocaleString();
     
     return (
-      <View style={[
-        styles.messageContainer,
-        isMyMessage ? styles.myMessage : styles.theirMessage
-      ]}>
+      <View 
+        style={[styles.messageContainer, isMyMessage ? styles.myMessage : styles.theirMessage]}
+        accessible={true}
+        accessibilityLabel={`Message from ${senderName} at ${timeString}: ${
+          item.type === 'text' ? item.text : 'Image message'
+        }`}
+      >
         {!isMyMessage && (
-          <Text style={styles.senderName}>
-            {item.sender?.name || 'Other User'}
+          <Text 
+            style={styles.senderName}
+            accessibilityLabel={`Sent by ${senderName}`}
+          >
+            {senderName}
           </Text>
         )}
         
         {item.type === 'text' ? (
-          <Text style={[
-            styles.messageText,
-            isMyMessage ? styles.myMessageText : styles.theirMessageText
-          ]}>
+          <Text 
+            style={[styles.messageText, isMyMessage ? styles.myMessageText : styles.theirMessageText]}
+          >
             {item.text}
           </Text>
         ) : item.type === 'image' ? (
-          <View>
-            <Image
-              source={{ 
-                uri: item.data?.url,
-                cache: 'force-cache'
-              }}
-              style={styles.messageImage}
-              resizeMode="contain"
-              onError={(error) => console.log("Image load error:", error)}
-            />
-          </View>
+          <Image
+            source={{ uri: item.data?.url, cache: 'force-cache' }}
+            style={styles.messageImage}
+            resizeMode="contain"
+            accessible={true}
+            accessibilityLabel={`Image sent by ${senderName}`}
+          />
         ) : null}
 
-        <Text style={[
-          styles.timestamp,
-          isMyMessage ? styles.myTimestamp : styles.theirTimestamp
-        ]}>
-          {new Date(item.sentAt * 1000).toLocaleDateString([], {
-            month: 'short',
-            day: 'numeric'
-          }) + ' ' + new Date(item.sentAt * 1000).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
+        <Text 
+          style={[styles.timestamp, isMyMessage ? styles.myTimestamp : styles.theirTimestamp]}
+          accessibilityLabel={`Sent at ${timeString}`}
+        >
+          {timeString}
         </Text>
       </View>
     );
@@ -638,7 +660,11 @@ const ChatConversationScreen = ({ route, navigation }) => {
     if (smartReplies.length === 0) return null;
 
     return (
-      <View style={styles.smartRepliesContainer}>
+      <View 
+        style={styles.smartRepliesContainer}
+        accessible={true}
+        accessibilityLabel="Quick reply suggestions"
+      >
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
@@ -649,6 +675,10 @@ const ChatConversationScreen = ({ route, navigation }) => {
               key={index}
               style={styles.smartReplyButton}
               onPress={() => handleSmartReplyPress(reply)}
+              accessible={true}
+              accessibilityLabel={`Quick reply: ${reply}`}
+              accessibilityHint="Double tap to send this reply"
+              accessibilityRole="button"
             >
               <Text style={styles.smartReplyText}>{reply}</Text>
             </TouchableOpacity>
@@ -663,6 +693,8 @@ const ChatConversationScreen = ({ route, navigation }) => {
       style={[styles.container, { height: screenHeight }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 150 : 0}
+      accessible={true}
+      accessibilityLabel="Chat conversation"
     >
       <FlatList
         ref={flatListRef}
@@ -670,6 +702,8 @@ const ChatConversationScreen = ({ route, navigation }) => {
         renderItem={renderMessage}
         keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.messageList}
+        accessibilityLabel={`${messages.length} messages`}
+        accessibilityHint="Scroll to read messages"
         onContentSizeChange={() => {
           if (flatListRef.current) {
             flatListRef.current.scrollToEnd({ animated: false });
@@ -682,11 +716,20 @@ const ChatConversationScreen = ({ route, navigation }) => {
       
       {renderSmartReplies()}
 
-      <View style={styles.inputContainer}>
+      <View 
+        style={styles.inputContainer}
+        accessible={true}
+        accessibilityLabel="Message input section"
+      >
         <TouchableOpacity 
           style={styles.attachButton} 
           onPress={handleMediaPicker}
           disabled={isUploading || isLoading}
+          accessible={true}
+          accessibilityLabel="Attach image"
+          accessibilityHint="Double tap to select an image to send"
+          accessibilityRole="imagebutton"
+          accessibilityState={{ disabled: isUploading || isLoading }}
         >
           <MaterialCommunityIcons 
             name="attachment" 
@@ -694,6 +737,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
             color={isUploading || isLoading ? "#999" : "#24269B"} 
           />
         </TouchableOpacity>
+
         <TextInput
           style={styles.input}
           value={inputText}
@@ -701,11 +745,22 @@ const ChatConversationScreen = ({ route, navigation }) => {
           placeholder="Type a message..."
           multiline
           editable={!isLoading && !isUploading}
+          accessible={true}
+          accessibilityLabel="Message input"
+          accessibilityHint="Enter your message here"
         />
+
         <TouchableOpacity 
           style={styles.sendButton} 
           onPress={sendMessage}
           disabled={isLoading || isUploading || !inputText.trim()}
+          accessible={true}
+          accessibilityLabel="Send message"
+          accessibilityHint="Double tap to send your message"
+          accessibilityRole="button"
+          accessibilityState={{ 
+            disabled: isLoading || isUploading || !inputText.trim() 
+          }}
         >
           <MaterialCommunityIcons 
             name="send" 
