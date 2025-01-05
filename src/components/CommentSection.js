@@ -7,9 +7,20 @@ const CommentSection = ({ comments = [], showAllComments, setShowAllComments }) 
   const displayComments = showAllComments ? comments : comments.slice(0, 2);
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel="Comments section"
+    >
       {displayComments.map((comment, index) => (
-        <View key={index} style={styles.comment}>
+        <View 
+          key={index} 
+          style={styles.comment}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={`Comment ${index + 1} of ${displayComments.length}: ${comment.text}`}
+        >
           <Text style={styles.commentText}>{comment.text}</Text>
         </View>
       ))}
@@ -18,6 +29,14 @@ const CommentSection = ({ comments = [], showAllComments, setShowAllComments }) 
         <TouchableOpacity
           onPress={() => setShowAllComments(!showAllComments)}
           style={styles.viewMoreButton}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={showAllComments 
+            ? "Show less comments" 
+            : `View all ${comments.length} comments`}
+          accessibilityHint={showAllComments
+            ? "Double tap to show fewer comments"
+            : "Double tap to expand and show all comments"}
         >
           <Text style={styles.viewMoreText}>
             {showAllComments ? 'Show less' : `View all ${comments.length} comments`}
