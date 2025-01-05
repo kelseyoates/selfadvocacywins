@@ -30,9 +30,30 @@ const containsProfanity = (text) => {
     'fucker', 'fucking',
   ];
 
-  // Split into words and check each word exactly
+  // Check for email pattern
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  if (emailPattern.test(text)) {
+    throw new Error('PERSONAL_INFO_EMAIL');
+  }
+
+  // Check for phone number patterns
+  const phonePatterns = [
+    /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/, // 123-456-7890, 123.456.7890, 1234567890
+    /\(\d{3}\)\s*\d{3}[-.]?\d{4}/, // (123) 456-7890
+    /\b\d{3}\s*[-.]?\s*\d{3}\s*[-.]?\s*\d{4}\b/, // 123 456 7890
+  ];
+
+  if (phonePatterns.some(pattern => pattern.test(text))) {
+    throw new Error('PERSONAL_INFO_PHONE');
+  }
+
+  // Check for profanity
   const words = text.toLowerCase().split(/\s+/);
-  return words.some(word => profanityList.includes(word));
+  if (words.some(word => profanityList.includes(word))) {
+    throw new Error('PROFANITY');
+  }
+
+  return false;
 };
 
 // Create a separate header component for better control
@@ -194,17 +215,8 @@ const GroupChatScreen = ({ route, navigation }) => {
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
-    if (containsProfanity(inputText)) {
-      announceToScreenReader('Message contains inappropriate language');
-      Alert.alert(
-        'Inappropriate Content',
-        'Your message contains inappropriate language. Please revise and try again.'
-      );
-      return;
-    }
-
     try {
-      announceToScreenReader('Sending message');
+      containsProfanity(inputText);
       // Create message with data masking enabled
       const textMessage = new CometChat.TextMessage(
         groupId,
@@ -229,22 +241,46 @@ const GroupChatScreen = ({ route, navigation }) => {
       }
       announceToScreenReader('Message sent');
     } catch (error) {
-      if (error.code === 'ERR_BLOCKED_BY_EXTENSION') {
-        announceToScreenReader('Message was blocked by content filter');
-      } else {
-        announceToScreenReader('Failed to send message');
-      }
-      // Handle CometChat's profanity filter error without logging
-      if (error.code === 'ERR_BLOCKED_BY_EXTENSION' && 
-          error.details?.action === 'do_not_propagate') {
-        Alert.alert(
-          'Message Blocked',
-          'Your message was blocked by our content filter. Please revise and try again.'
-        );
-      } else {
-        // Only log non-profanity errors
-        console.error('Error sending message:', error);
-        Alert.alert('Error', 'Failed to send message');
+      switch (error.message) {
+        case 'PERSONAL_INFO_EMAIL':
+          announceToScreenReader('Message blocked: Contains email address');
+          Alert.alert(
+            'Personal Information Detected',
+            'For your safety, please do not share email addresses in chat messages.'
+          );
+          return;
+        case 'PERSONAL_INFO_PHONE':
+          announceToScreenReader('Message blocked: Contains phone number');
+          Alert.alert(
+            'Personal Information Detected',
+            'For your safety, please do not share phone numbers in chat messages.'
+          );
+          return;
+        case 'PROFANITY':
+          announceToScreenReader('Message contains inappropriate language');
+          Alert.alert(
+            'Inappropriate Content',
+            'Your message contains inappropriate language. Please revise and try again.'
+          );
+          return;
+        default:
+          if (error.code === 'ERR_BLOCKED_BY_EXTENSION') {
+            announceToScreenReader('Message was blocked by content filter');
+          } else {
+            announceToScreenReader('Failed to send message');
+          }
+          // Handle CometChat's profanity filter error without logging
+          if (error.code === 'ERR_BLOCKED_BY_EXTENSION' && 
+              error.details?.action === 'do_not_propagate') {
+            Alert.alert(
+              'Message Blocked',
+              'Your message was blocked by our content filter. Please revise and try again.'
+            );
+          } else {
+            // Only log non-profanity errors
+            console.error('Error sending message:', error);
+            Alert.alert('Error', 'Failed to send message');
+          }
       }
     }
   };
