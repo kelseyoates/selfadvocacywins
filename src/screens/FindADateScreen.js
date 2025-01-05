@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   Alert,
+  AccessibilityInfo
 } from 'react-native';
 import { searchIndex, adminIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
@@ -67,19 +68,50 @@ const FindADateScreen = ({ navigation }) => {
   const [users, setUsers] = useState([]);
   const currentUser = auth.currentUser;
   const [selectedAgeRange, setSelectedAgeRange] = useState({ min: 18, max: 99 });
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add screen reader detection
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
 
   // Handle state selection
   const handleStateSelect = (state) => {
     setSelectedState(state);
+    announceToScreenReader(`Selected state: ${state}`);
   };
 
   // Handle word selection
   const toggleWord = (word) => {
     setSelectedWords(prev => {
-      if (prev.includes(word)) {
-        return prev.filter(w => w !== word);
-      }
-      return [...prev, word];
+      const newWords = prev.includes(word) 
+        ? prev.filter(w => w !== word)
+        : [...prev, word];
+      
+      announceToScreenReader(prev.includes(word) 
+        ? `Removed ${word}` 
+        : `Added ${word}`);
+      
+      return newWords;
     });
   };
 
@@ -202,6 +234,7 @@ const FindADateScreen = ({ navigation }) => {
   const handleMinAgeChange = (text) => {
     const newMin = parseInt(text) || 18;
     if (newMin < 18) {
+      announceToScreenReader('Minimum age must be at least 18');
       Alert.alert('Invalid Age', 'Minimum age must be at least 18');
       return;
     }
@@ -210,6 +243,7 @@ const FindADateScreen = ({ navigation }) => {
       return;
     }
     setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
+    announceToScreenReader(`Minimum age set to ${newMin}`);
   };
 
   const handleMaxAgeChange = (text) => {
@@ -223,6 +257,7 @@ const FindADateScreen = ({ navigation }) => {
       return;
     }
     setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
+    announceToScreenReader(`Maximum age set to ${newMax}`);
   };
 
   const renderUserCard = (user) => (
@@ -255,13 +290,21 @@ const FindADateScreen = ({ navigation }) => {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="Find a Date Screen"
+    >
       <StateDropdown 
         selectedState={selectedState}
-        onStateChange={setSelectedState}
+        onStateChange={handleStateSelect}
       />
       
-      <View style={styles.searchSection}>
+      <View 
+        style={styles.searchSection}
+        accessible={true}
+        accessibilityLabel="Age Range Section"
+      >
         <Text style={styles.sectionTitle}>Age Range</Text>
         <View style={styles.ageRangeContainer}>
           <View style={styles.ageInputRow}>
@@ -274,6 +317,9 @@ const FindADateScreen = ({ navigation }) => {
                 keyboardType="number-pad"
                 maxLength={2}
                 placeholder="18"
+                accessible={true}
+                accessibilityLabel={`Minimum age: ${selectedAgeRange.min}`}
+                accessibilityHint="Enter minimum age, must be at least 18"
               />
             </View>
 
@@ -290,29 +336,41 @@ const FindADateScreen = ({ navigation }) => {
                 keyboardType="number-pad"
                 maxLength={2}
                 placeholder="99"
+                accessible={true}
+                accessibilityLabel={`Maximum age: ${selectedAgeRange.max}`}
+                accessibilityHint="Enter maximum age, up to 99"
               />
             </View>
           </View>
         </View>
 
-
-
-        <View style={styles.searchSection}>
-        <Text style={styles.sectionTitle}>Search by Text</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Type in topics to search..."
-          value={textAnswer}
-          onChangeText={setTextAnswer}
-          multiline
-        />
-      </View>
-
+        <View 
+          style={styles.searchSection}
+          accessible={true}
+          accessibilityLabel="Text Search Section"
+        >
+          <Text style={styles.sectionTitle}>Search by Text</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Type in topics to search..."
+            value={textAnswer}
+            onChangeText={setTextAnswer}
+            multiline
+            accessible={true}
+            accessibilityLabel="Search text input"
+            accessibilityHint="Enter topics to search for matches"
+          />
+        </View>
 
         <Text style={styles.sectionTitle}>Select Words</Text>
         <View style={styles.wordsContainer}>
           {allQuestions.map((q) => (
-            <View key={q.id} style={styles.questionCard}>
+            <View 
+              key={q.id} 
+              style={styles.questionCard}
+              accessible={true}
+              accessibilityLabel={q.question}
+            >
               <Text style={styles.questionText}>{q.question}</Text>
               <View style={styles.wordsGrid}>
                 {q.words.map((word) => (
@@ -323,6 +381,11 @@ const FindADateScreen = ({ navigation }) => {
                       selectedWords.includes(word) && styles.selectedWord
                     ]}
                     onPress={() => toggleWord(word)}
+                    accessible={true}
+                    accessibilityLabel={`${word}, ${selectedWords.includes(word) ? 'selected' : 'not selected'}`}
+                    accessibilityHint={`Double tap to ${selectedWords.includes(word) ? 'remove' : 'add'} this word`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: selectedWords.includes(word) }}
                   >
                     <Text style={[
                       styles.wordText,
@@ -338,40 +401,49 @@ const FindADateScreen = ({ navigation }) => {
         </View>
       </View>
 
-    
-
-      {error && <Text style={styles.error}>{error}</Text>}
-      
-  
+      {error && (
+        <Text 
+          style={styles.error}
+          accessible={true}
+          accessibilityLabel={`Error: ${error}`}
+          accessibilityRole="alert"
+        >
+          {error}
+        </Text>
+      )}
 
       <View style={styles.resultsContainer}>
-        
         {users.map(user => (
           <View key={user.objectID} style={styles.cardContainer}>
             <View style={styles.cardShadow} />
             <TouchableOpacity 
               style={styles.userCard}
-              onPress={() => navigation.navigate('OtherUserProfile', { 
-                profileUserId: user.path.split('/')[1],
-                isCurrentUser: false
-              })}
+              onPress={() => {
+                announceToScreenReader(`Opening profile for ${user.username}`);
+                navigation.navigate('OtherUserProfile', { 
+                  profileUserId: user.path.split('/')[1],
+                  isCurrentUser: false
+                });
+              }}
+              accessible={true}
+              accessibilityLabel={`${user.username}, ${user.age} years old, from ${user.state}`}
+              accessibilityHint="Double tap to view full profile"
+              accessibilityRole="button"
             >
               <View style={styles.cardContent}>
-                <View style={styles.avatarContainer}>
-                  {user.profilePicture ? (
-                    <Image 
-                      source={{ uri: user.profilePicture }} 
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <View style={[styles.avatar, styles.defaultAvatar]}>
-                      <Text style={styles.defaultAvatarText}>
-                        {user.name ? user.name[0].toUpperCase() : '?'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.userInfo}>
+                <Image 
+                  source={{ uri: user.profilePicture }} 
+                  style={styles.avatar}
+                  accessible={true}
+                  accessibilityLabel={`${user.username}'s profile picture`}
+                  accessibilityRole="image"
+                />
+                <View 
+                  style={styles.userInfo}
+                  accessible={true}
+                  accessibilityElementsHidden={true}
+                  importantForAccessibility="no-hide-descendants"
+                >
                   <Text style={styles.username}>{user.username}</Text>
                   <Text style={styles.infoText}>{user.age} years old</Text>
                   <Text style={styles.infoText}>{user.state}</Text>
@@ -381,9 +453,6 @@ const FindADateScreen = ({ navigation }) => {
           </View>
         ))}
       </View>
-
-
-      
     </ScrollView>
   );
 };
