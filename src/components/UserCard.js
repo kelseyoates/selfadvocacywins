@@ -9,25 +9,57 @@ const UserCard = ({ user }) => {
     <TouchableOpacity 
       style={styles.card}
       onPress={() => navigation.navigate('Profile', { userId: user.id })}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${user.name}'s profile card${user.state ? ` from ${user.state}` : ''}`}
+      accessibilityHint="Double tap to view full profile"
     >
-      <View style={styles.userInfo}>
+      <View 
+        style={styles.userInfo}
+        accessible={true}
+        accessibilityRole="text"
+      >
         <View style={styles.avatarContainer}>
           {user.profilePicture ? (
             <Image 
               source={{ uri: user.profilePicture }} 
               style={styles.avatar}
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel={`${user.name}'s profile picture`}
             />
           ) : (
-            <View style={[styles.avatar, styles.defaultAvatar]}>
+            <View 
+              style={[styles.avatar, styles.defaultAvatar]}
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel={`${user.name}'s default profile picture showing the letter ${user.name ? user.name[0].toUpperCase() : '?'}`}
+            >
               <Text style={styles.defaultAvatarText}>
                 {user.name ? user.name[0].toUpperCase() : '?'}
               </Text>
             </View>
           )}
         </View>
-        <View style={styles.userDetails}>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userLocation}>{user.state}</Text>
+        <View 
+          style={styles.userDetails}
+          accessible={true}
+          accessibilityRole="text"
+        >
+          <Text 
+            style={styles.userName}
+            accessibilityRole="text"
+          >
+            {user.name}
+          </Text>
+          {user.state && (
+            <Text 
+              style={styles.userLocation}
+              accessibilityRole="text"
+            >
+              {user.state}
+            </Text>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -50,30 +82,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    minHeight: 80, // Ensure minimum touch target size
   },
-  profilePicture: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
-    backgroundColor: '#f0f0f0', // Light gray background for loading state
-  },
-  info: {
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-  },
-  username: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  location: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  bio: {
-    fontSize: 14,
-    color: '#444',
   },
   avatarContainer: {
     marginRight: 15,
@@ -92,6 +106,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  userDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#000', // Ensure good contrast
+  },
+  userLocation: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 
