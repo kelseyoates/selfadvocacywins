@@ -423,27 +423,72 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.question}>{question}</Text>
-      
-      <View style={styles.modeButtons}>
+    <View 
+      style={styles.card}
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={`Question: ${question}`}
+    >
+      <Text 
+        style={styles.question}
+        accessibilityRole="header"
+      >
+        {question}
+      </Text>
+
+      <View 
+        style={styles.modeButtons}
+        accessibilityRole="tablist"
+      >
         <TouchableOpacity 
           style={[styles.modeButton, mode === 'text' && styles.selectedMode]}
           onPress={() => setMode('text')}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Text answer mode"
+          accessibilityState={{ selected: mode === 'text' }}
+          accessibilityHint="Double tap to switch to text answer mode"
         >
-          <MaterialCommunityIcons name="text" size={24} color={mode === 'text' ? '#fff' : '#24269B'} />
+          <MaterialCommunityIcons 
+            name="text" 
+            size={24} 
+            color={mode === 'text' ? '#fff' : '#24269B'} 
+            accessibilityRole="image"
+          />
         </TouchableOpacity>
+
         <TouchableOpacity 
           style={[styles.modeButton, mode === 'preset' && styles.selectedMode]}
           onPress={() => setMode('preset')}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Word selection mode"
+          accessibilityState={{ selected: mode === 'preset' }}
+          accessibilityHint="Double tap to switch to word selection mode"
         >
-          <MaterialCommunityIcons name="format-list-bulleted" size={24} color={mode === 'preset' ? '#fff' : '#24269B'} />
+          <MaterialCommunityIcons 
+            name="format-list-bulleted" 
+            size={24} 
+            color={mode === 'preset' ? '#fff' : '#24269B'} 
+            accessibilityRole="image"
+          />
         </TouchableOpacity>
+
         <TouchableOpacity 
           style={[styles.modeButton, mode === 'video' && styles.selectedMode]}
           onPress={() => setMode('video')}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Video answer mode"
+          accessibilityState={{ selected: mode === 'video' }}
+          accessibilityHint="Double tap to switch to video answer mode"
         >
-          <MaterialCommunityIcons name="video" size={24} color={mode === 'video' ? '#fff' : '#24269B'} />
+          <MaterialCommunityIcons 
+            name="video" 
+            size={24} 
+            color={mode === 'video' ? '#fff' : '#24269B'} 
+            accessibilityRole="image"
+          />
         </TouchableOpacity>
       </View>
 
@@ -456,11 +501,19 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
             placeholder="Type your answer..."
             multiline
             numberOfLines={4}
+            accessible={true}
+            accessibilityLabel="Answer text input"
+            accessibilityHint="Enter your answer here"
           />
           <TouchableOpacity 
             style={[styles.saveButton, !textAnswer && styles.disabledButton]}
             onPress={handleTextSave}
             disabled={!textAnswer}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={isEditing ? "Save answer" : "Edit answer"}
+            accessibilityState={{ disabled: !textAnswer }}
+            accessibilityHint={`Double tap to ${isEditing ? 'save' : 'edit'} your answer`}
           >
             <Text style={styles.saveButtonText}>
               {isEditing ? 'Save' : 'Edit'}
@@ -470,7 +523,12 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
       )}
 
       {mode === 'preset' && (
-        <View style={styles.presetContainer}>
+        <View 
+          style={styles.presetContainer}
+          accessible={true}
+          accessibilityRole="list"
+          accessibilityLabel="Word selection options"
+        >
           {presetWords.map((word, index) => {
             const isSelected = selectedWords.includes(word);
             return (
@@ -478,6 +536,11 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
                 key={index}
                 style={[styles.presetButton, isSelected && styles.selectedPreset]}
                 onPress={() => handlePresetSelect(word)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`${word}${isSelected ? ', selected' : ''}`}
+                accessibilityState={{ selected: isSelected }}
+                accessibilityHint={`Double tap to ${isSelected ? 'deselect' : 'select'} this word`}
               >
                 <Text style={[styles.presetText, isSelected && styles.selectedPresetText]}>
                   {word}
@@ -488,7 +551,76 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
         </View>
       )}
 
-      {mode === 'video' && renderVideoMode()}
+      {mode === 'video' && (
+        <View 
+          style={styles.videoContainer}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Video answer section"
+        >
+          {video ? (
+            <>
+              <Video
+                source={{ uri: video }}
+                style={styles.video}
+                useNativeControls
+                resizeMode="contain"
+                isLooping
+                accessibilityLabel="Your recorded video answer"
+                accessibilityHint="Use video controls to play, pause, or seek"
+              />
+              <TouchableOpacity 
+                style={styles.newVideoButton}
+                onPress={pickVideo}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Choose new video"
+                accessibilityHint="Double tap to select a different video"
+              >
+                <Text style={styles.buttonText}>Choose New Video</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <MaterialCommunityIcons 
+                name="video-plus" 
+                size={48} 
+                color="#24269B"
+                accessibilityRole="image" 
+              />
+              <TouchableOpacity 
+                style={[styles.uploadButton, uploading && styles.uploadingButton]}
+                onPress={pickVideo}
+                disabled={uploading}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={uploading ? `Uploading: ${uploadProgress}%` : "Add video"}
+                accessibilityState={{ disabled: uploading }}
+                accessibilityHint="Double tap to select a video to upload"
+              >
+                {uploading ? (
+                  <View 
+                    style={styles.uploadingContainer}
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{ now: uploadProgress, min: 0, max: 100 }}
+                  >
+                    <Text style={styles.uploadingText}>
+                      Uploading: {uploadProgress}%
+                    </Text>
+                    <View style={styles.progressBarContainer}>
+                      <View style={[styles.progressBar, { width: `${uploadProgress}%` }]} />
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.buttonText}>
+                    {questionData?.mediaUrl ? 'Change Video' : 'Add Video'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
 
       {/* Show preview after upload */}
       {questionData.mediaUrl && questionData.mediaType === 'video' && (
