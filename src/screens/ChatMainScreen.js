@@ -7,6 +7,7 @@ import {
   TouchableOpacity, 
   Image,
   ActivityIndicator,
+  AccessibilityInfo
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -21,6 +22,7 @@ const ChatMainScreen = ({ navigation }) => {
   const [users, setUsers] = useState({});
   const { user } = useAuth();
   const [supporterAccess, setSupporterAccess] = useState({});
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({
@@ -28,8 +30,15 @@ const ChatMainScreen = ({ navigation }) => {
         <View style={styles.buttonContainer}>
           <View style={styles.buttonShadow} />
           <TouchableOpacity 
-            onPress={() => navigation.navigate('NewChat')}
+            onPress={() => {
+              announceToScreenReader('Starting new chat');
+              navigation.navigate('NewChat');
+            }}
             style={styles.newChatButton}
+            accessible={true}
+            accessibilityLabel="Start new chat"
+            accessibilityHint="Opens screen to start a new conversation"
+            accessibilityRole="button"
           >
             <View style={styles.buttonContent}>
               <Text style={styles.newChatButtonText}>
@@ -117,8 +126,32 @@ const ChatMainScreen = ({ navigation }) => {
     checkSupporterAccess();
   }, [conversations]);
 
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      const screenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+      setIsScreenReaderEnabled(screenReaderEnabled);
+    };
+
+    checkScreenReader();
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setIsScreenReaderEnabled
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const announceToScreenReader = (message) => {
+    if (isScreenReaderEnabled) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  };
+
   const fetchConversations = async () => {
     setLoading(true);
+    announceToScreenReader('Loading conversations');
     try {
       const conversationsRequest = new CometChat.ConversationsRequestBuilder()
         .setLimit(30)
@@ -127,8 +160,9 @@ const ChatMainScreen = ({ navigation }) => {
       const conversationList = await conversationsRequest.fetchNext();
       console.log("Conversations list received:", conversationList);
       setConversations(conversationList);
+      announceToScreenReader(`Loaded ${conversationList.length} conversations`);
     } catch (error) {
-      console.log("Conversations list fetching failed:", error);
+      announceToScreenReader('Failed to load conversations');
     } finally {
       setLoading(false);
     }
@@ -159,6 +193,7 @@ const ChatMainScreen = ({ navigation }) => {
     }
 
     const navigateToChat = () => {
+      announceToScreenReader(`Opening chat with ${name}`);
       if (isGroup) {
         navigation.navigate('GroupChat', { 
           uid: conversationId,
@@ -174,37 +209,49 @@ const ChatMainScreen = ({ navigation }) => {
       }
     };
 
+    const accessibilityLabel = `Chat with ${name}. ${
+      supporterAccess[conversationId] ? 'You are a supporter. ' : ''
+    }Last message: ${lastMessage}`;
+
     return (
       <TouchableOpacity 
         style={styles.conversationItem}
         onPress={navigateToChat}
+        accessible={true}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint="Double tap to open conversation"
+        accessibilityRole="button"
       >
         <View style={styles.avatarContainer}>
-          {isGroup ? (
-            <Image 
-              source={require('../../assets/friends-inactive.png')}
-              style={styles.avatar}
-            />
-          ) : (
-            <Image 
-              source={{ 
-                uri: users[conversationId]?.profilePicture || 'https://www.gravatar.com/avatar'
-              }}
-              style={styles.avatar}
-            />
-          )}
+          <Image 
+            source={isGroup ? 
+              require('../../assets/friends-inactive.png') : 
+              { uri: users[conversationId]?.profilePicture || 'https://www.gravatar.com/avatar' }
+            }
+            style={styles.avatar}
+            accessible={true}
+            accessibilityLabel={`${name}'s profile picture`}
+            accessibilityRole="image"
+          />
         </View>
-        <View style={styles.conversationInfo}>
-          <Text style={styles.userName}>
-            {name || 'Unknown'}
-          </Text>
+        <View 
+          style={styles.conversationInfo}
+          accessible={true}
+          accessibilityElementsHidden={true}
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Text style={styles.userName}>{name || 'Unknown'}</Text>
           <Text style={styles.lastMessage} numberOfLines={1}>
             {lastMessage}
           </Text>
         </View>
         
         {supporterAccess[conversationId] && (
-          <View style={styles.supporterBadge}>
+          <View 
+            style={styles.supporterBadge}
+            accessible={true}
+            accessibilityElementsHidden={true}
+          >
             <Text style={styles.supporterBadgeText}>Supporter</Text>
           </View>
         )}
@@ -214,24 +261,44 @@ const ChatMainScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <View 
+        style={styles.centerContainer}
+        accessible={true}
+        accessibilityLabel="Loading conversations"
+      >
         <ActivityIndicator size="large" color="#24269B" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel="Chat conversations"
+    >
       <FlatList
         data={conversations}
         renderItem={renderConversation}
         keyExtractor={item => item.conversationId}
+        accessibilityHint="Scroll to view conversations"
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
+          <View 
+            style={styles.emptyContainer}
+            accessible={true}
+            accessibilityLabel="No conversations"
+          >
             <Text style={styles.emptyText}>No conversations yet</Text>
             <TouchableOpacity 
               style={styles.startChatButton}
-              onPress={() => navigation.navigate('NewChat')}
+              onPress={() => {
+                announceToScreenReader('Starting new chat');
+                navigation.navigate('NewChat');
+              }}
+              accessible={true}
+              accessibilityLabel="Start a new chat"
+              accessibilityHint="Opens screen to start a new conversation"
+              accessibilityRole="button"
             >
               <Text style={styles.startChatButtonText}>Start a new chat</Text>
             </TouchableOpacity>
