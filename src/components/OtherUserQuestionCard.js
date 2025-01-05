@@ -85,16 +85,31 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
     switch (activeTab) {
       case 'text':
         return (
-          <Text style={styles.textAnswer}>
+          <Text 
+            style={styles.textAnswer}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={textAnswer || 'No written answer yet'}
+          >
             {textAnswer || 'No written answer yet'}
           </Text>
         );
       case 'words':
         return (
-          <View style={styles.wordsContainer}>
+          <View 
+            style={styles.wordsContainer}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={`Selected words: ${selectedWords.length > 0 ? selectedWords.join(', ') : 'None selected yet'}`}
+          >
             {selectedWords.length > 0 ? (
               selectedWords.map((word, index) => (
-                <View key={index} style={styles.wordBubble}>
+                <View 
+                  key={index} 
+                  style={styles.wordBubble}
+                  accessible={true}
+                  accessibilityRole="text"
+                >
                   <Text style={styles.wordText}>{word}</Text>
                 </View>
               ))
@@ -104,9 +119,14 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
           </View>
         );
       case 'video':
-        console.log('Video tab selected. mediaUrl:', mediaUrl);
         return mediaUrl ? (
-          <View style={styles.mediaContainer}>
+          <View 
+            style={styles.mediaContainer}
+            accessible={true}
+            accessibilityRole="adjustable"
+            accessibilityLabel="Video answer"
+            accessibilityHint="Use native video controls to play, pause, or seek through the video"
+          >
             <Video
               ref={videoRef}
               source={{ uri: mediaUrl }}
@@ -120,16 +140,27 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
             <TouchableOpacity
               style={styles.playButton}
               onPress={togglePlayback}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
+              accessibilityHint={`Double tap to ${isPlaying ? 'pause' : 'play'} the video`}
             >
               <MaterialCommunityIcons
                 name={isPlaying ? 'pause' : 'play'}
                 size={50}
                 color="white"
+                accessibilityRole="image"
               />
             </TouchableOpacity>
           </View>
         ) : (
-          <Text style={styles.noAnswer}>No video answer yet</Text>
+          <Text 
+            style={styles.noAnswer}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            No video answer yet
+          </Text>
         );
       default:
         return null;
@@ -137,68 +168,83 @@ const OtherUserQuestionCard = ({ question, questionId, backgroundColor, userId }
   };
 
   return (
-    <View style={[styles.card, { backgroundColor }]}>
-      <Text style={styles.question}>{question}</Text>
+    <View 
+      style={[styles.card, { backgroundColor }]}
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={`Question: ${question}`}
+    >
+      <Text 
+        style={styles.question}
+        accessible={true}
+        accessibilityRole="header"
+      >
+        {question}
+      </Text>
       
-      <View style={styles.tabContainer}>
+      <View 
+        style={styles.tabContainer}
+        accessibilityRole="tablist"
+      >
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'text' && styles.activeTab]} 
           onPress={() => setActiveTab('text')}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Written answer tab"
+          accessibilityState={{ selected: activeTab === 'text' }}
+          accessibilityHint="Double tap to view written answer"
         >
           <MaterialCommunityIcons 
             name="pencil" 
             size={24} 
             color={activeTab === 'text' ? '#FFFFFF' : '#666'} 
+            accessibilityRole="image"
           />
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'words' && styles.activeTab]} 
           onPress={() => setActiveTab('words')}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Selected words tab"
+          accessibilityState={{ selected: activeTab === 'words' }}
+          accessibilityHint="Double tap to view selected words"
         >
           <MaterialCommunityIcons 
             name="format-list-bulleted" 
             size={24} 
             color={activeTab === 'words' ? '#FFFFFF' : '#666'} 
+            accessibilityRole="image"
           />
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'video' && styles.activeTab]} 
           onPress={() => setActiveTab('video')}
+          accessible={true}
+          accessibilityRole="tab"
+          accessibilityLabel="Video answer tab"
+          accessibilityState={{ selected: activeTab === 'video' }}
+          accessibilityHint="Double tap to view video answer"
         >
           <MaterialCommunityIcons 
             name="video" 
             size={24} 
             color={activeTab === 'video' ? '#FFFFFF' : '#666'} 
+            accessibilityRole="image"
           />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.contentContainer}>
+      <View 
+        style={styles.contentContainer}
+        accessible={true}
+        accessibilityRole="text"
+      >
         {renderContent()}
       </View>
-
-      
-      {showVideo && mediaUrl && (
-        <View style={styles.mediaContainer}>
-          <Video
-            ref={videoRef}
-            source={{ uri: question.mediaUrl }}
-            style={styles.video}
-            useNativeControls
-            resizeMode="contain"
-            shouldPlay={false}
-            isLooping={false}
-            onError={handleVideoError}
-            // Add memory optimization props
-            posterSource={null}
-            usePoster={false}
-            progressUpdateIntervalMillis={500}
-            maxBitRate={2000000} // Limit bitrate to 2Mbps
-          />
-        </View>
-      )}
     </View>
   );
 };
