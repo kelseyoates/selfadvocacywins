@@ -8,7 +8,8 @@ import {
   TextInput,
   Image,
   Alert,
-  AccessibilityInfo
+  AccessibilityInfo,
+  Keyboard
 } from 'react-native';
 import { searchIndex, adminIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
@@ -122,6 +123,17 @@ const FindADateScreen = ({ navigation }) => {
     try {
       setLoading(true);
       setError(null);
+
+      const searchParams = {
+        attributesToRetrieve: ['*'],
+        hitsPerPage: 50,
+        // Convert to numbers and use valid defaults if empty
+        numericFilters: [
+          `age >= ${parseInt(selectedAgeRange.min) || 18}`,
+          `age <= ${parseInt(selectedAgeRange.max) || 99}`
+        ]
+      };
+
       const lowerCaseUid = currentUser.uid.toLowerCase();
 
       // First get all dating subscribers from Firestore
@@ -134,20 +146,11 @@ const FindADateScreen = ({ navigation }) => {
         datingUsersSnapshot.docs.map(doc => doc.id.toLowerCase())
       );
 
-      const searchParams = {
-        attributesToRetrieve: ['*'],
-        hitsPerPage: 50,
-      };
-
       // Start with basic filters
       let filters = [`NOT path:"users/${lowerCaseUid}"`];
       
       if (selectedState) {
         filters.push(`state:"${selectedState}"`);
-      }
-
-      if (selectedAgeRange) {
-        filters.push(`age:${selectedAgeRange.min} TO ${selectedAgeRange.max}`);
       }
 
       searchParams.filters = filters.join(' AND ');
@@ -233,32 +236,38 @@ const FindADateScreen = ({ navigation }) => {
   }, []);
 
   const handleMinAgeChange = (text) => {
-    const newMin = parseInt(text) || 18;
-    if (newMin < 18) {
-      announceToScreenReader('Minimum age must be at least 18');
-      Alert.alert('Invalid Age', 'Minimum age must be at least 18');
-      return;
-    }
-    if (newMin > selectedAgeRange.max) {
-      Alert.alert('Invalid Age', 'Minimum age cannot be greater than maximum age');
-      return;
-    }
-    setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
-    announceToScreenReader(`Minimum age set to ${newMin}`);
+    // Just update the text without any validation
+    setSelectedAgeRange(prev => ({ ...prev, min: text }));
   };
 
   const handleMaxAgeChange = (text) => {
-    const newMax = parseInt(text) || 99;
-    if (newMax > 99) {
-      Alert.alert('Invalid Age', 'Maximum age cannot exceed 99');
+    // Just update the text without any validation
+    setSelectedAgeRange(prev => ({ ...prev, max: text }));
+  };
+
+  // Add these validation functions for when input loses focus
+  const validateMinAge = (text) => {
+    if (!text.trim()) {
+      setSelectedAgeRange(prev => ({ ...prev, min: '18' }));
       return;
     }
-    if (newMax < selectedAgeRange.min) {
-      Alert.alert('Invalid Age', 'Maximum age cannot be less than minimum age');
+
+    const age = parseInt(text);
+    if (isNaN(age) || age < 18) {
+      setSelectedAgeRange(prev => ({ ...prev, min: '18' }));
+    }
+  };
+
+  const validateMaxAge = (text) => {
+    if (!text.trim()) {
+      setSelectedAgeRange(prev => ({ ...prev, max: '99' }));
       return;
     }
-    setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
-    announceToScreenReader(`Maximum age set to ${newMax}`);
+
+    const age = parseInt(text);
+    if (isNaN(age) || age > 99) {
+      setSelectedAgeRange(prev => ({ ...prev, max: '99' }));
+    }
   };
 
   // Add subscription check
@@ -354,36 +363,38 @@ const FindADateScreen = ({ navigation }) => {
         <View style={styles.ageRangeContainer}>
           <View style={styles.ageInputRow}>
             <View style={styles.ageInputContainer}>
-              <Text style={styles.ageLabel}>Min Age:</Text>
+              <Text style={styles.ageLabel}>Minimum Age</Text>
               <TextInput
                 style={styles.ageInput}
-                value={selectedAgeRange.min.toString()}
+                value={String(selectedAgeRange.min)}
                 onChangeText={handleMinAgeChange}
-                keyboardType="number-pad"
+                onEndEditing={(e) => validateMinAge(e.nativeEvent.text)}
+                keyboardType="numeric"
+                returnKeyType="done"
+                onBlur={Keyboard.dismiss}
+                blurOnSubmit={true}
                 maxLength={2}
-                placeholder="18"
                 accessible={true}
-                accessibilityLabel={`Minimum age: ${selectedAgeRange.min}`}
+                accessibilityLabel="Minimum age input"
                 accessibilityHint="Enter minimum age, must be at least 18"
               />
             </View>
-
-            <View style={styles.ageSeparator}>
-              <Text style={styles.ageSeparatorText}>to</Text>
-            </View>
-
+            <Text style={styles.ageSeparatorText}>to</Text>
             <View style={styles.ageInputContainer}>
-              <Text style={styles.ageLabel}>Max Age:</Text>
+              <Text style={styles.ageLabel}>Maximum Age</Text>
               <TextInput
                 style={styles.ageInput}
-                value={selectedAgeRange.max.toString()}
+                value={String(selectedAgeRange.max)}
                 onChangeText={handleMaxAgeChange}
-                keyboardType="number-pad"
+                onEndEditing={(e) => validateMaxAge(e.nativeEvent.text)}
+                keyboardType="numeric"
+                returnKeyType="done"
+                onBlur={Keyboard.dismiss}
+                blurOnSubmit={true}
                 maxLength={2}
-                placeholder="99"
                 accessible={true}
-                accessibilityLabel={`Maximum age: ${selectedAgeRange.max}`}
-                accessibilityHint="Enter maximum age, up to 99"
+                accessibilityLabel="Maximum age input"
+                accessibilityHint="Enter maximum age, cannot exceed 99"
               />
             </View>
           </View>

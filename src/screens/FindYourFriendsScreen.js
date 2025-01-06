@@ -8,7 +8,8 @@ import {
   TextInput,
   Image,
   Alert,
-  AccessibilityInfo
+  AccessibilityInfo,
+  Keyboard
 } from 'react-native';
 import { searchIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
@@ -78,62 +79,54 @@ const FindYourFriendsScreen = ({ navigation }) => {
     
     try {
       setLoading(true);
-      announceToScreenReader('Searching for friends');
       setError(null);
 
       const searchParams = {
         attributesToRetrieve: ['*'],
         hitsPerPage: 50,
+        numericFilters: [
+          `age >= ${parseInt(selectedAgeRange.min) || 18}`,
+          `age <= ${parseInt(selectedAgeRange.max) || 99}`
+        ]
       };
 
-      // Add filters for state and exclude current user
-      let filters = [];
-      if (selectedState) {
+      // Add other filters
+      let filters = [`NOT path:"users/${currentUser.uid.toLowerCase()}"`];
+      if (selectedState && selectedState !== 'Anywhere') {
         filters.push(`state:"${selectedState}"`);
       }
-      filters.push(`NOT path:"users/${currentUser.uid.toLowerCase()}"`);
       
       searchParams.filters = filters.join(' AND ');
 
-      // Build search query for text matching
-      let searchTerms = [];
+      // Debug logging
+      console.log('Search Debug Info:', {
+        query: textAnswer,
+        filters: searchParams.filters,
+        numericFilters: searchParams.numericFilters,
+        currentUserPath: `users/${currentUser.uid.toLowerCase()}`,
+        selectedState,
+        selectedAgeRange,
+        selectedWords
+      });
+
+      const { hits } = await searchIndex.search(textAnswer, searchParams);
       
-      // Add text answer - will search across all searchable attributes
-      if (textAnswer.trim()) {
-        searchTerms.push(textAnswer.trim());
-      }
-
-      // Add selected words
-      if (selectedWords.length > 0) {
-        searchTerms.push(...selectedWords);
-      }
-
-      const searchQuery = searchTerms.join(' ');
-      console.log('DEBUG: Search query:', searchQuery);
-      console.log('DEBUG: Search params:', searchParams);
-      console.log('DEBUG: Current user path:', `users/${currentUser.uid.toLowerCase()}`);
-
-      const { hits } = await searchIndex.search(searchQuery, searchParams);
-      
-      // Log the first few hits to see their path format
-      if (hits.length > 0) {
-        console.log('DEBUG: First hit data:', JSON.stringify(hits[0], null, 2));
-      }
-      console.log('DEBUG: Found users:', hits.length);
-
-      // Double-check filtering on the client side
+      // Double-check age filtering on client side
       const filteredResults = hits.filter(hit => 
-        hit.path !== `users/${currentUser.uid.toLowerCase()}`
+        hit.age >= selectedAgeRange.min && 
+        hit.age <= selectedAgeRange.max
       );
+
+      console.log('Total hits:', hits.length);
+      console.log('Filtered results:', filteredResults.length);
       
-      console.log('DEBUG: Users after client filtering:', filteredResults.length);
-      announceToScreenReader(`Found ${filteredResults.length} potential friends`);
       setUsers(filteredResults);
+      announceToScreenReader(`Found ${filteredResults.length} potential friends`);
 
     } catch (err) {
       console.error('Error searching users:', err);
-      announceToScreenReader('Error searching for friends');
       setError('Failed to search users');
+      announceToScreenReader('Error searching for friends');
     } finally {
       setLoading(false);
     }
@@ -141,9 +134,13 @@ const FindYourFriendsScreen = ({ navigation }) => {
 
   // Search when inputs change
   useEffect(() => {
-    const timer = setTimeout(searchUsers, 300);
+    const timer = setTimeout(() => {
+      console.log('Search triggered with age range:', selectedAgeRange); // Debug log
+      searchUsers();
+    }, 300);
+    
     return () => clearTimeout(timer);
-  }, [selectedState, selectedWords, textAnswer]);
+  }, [selectedState, selectedWords, textAnswer, selectedAgeRange]); // Add selectedAgeRange to dependencies
 
   // Update Algolia settings
   useEffect(() => {
@@ -158,8 +155,11 @@ const FindYourFriendsScreen = ({ navigation }) => {
           ],
           attributesForFaceting: [
             'state',
-            'path'
-          ]
+            'path',
+            'age',
+            'filterOnly(age)'
+          ],
+          numericAttributesForFiltering: ['age']
         });
         console.log('DEBUG: Algolia settings updated');
       } catch (error) {
@@ -170,32 +170,38 @@ const FindYourFriendsScreen = ({ navigation }) => {
   }, []);
 
   const handleMinAgeChange = (text) => {
-    const newMin = parseInt(text) || 18;
-    if (newMin < 18) {
-      announceToScreenReader('Minimum age must be at least 18');
-      Alert.alert('Invalid Age', 'Minimum age must be at least 18');
-      return;
-    }
-    if (newMin > selectedAgeRange.max) {
-      Alert.alert('Invalid Age', 'Minimum age cannot be greater than maximum age');
-      return;
-    }
-    setSelectedAgeRange(prev => ({ ...prev, min: newMin }));
-    announceToScreenReader(`Minimum age set to ${newMin}`);
+    // Just update the text without any validation
+    setSelectedAgeRange(prev => ({ ...prev, min: text }));
+  };
+  
+  const handleMaxAgeChange = (text) => {
+    // Just update the text without any validation
+    setSelectedAgeRange(prev => ({ ...prev, max: text }));
   };
 
-  const handleMaxAgeChange = (text) => {
-    const newMax = parseInt(text) || 99;
-    if (newMax > 99) {
-      Alert.alert('Invalid Age', 'Maximum age cannot exceed 99');
+  // Add these validation functions for when input loses focus
+  const validateMinAge = (text) => {
+    if (!text.trim()) {
+      setSelectedAgeRange(prev => ({ ...prev, min: '18' }));
       return;
     }
-    if (newMax < selectedAgeRange.min) {
-      Alert.alert('Invalid Age', 'Maximum age cannot be less than minimum age');
+
+    const age = parseInt(text);
+    if (isNaN(age) || age < 18) {
+      setSelectedAgeRange(prev => ({ ...prev, min: '18' }));
+    }
+  };
+
+  const validateMaxAge = (text) => {
+    if (!text.trim()) {
+      setSelectedAgeRange(prev => ({ ...prev, max: '99' }));
       return;
     }
-    setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
-    announceToScreenReader(`Maximum age set to ${newMax}`);
+
+    const age = parseInt(text);
+    if (isNaN(age) || age > 99) {
+      setSelectedAgeRange(prev => ({ ...prev, max: '99' }));
+    }
   };
 
   const renderUserCard = (user) => (
@@ -249,36 +255,38 @@ const FindYourFriendsScreen = ({ navigation }) => {
         <View style={styles.ageRangeContainer}>
           <View style={styles.ageInputRow}>
             <View style={styles.ageInputContainer}>
-              <Text style={styles.ageLabel}>Min Age:</Text>
+              <Text style={styles.ageLabel}>Minimum Age</Text>
               <TextInput
                 style={styles.ageInput}
-                value={selectedAgeRange.min.toString()}
+                value={String(selectedAgeRange.min)}
                 onChangeText={handleMinAgeChange}
-                keyboardType="number-pad"
+                onEndEditing={(e) => validateMinAge(e.nativeEvent.text)}
+                keyboardType="numeric"
+                returnKeyType="done"
+                onBlur={Keyboard.dismiss}
+                blurOnSubmit={true}
                 maxLength={2}
-                placeholder="18"
                 accessible={true}
-                accessibilityLabel={`Minimum age: ${selectedAgeRange.min}`}
+                accessibilityLabel="Minimum age input"
                 accessibilityHint="Enter minimum age, must be at least 18"
               />
             </View>
-
-            <View style={styles.ageSeparator}>
-              <Text style={styles.ageSeparatorText}>to</Text>
-            </View>
-
+            <Text style={styles.ageSeparatorText}>to</Text>
             <View style={styles.ageInputContainer}>
-              <Text style={styles.ageLabel}>Max Age:</Text>
+              <Text style={styles.ageLabel}>Maximum Age</Text>
               <TextInput
                 style={styles.ageInput}
-                value={selectedAgeRange.max.toString()}
+                value={String(selectedAgeRange.max)}
                 onChangeText={handleMaxAgeChange}
-                keyboardType="number-pad"
+                onEndEditing={(e) => validateMaxAge(e.nativeEvent.text)}
+                keyboardType="numeric"
+                returnKeyType="done"
+                onBlur={Keyboard.dismiss}
+                blurOnSubmit={true}
                 maxLength={2}
-                placeholder="99"
                 accessible={true}
-                accessibilityLabel={`Maximum age: ${selectedAgeRange.max}`}
-                accessibilityHint="Enter maximum age, up to 99"
+                accessibilityLabel="Maximum age input"
+                accessibilityHint="Enter maximum age, cannot exceed 99"
               />
             </View>
           </View>
