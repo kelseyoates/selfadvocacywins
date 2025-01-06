@@ -85,7 +85,7 @@ const SupporterDashboardScreen = ({ navigation }) => {
         style={styles.title}
         accessibilityRole="header"
       >
-        Your Supported Users
+        You are supporting:
       </Text>
       
       {supportedUsers.map(supportedUser => (
@@ -95,11 +95,7 @@ const SupporterDashboardScreen = ({ navigation }) => {
           onPress={() => handleSupportedUserPress(supportedUser)}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel={`${supportedUser.username}${
-            supportedUser.unreadMessages > 0 
-              ? `, ${supportedUser.unreadMessages} unread messages` 
-              : ''
-          }`}
+          accessibilityLabel={`View chats with ${supportedUser.username}`}
           accessibilityHint="Double tap to view chat history"
         >
           <Image 
@@ -112,17 +108,18 @@ const SupporterDashboardScreen = ({ navigation }) => {
           />
           <View style={styles.userInfo}>
             <Text style={styles.username}>{supportedUser.username}</Text>
-            {supportedUser.unreadMessages > 0 && (
-              <View 
-                style={styles.badge}
-                accessible={true}
-                accessibilityRole="text"
-              >
-                <Text style={styles.badgeText}>
-                  {supportedUser.unreadMessages}
-                </Text>
-              </View>
-            )}
+            <View 
+              style={styles.viewChatsContainer}
+              accessible={true}
+              accessibilityRole="text"
+            >
+              <Text style={styles.viewChatsText}>View Chats</Text>
+              <MaterialCommunityIcons 
+                name="arrow-right" 
+                size={20} 
+                color="#24269B" 
+              />
+            </View>
           </View>
         </TouchableOpacity>
       ))}
@@ -180,32 +177,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
   },
-  badge: {
-    backgroundColor: '#24269B',
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   viewChatsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
   },
   viewChatsText: {
     color: '#24269B',
-    fontSize: 16,
-    marginRight: 8,
+    fontSize: 14,
+    marginRight: 4,
     fontWeight: '500',
   },
 });

@@ -122,6 +122,7 @@ const FindADateScreen = ({ navigation }) => {
     try {
       setLoading(true);
       setError(null);
+      const lowerCaseUid = currentUser.uid.toLowerCase();
 
       // First get all dating subscribers from Firestore
       const datingUsersQuery = query(
@@ -139,7 +140,7 @@ const FindADateScreen = ({ navigation }) => {
       };
 
       // Start with basic filters
-      let filters = [`NOT path:"users/${currentUser.uid.toLowerCase()}"`];
+      let filters = [`NOT path:"users/${lowerCaseUid}"`];
       
       if (selectedState) {
         filters.push(`state:"${selectedState}"`);
@@ -269,8 +270,13 @@ const FindADateScreen = ({ navigation }) => {
       }
 
       try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const lowerCaseUid = currentUser.uid.toLowerCase();
+        console.log('Checking subscription for UID:', lowerCaseUid);
+        
+        const userDoc = await getDoc(doc(db, 'users', lowerCaseUid));
         const userData = userDoc.data();
+        
+        console.log('User data:', userData);
 
         if (!userData || userData.subscriptionType !== 'selfAdvocateDating') {
           Alert.alert(

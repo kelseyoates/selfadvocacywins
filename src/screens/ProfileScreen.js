@@ -256,23 +256,6 @@ const ProfileScreen = () => {
     fetchProfileData();
   }, [targetUserId]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('Settings')}
-          style={styles.headerButton}
-        >
-          <Image 
-            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
-            style={styles.headerButtonImage}
-          />
-          <Text style={styles.headerButtonText}>Menu</Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
-
   const handleImagePicker = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -2031,23 +2014,6 @@ pickerButtonText: {
 
 datePickerIOS: {
   height: 200,
-},
-
-headerButton: {
-  marginRight: 15,
-  alignItems: 'center',
-},
-
-headerButtonImage: {
-  width: 24,
-  height: 24,
-  resizeMode: 'contain',
-},
-
-headerButtonText: {
-  color: '#24269B',
-  fontSize: 12,
-  marginTop: 2,
 },
 
 datingProfileContainer: {
