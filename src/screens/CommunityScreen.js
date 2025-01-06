@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  AccessibilityInfo,
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -88,6 +89,11 @@ const CommunityScreen = ({ navigation }) => {
     fetchGroups();
   }, []);
 
+  // Add screen reader announcement
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility('Community Screen. Browse and join communities.');
+  }, []);
+
   const joinGroup = async (group) => {
     try {
       const joinedGroup = await CometChat.joinGroup(
@@ -120,6 +126,13 @@ const CommunityScreen = ({ navigation }) => {
           joinGroup(item);
         }
       }}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name} community`}
+      accessibilityHint={item.hasJoined 
+        ? "Double tap to open community chat" 
+        : "Double tap to join community"
+      }
     >
       <Image 
         source={
@@ -128,13 +141,33 @@ const CommunityScreen = ({ navigation }) => {
             : require('../../assets/group-default.png')
         }
         style={styles.groupIcon}
+        accessible={true}
+        accessibilityRole="image"
+        accessibilityLabel={`${item.name} community icon`}
       />
-      <View style={styles.groupInfo}>
-        <Text style={styles.groupName}>{item.name}</Text>
-        <Text style={styles.groupDescription} numberOfLines={2}>
+      <View 
+        style={styles.groupInfo}
+        accessible={true}
+        accessibilityRole="text"
+        importantForAccessibility="no"
+      >
+        <Text 
+          style={styles.groupName}
+          accessibilityLabel={`Community name: ${item.name}`}
+        >
+          {item.name}
+        </Text>
+        <Text 
+          style={styles.groupDescription} 
+          numberOfLines={2}
+          accessibilityLabel={`Description: ${item.description || 'No description available'}`}
+        >
           {item.description || 'No description available'}
         </Text>
-        <Text style={styles.memberCount}>
+        <Text 
+          style={styles.memberCount}
+          accessibilityLabel={`${item.membersCount} members`}
+        >
           {item.membersCount} members
         </Text>
       </View>
@@ -144,6 +177,16 @@ const CommunityScreen = ({ navigation }) => {
           item.hasJoined && styles.joinedButton
         ]}
         onPress={() => !item.hasJoined && joinGroup(item)}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={item.hasJoined ? "Already joined" : "Join community"}
+        accessibilityHint={item.hasJoined 
+          ? "You are already a member of this community" 
+          : "Double tap to join this community"
+        }
+        accessibilityState={{
+          disabled: item.hasJoined
+        }}
       >
         <Text style={[
           styles.joinButtonText,
@@ -156,14 +199,26 @@ const CommunityScreen = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      accessible={true}
+      accessibilityRole="list"
+      accessibilityLabel="Communities list"
+    >
       <FlatList
         data={groups}
         renderItem={renderGroup}
         keyExtractor={item => item.guid}
+        accessibilityRole="list"
+        accessibilityLabel="List of available communities"
         ListEmptyComponent={
           !loading && (
-            <View style={styles.emptyContainer}>
+            <View 
+              style={styles.emptyContainer}
+              accessible={true}
+              accessibilityRole="text"
+              accessibilityLabel="No communities available"
+            >
               <Text style={styles.emptyText}>No communities available</Text>
             </View>
           )
@@ -173,16 +228,37 @@ const CommunityScreen = ({ navigation }) => {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('CreateCommunity')}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel="Create new community"
+        accessibilityHint="Opens the community creation form"
       >
-        <View style={styles.fabContent}>
-          <MaterialCommunityIcons name="plus" size={24} color="#FFFFFF" />
+        <View 
+          style={styles.fabContent}
+          importantForAccessibility="no"
+        >
+          <MaterialCommunityIcons 
+            name="plus" 
+            size={24} 
+            color="#FFFFFF"
+            accessibilityElementsHidden={true}
+          />
           <Text style={styles.fabText}>Create Community</Text>
         </View>
       </TouchableOpacity>
 
       {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#24269B" />
+        <View 
+          style={styles.loadingContainer}
+          accessible={true}
+          accessibilityRole="progressbar"
+          accessibilityLabel="Loading communities"
+        >
+          <ActivityIndicator 
+            size="large" 
+            color="#24269B"
+            accessibilityLabel="Loading"
+          />
         </View>
       )}
     </View>

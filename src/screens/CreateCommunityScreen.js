@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  AccessibilityInfo,
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { auth, db, storage } from '../config/firebase';
@@ -68,6 +69,11 @@ const CreateCommunityScreen = ({ navigation }) => {
       ),
     });
   }, [navigation, userData]);
+
+  // Add this effect for screen reader announcement
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility('Create Community Screen');
+  }, []);
 
   const pickImage = async () => {
     try {
@@ -139,7 +145,7 @@ const CreateCommunityScreen = ({ navigation }) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('GroupChat', {
+            onPress: () => navigation.replace('GroupChat', {
               uid: createdGroup.guid,
               name: createdGroup.name
             })
@@ -155,19 +161,37 @@ const CreateCommunityScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      accessible={true}
+      accessibilityRole="scrollView"
+      accessibilityLabel="Create Community form"
+    >
       <View style={styles.content}>
         <TouchableOpacity 
           style={styles.iconPicker}
           onPress={pickImage}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={groupIcon ? "Change community icon" : "Add community icon"}
+          accessibilityHint="Opens image picker to select a community icon"
         >
           {groupIcon ? (
             <Image 
               source={{ uri: groupIcon }}
               style={styles.groupIcon}
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel="Selected community icon"
             />
           ) : (
-            <View style={styles.iconPlaceholder}>
+            <View 
+              style={styles.iconPlaceholder}
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel="No icon selected"
+            >
               <Text style={styles.iconPlaceholderText}>Add Icon</Text>
             </View>
           )}
@@ -179,6 +203,12 @@ const CreateCommunityScreen = ({ navigation }) => {
           value={name}
           onChangeText={setName}
           maxLength={50}
+          accessible={true}
+          accessibilityLabel="Community name input"
+          accessibilityHint="Enter the name for your community"
+          accessibilityRole="text"
+          returnKeyType="next"
+          importantForAccessibility="yes"
         />
 
         <TextInput
@@ -188,6 +218,11 @@ const CreateCommunityScreen = ({ navigation }) => {
           onChangeText={setDescription}
           multiline
           maxLength={200}
+          accessible={true}
+          accessibilityLabel="Community description input"
+          accessibilityHint="Enter an optional description for your community"
+          accessibilityRole="text"
+          importantForAccessibility="yes"
         />
 
         <TouchableOpacity
@@ -197,9 +232,25 @@ const CreateCommunityScreen = ({ navigation }) => {
           ]}
           onPress={createCommunity}
           disabled={!name.trim() || loading}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={loading ? "Creating community" : "Create community"}
+          accessibilityHint={
+            !name.trim() 
+              ? "Button disabled. Enter a community name first" 
+              : "Creates your community with the provided information"
+          }
+          accessibilityState={{
+            disabled: !name.trim() || loading,
+            busy: loading
+          }}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator 
+              color="#fff"
+              accessibilityLabel="Loading"
+              accessibilityRole="progressbar"
+            />
           ) : (
             <Text style={styles.createButtonText}>Create Community</Text>
           )}

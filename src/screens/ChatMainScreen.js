@@ -224,6 +224,7 @@ const ChatMainScreen = ({ navigation }) => {
       : item.conversationWith?.uid;
 
     const name = item.conversationWith?.name;
+    const groupIcon = isGroup ? item.conversationWith?.icon : null;
     
     // Handle different message types
     let lastMessage = 'Start chatting';
@@ -272,7 +273,7 @@ const ChatMainScreen = ({ navigation }) => {
         <View style={styles.avatarContainer}>
           <Image 
             source={isGroup ? 
-              require('../../assets/friends-inactive.png') : 
+              (groupIcon ? { uri: groupIcon } : require('../../assets/megaphone.png')) : 
               { uri: users[conversationId]?.profilePicture || 'https://www.gravatar.com/avatar' }
             }
             style={styles.avatar}
