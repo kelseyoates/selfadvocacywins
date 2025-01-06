@@ -743,7 +743,7 @@ const GroupChatScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             </View>
             
-            {groupInfo?.owner === currentUser?.uid && (
+            {groupInfo?.owner === currentUser?.uid && groupInfo?.type === CometChat.GROUP_TYPE.PRIVATE && (
               <View 
                 style={styles.groupNameContainer}
                 accessible={true}
@@ -771,6 +771,14 @@ const GroupChatScreen = ({ route, navigation }) => {
                 >
                   <Text style={styles.updateButtonText}>Update Name</Text>
                 </TouchableOpacity>
+              </View>
+            )}
+
+            {groupInfo?.owner === currentUser?.uid && groupInfo?.type === CometChat.GROUP_TYPE.PUBLIC && (
+              <View style={styles.publicGroupInfo}>
+                <Text style={styles.publicGroupText}>
+                  Public group names cannot be changed
+                </Text>
               </View>
             )}
 
@@ -1117,6 +1125,17 @@ const styles = StyleSheet.create({
   smartReplyText: {
     color: '#FFFFFF',
     fontSize: 14,
+  },
+  publicGroupInfo: {
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  publicGroupText: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 

@@ -26,6 +26,7 @@ import SupportedUserChatDetailsScreen from './src/screens/SupportedUserChatDetai
 import SupportedUserGroupChatDetailsScreen from './src/screens/SupportedUserGroupChatDetailsScreen';
 import CommunityScreen from './src/screens/CommunityScreen';
 import CreateCommunityScreen from './src/screens/CreateCommunityScreen';
+import NotificationSettingsScreen from './src/screens/NotificationSettingsScreen';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useEffect } from 'react';
@@ -181,6 +182,11 @@ export default function App() {
               name="CreateCommunity"
               component={CreateCommunityScreen}
               options={{ title: 'Create Community' }}
+            />
+            <Stack.Screen
+              name="NotificationSettings"
+              component={NotificationSettingsScreen}
+              options={{ title: 'Notification Settings' }}
             />
           
 

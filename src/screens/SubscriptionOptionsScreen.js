@@ -257,8 +257,8 @@ const SubscriptionOptionsScreen = () => {
             text: "view your user's chats" 
           },
           { 
-            image: require('../../assets/notification.png'), 
-            text: "find friends" 
+            image: require('../../assets/notifications.png'), 
+            text: "get notifications" 
           },
           { 
             image: require('../../assets/supporter-one-phone.png'), 
@@ -281,8 +281,8 @@ const SubscriptionOptionsScreen = () => {
             text: "view your users' chats" 
           },
           { 
-            image: require('../../assets/notification.png'), 
-            text: "find friends" 
+            image: require('../../assets/notifications.png'), 
+            text: "get notifications" 
           },
           { 
             image: require('../../assets/supporter-five-phone.png'), 
@@ -304,8 +304,8 @@ const SubscriptionOptionsScreen = () => {
             text: "view your users' chats" 
           },
           { 
-            image: require('../../assets/notification.png'), 
-            text: "find friends" 
+            image: require('../../assets/notifications.png'), 
+            text: "get notifications" 
           },
           { 
             image: require('../../assets/supporter-ten-phone.png'), 

@@ -313,6 +313,36 @@ const SettingsScreen = () => {
           </TouchableOpacity>
 
 
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              announceToScreenReader("Opening the notifcations screen");
+              navigation.navigate('NotificationSettings');
+            }}
+            accessible={true}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Notifications"
+            accessibilityHint="Update your notification settings"
+          >
+            <Image 
+              source={require('../../assets/notifications.png')}
+              style={styles.menuIcon}
+              accessible={true}
+              accessibilityLabel="notifications icon"
+              accessibilityRole="image"
+            />
+            <Text style={styles.menuItemText}>Notifications</Text>
+            <MaterialCommunityIcons 
+              name="chevron-right" 
+              size={24} 
+              color="#666"
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no"
+            />
+          </TouchableOpacity>
+
+
+
         </View>
       </View>
 
