@@ -286,6 +286,18 @@ const GroupChatScreen = ({ route, navigation }) => {
   };
 
   const leaveGroup = async () => {
+    // First check if user is the owner
+    if (groupInfo?.owner === currentUser?.uid) {
+      Alert.alert(
+        'Cannot Leave Group',
+        'As the group creator, you cannot leave this group. You must either delete the group or transfer ownership to another member first.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      announceToScreenReader('Cannot leave group as you are the owner');
+      return;
+    }
+
+    // If not owner, proceed with leave confirmation
     Alert.alert(
       'Leave Group',
       'Are you sure you want to leave this group?',
@@ -298,9 +310,11 @@ const GroupChatScreen = ({ route, navigation }) => {
             try {
               await CometChat.leaveGroup(uid);
               navigation.goBack();
+              announceToScreenReader('Successfully left the group');
             } catch (error) {
               console.error('Error leaving group:', error);
               Alert.alert('Error', 'Failed to leave group');
+              announceToScreenReader('Failed to leave group');
             }
           }
         }
