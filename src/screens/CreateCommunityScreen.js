@@ -11,9 +11,10 @@ import {
   Image,
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
-import { auth, db } from '../config/firebase';
+import { auth, db, storage } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const CreateCommunityScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -95,7 +96,23 @@ const CreateCommunityScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      // First create the group without an icon
+      let iconUrl = null;
+      if (groupIcon) {
+        try {
+          // First upload the image to Firebase Storage
+          const response = await fetch(groupIcon);
+          const blob = await response.blob();
+          
+          const imageRef = ref(storage, `groupIcons/${Date.now()}.jpg`);
+          await uploadBytes(imageRef, blob);
+          iconUrl = await getDownloadURL(imageRef);
+          console.log('Image uploaded to Firebase:', iconUrl);
+        } catch (uploadError) {
+          console.error('Error uploading image:', uploadError);
+        }
+      }
+
+      // Create the group with the icon URL if we have one
       const groupId = name.toLowerCase().replace(/\s+/g, '-');
       const group = new CometChat.Group(
         groupId,
@@ -108,54 +125,13 @@ const CreateCommunityScreen = ({ navigation }) => {
         group.setDescription(description);
       }
 
-      // Create the group first
+      if (iconUrl) {
+        group.setIcon(iconUrl);
+      }
+
+      // Create the group
       const createdGroup = await CometChat.createGroup(group);
       console.log('Group created successfully:', createdGroup);
-
-      // If there's an icon, upload it first then update the group
-      if (groupIcon) {
-        try {
-          // Create a media message for the file upload
-          const mediaMessage = new CometChat.MediaMessage(
-            createdGroup.guid,
-            {
-              uri: groupIcon,
-              type: 'image/jpeg',
-              name: `${groupId}-icon.jpg`,
-            },
-            CometChat.MESSAGE_TYPE.IMAGE,
-            CometChat.RECEIVER_TYPE.GROUP
-          );
-
-          // Send the media message to get the URL
-          const message = await CometChat.sendMediaMessage(mediaMessage);
-          console.log('Media message sent:', message);
-
-          if (message?.data?.url) {
-            // Update group using REST API
-            const response = await fetch(
-              `https://api-us.cometchat.io/v3/groups/${createdGroup.guid}`,
-              {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apiKey': process.env.EXPO_PUBLIC_COMETCHAT_API_KEY,
-                  'onBehalfOf': auth.currentUser.uid,
-                },
-                body: JSON.stringify({
-                  icon: message.data.url
-                })
-              }
-            );
-
-            const updateData = await response.json();
-            console.log('Group icon updated successfully:', updateData);
-          }
-        } catch (iconError) {
-          console.error('Error updating group icon:', iconError);
-          // Continue since group was created successfully
-        }
-      }
 
       Alert.alert(
         'Success',
