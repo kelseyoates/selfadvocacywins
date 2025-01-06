@@ -43,6 +43,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
   const [userData, setUserData] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [currentUserSubscription, setCurrentUserSubscription] = useState(null);
 
   console.log('Current user data:', userData);
   console.log('Current profile data:', profileData);
@@ -473,6 +474,23 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     }
   };
 
+  // Add this useEffect to check the current user's subscription
+  useEffect(() => {
+    const checkCurrentUserSubscription = async () => {
+      if (!auth.currentUser) return;
+      
+      try {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        const userData = userDoc.data();
+        setCurrentUserSubscription(userData?.subscriptionType);
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+      }
+    };
+
+    checkCurrentUserSubscription();
+  }, []);
+
   if (isLoading) {
     return (
       <View 
@@ -632,60 +650,68 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
         <Text style={styles.sectionTitle}>My Profile</Text>
 
 
-        {profileData?.subscriptionType === 'selfAdvocateDating' && (
-        <View 
-          style={styles.datingSection}
-          accessible={true}
-          accessibilityLabel="Dating Profile Information"
-        >
-          <Text style={styles.sectionTitle}>Dating Profile</Text>
-          
-          <View style={styles.datingInfo}>
-            <View 
-              style={styles.datingInfoItem}
-              accessible={true}
-              accessibilityLabel={`Gender: ${profileData.gender || 'Not specified'}`}
-            >
-              <Text style={styles.label}>My Gender:</Text>
-              <Text style={styles.value}>{profileData.gender || 'Not specified'}</Text>
+        {profileData?.subscriptionType === 'selfAdvocateDating' && 
+         currentUserSubscription === 'selfAdvocateDating' && (
+          <View 
+            style={styles.datingSection}
+            accessible={true}
+            accessibilityLabel="Dating Profile Information"
+          >
+            <Text style={styles.sectionTitle}>Dating Profile</Text>
+            
+            <View style={styles.datingInfo}>
+              <View 
+                style={styles.datingInfoItem}
+                accessible={true}
+                accessibilityLabel={`Gender: ${profileData.gender || 'Not specified'}`}
+              >
+                <Text style={styles.label}>My Gender:</Text>
+                <Text style={styles.value}>{profileData.gender || 'Not specified'}</Text>
+              </View>
+
+              <View 
+                style={styles.datingInfoItem}
+                accessible={true}
+                accessibilityLabel={`Looking For: ${profileData.lookingFor || 'Not specified'}`}
+              >
+                <Text style={styles.label}>I'm Looking For:</Text>
+                <Text style={styles.value}>{profileData.lookingFor || 'Not specified'}</Text>
+              </View>
+
+              <View 
+                style={styles.datingInfoItem}
+                accessible={true}
+                accessibilityLabel={`Age Range: ${profileData.ageRange ? `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 'Not specified'}`}
+              >
+                <Text style={styles.label}>Age Range:</Text>
+                <Text style={styles.value}>
+                  {profileData.ageRange ? 
+                    `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 
+                    'Not specified'}
+                </Text>
+              </View>
             </View>
 
-            <View 
-              style={styles.datingInfoItem}
-              accessible={true}
-              accessibilityLabel={`Looking For: ${profileData.lookingFor || 'Not specified'}`}
-            >
-              <Text style={styles.label}>I'm Looking For:</Text>
-              <Text style={styles.value}>{profileData.lookingFor || 'Not specified'}</Text>
-            </View>
-
-            <View 
-              style={styles.datingInfoItem}
-              accessible={true}
-              accessibilityLabel={`Age Range: ${profileData.ageRange ? `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 'Not specified'}`}
-            >
-              <Text style={styles.label}>Age Range:</Text>
-              <Text style={styles.value}>
-                {profileData.ageRange ? 
-                  `${profileData.ageRange.min} - ${profileData.ageRange.max} years` : 
-                  'Not specified'}
-              </Text>
-            </View>
           </View>
-
-        </View>
-      )}
+        )}
 
 
-        {questions.map((item) => (
-          <OtherUserQuestionCard
-            key={item.id}
-            question={item.question}
-            questionId={item.id}
-            backgroundColor={item.backgroundColor}
-            userId={route.params?.profileUserId}
-          />
-        ))}
+        {questions.map((item) => {
+          // Skip dating questions if user doesn't have dating subscription
+          if (item.isDatingQuestion && currentUserSubscription !== 'selfAdvocateDating') {
+            return null;
+          }
+          
+          return (
+            <OtherUserQuestionCard
+              key={item.id}
+              question={item.question}
+              questionId={item.id}
+              backgroundColor={item.backgroundColor}
+              userId={route.params?.profileUserId}
+            />
+          );
+        })}
       </View>
 
      

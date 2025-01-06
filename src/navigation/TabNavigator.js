@@ -66,6 +66,7 @@ const TabNavigator = ({ navigation }) => {
           fontSize: 12,
           paddingBottom: 5,
         },
+        tabBarAllowFontScaling: true,
       }}
     >
       <Tab.Screen
@@ -78,8 +79,13 @@ const TabNavigator = ({ navigation }) => {
                             : require('../../assets/bottom-nav-images/home-inactive.png')}
               style={{ width: 24, height: 24 }}
               resizeMode="contain"
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel="Home feed tab"
             />
           ),
+          tabBarAccessibilityLabel: "Home feed",
+          tabBarAccessibilityHint: "Navigate to your home feed",
         }}
       />
       <Tab.Screen
@@ -92,8 +98,13 @@ const TabNavigator = ({ navigation }) => {
                             : require('../../assets/bottom-nav-images/chat-inactive.png')}
               style={{ width: 24, height: 24 }}
               resizeMode="contain"
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel="Chat tab"
             />
           ),
+          tabBarAccessibilityLabel: "Chat",
+          tabBarAccessibilityHint: "Navigate to your chats",
         }}
       />
       <Tab.Screen
@@ -106,26 +117,34 @@ const TabNavigator = ({ navigation }) => {
                             : require('../../assets/bottom-nav-images/plus-inactive.png')}
               style={{ width: 24, height: 24 }}
               resizeMode="contain"
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel="Add new win tab"
             />
           ),
+          tabBarAccessibilityLabel: "Add new win",
+          tabBarAccessibilityHint: "Create a new win post",
         }}
       />
-
-<Tab.Screen
+      <Tab.Screen
         name="Find"
         component={FindScreen}
-         options={{
+        options={{
           tabBarIcon: ({ focused }) => (
             <Image
-            source={focused ? require('../../assets/bottom-nav-images/find-active.png')
-                          : require('../../assets/bottom-nav-images/find-inactive.png')}
-            style={{ width: 24, height: 24 }}
-            resizeMode="contain"
-          />
+              source={focused ? require('../../assets/bottom-nav-images/find-active.png')
+                            : require('../../assets/bottom-nav-images/find-inactive.png')}
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel="Find tab"
+            />
           ),
+          tabBarAccessibilityLabel: "Find",
+          tabBarAccessibilityHint: "Search and discover new content",
         }}
       />
-
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -145,11 +164,15 @@ const TabNavigator = ({ navigation }) => {
                 borderColor: '#24269B'
               }}
               resizeMode="cover"
+              accessible={true}
+              accessibilityRole="image"
+              accessibilityLabel={`Profile tab${focused ? ', currently selected' : ''}`}
             />
           ),
+          tabBarAccessibilityLabel: "Profile",
+          tabBarAccessibilityHint: "View and edit your profile",
         }}
       />
-     
     </Tab.Navigator>
   );
 };

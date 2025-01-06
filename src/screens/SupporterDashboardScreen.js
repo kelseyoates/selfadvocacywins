@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 const SupporterDashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -192,6 +193,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  viewChatsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  viewChatsText: {
+    color: '#24269B',
+    fontSize: 16,
+    marginRight: 8,
+    fontWeight: '500',
   },
 });
 

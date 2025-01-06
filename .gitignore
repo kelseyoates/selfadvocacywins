@@ -40,3 +40,6 @@ yarn-error.*
 
 # google api key
 serviceAccountKey.json
+
+# Google Cloud credentials
+google-credentials.json

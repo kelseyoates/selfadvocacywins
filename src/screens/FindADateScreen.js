@@ -14,7 +14,7 @@ import { searchIndex, adminIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
 import StateDropdown from '../components/StateDropdown';
 import { questions } from '../constants/questions';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // Only include dating questions
@@ -259,6 +259,45 @@ const FindADateScreen = ({ navigation }) => {
     setSelectedAgeRange(prev => ({ ...prev, max: newMax }));
     announceToScreenReader(`Maximum age set to ${newMax}`);
   };
+
+  // Add subscription check
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (!currentUser) {
+        navigation.replace('Login');
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const userData = userDoc.data();
+
+        if (!userData || userData.subscriptionType !== 'selfAdvocateDating') {
+          Alert.alert(
+            'Subscription Required',
+            'You need a Dating subscription to access this feature.',
+            [
+              {
+                text: 'Learn More',
+                onPress: () => navigation.replace('ManageSubscription'),
+              },
+              {
+                text: 'Go Back',
+                onPress: () => navigation.goBack(),
+                style: 'cancel',
+              },
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+        Alert.alert('Error', 'Could not verify subscription status');
+        navigation.goBack();
+      }
+    };
+
+    checkSubscription();
+  }, [currentUser, navigation]);
 
   const renderUserCard = (user) => (
     <TouchableOpacity 

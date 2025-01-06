@@ -127,7 +127,7 @@ const SettingsScreen = () => {
             }}
             accessible={true}
             accessibilityRole="menuitem"
-            accessibilityLabel="People"
+            accessibilityLabel="Followers and Following"
             accessibilityHint="Navigate to manage your followers and following"
           >
             <Image 
@@ -137,7 +137,7 @@ const SettingsScreen = () => {
               accessibilityLabel="People icon"
               accessibilityRole="image"
             />
-            <Text style={styles.menuItemText}>People</Text>
+            <Text style={styles.menuItemText}>Followers and Following</Text>
             <MaterialCommunityIcons 
               name="chevron-right" 
               size={24} 
@@ -187,7 +187,7 @@ const SettingsScreen = () => {
             }}
             accessible={true}
             accessibilityRole="menuitem"
-            accessibilityLabel="Supporters"
+            accessibilityLabel="My Supporters"
             accessibilityHint="Manage your supporters"
           >
             <Image 
@@ -197,7 +197,7 @@ const SettingsScreen = () => {
               accessibilityLabel="Supporters icon"
               accessibilityRole="image"
             />
-            <Text style={styles.menuItemText}>Supporters</Text>
+            <Text style={styles.menuItemText}>My Supporters</Text>
             <MaterialCommunityIcons 
               name="chevron-right" 
               size={24} 
