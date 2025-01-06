@@ -4,6 +4,7 @@ import { SelectList } from 'react-native-dropdown-select-list';
 
 const StateDropdown = ({ selectedState, onStateChange }) => {
   const states = [
+    { key: 'ANY', value: 'Anywhere' },
     { key: 'AL', value: 'Alabama' },
     { key: 'AK', value: 'Alaska' },
     { key: 'AZ', value: 'Arizona' },
@@ -58,7 +59,7 @@ const StateDropdown = ({ selectedState, onStateChange }) => {
 
   const handleSelect = (val) => {
     if (onStateChange) {
-      onStateChange(val);
+      onStateChange(val === 'Anywhere' ? '' : val);
     }
   };
 
@@ -68,7 +69,7 @@ const StateDropdown = ({ selectedState, onStateChange }) => {
       accessible={true}
       accessibilityRole="combobox"
       accessibilityLabel="State selection dropdown"
-      accessibilityHint="Select your state from the list"
+      accessibilityHint="Select your state or choose Anywhere to see users from all states"
     >
       <SelectList
         setSelected={handleSelect}

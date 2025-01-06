@@ -14,7 +14,7 @@ import {
   AccessibilityInfo 
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
@@ -73,6 +73,34 @@ const LoginScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Login Failed', error.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert(
+        'Email Required',
+        'Please enter your email address first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert(
+        'Password Reset Email Sent',
+        'Please check your email for instructions to reset your password.',
+        [{ text: 'OK' }]
+      );
+      announceToScreenReader('Password reset email sent');
+    } catch (error) {
+      console.error('Password reset error:', error);
+      Alert.alert(
+        'Error',
+        'Failed to send password reset email. Please verify your email address.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -153,6 +181,17 @@ const LoginScreen = ({ navigation }) => {
               accessibilityHint="Enter your password"
               accessibilityRole="text"
             />
+
+            <TouchableOpacity 
+              onPress={handleForgotPassword}
+              style={styles.forgotPasswordContainer}
+              accessible={true}
+              accessibilityLabel="Forgot password"
+              accessibilityHint="Double tap to reset your password"
+              accessibilityRole="link"
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.buttonContainer}>
@@ -327,7 +366,17 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 15,
-  }
+  },
+
+  forgotPasswordContainer: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  forgotPasswordText: {
+    color: '#24269B',
+    fontSize: 14,
+  },
 });
 
 export default LoginScreen;
