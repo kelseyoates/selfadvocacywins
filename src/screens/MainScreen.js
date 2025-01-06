@@ -5,18 +5,24 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  AccessibilityInfo
+  AccessibilityInfo,
+  Image,
+  Text,
+  TouchableOpacity
 } from 'react-native';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, getDoc, doc } from 'firebase/firestore';
 import WinCard from '../components/WinCard';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
+import { auth } from '../config/firebase';
 
 const MainScreen = ({ navigation }) => {
   const [wins, setWins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [userData, setUserData] = useState(null);
 
   // Add screen reader detection
   useEffect(() => {
@@ -84,6 +90,54 @@ const MainScreen = ({ navigation }) => {
     }, [])
   );
 
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        if (auth.currentUser) {
+          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            setUserData(data);
+            setProfilePicture(data.profilePicture);
+            console.log('Fetched profile picture:', data.profilePicture); // Debug log
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Set up header with profile button
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
+          accessible={true}
+          accessibilityLabel="Go to profile"
+          accessibilityHint="Navigate to your profile page"
+        >
+          <Image
+            source={
+              userData?.profilePicture 
+                ? { uri: userData.profilePicture } 
+                : require('../../assets/default-profile.png')
+            }
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileText}>Profile</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, userData]);
+
   if (loading) {
     return (
       <View 
@@ -147,7 +201,23 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: 10,
-  }
+  },
+  profileButton: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileImage: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    borderWidth: 2,
+    borderColor: '#24269B',
+  },
+  profileText: {
+    fontSize: 12,
+    color: '#24269B',
+    marginTop: 2,
+  },
 });
 
 export default MainScreen;

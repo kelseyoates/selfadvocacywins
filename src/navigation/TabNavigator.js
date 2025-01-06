@@ -10,6 +10,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
 import NewChatScreen from '../screens/NewChatScreen';
 import FindScreen from '../screens/FindScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -145,34 +146,28 @@ const TabNavigator = ({ navigation }) => {
           tabBarAccessibilityHint: "Search and discover new content",
         }}
       />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+
+
+<Tab.Screen
+        name="Menu"
+        component={SettingsScreen}
         options={{
           tabBarIcon: ({ focused }) => (
             <Image
-              source={
-                profilePicture
-                  ? { uri: profilePicture }
-                  : require('../../assets/bottom-nav-images/profile-inactive.png')
-              }
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 15,
-                borderWidth: focused ? 2 : 0,
-                borderColor: '#24269B'
-              }}
-              resizeMode="cover"
+              source={focused ? require('../../assets/bottom-nav-images/menu-active.png')
+                            : require('../../assets/bottom-nav-images/menu-inactive.png')}
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
               accessible={true}
               accessibilityRole="image"
-              accessibilityLabel={`Profile tab${focused ? ', currently selected' : ''}`}
+              accessibilityLabel="menu tab"
             />
           ),
-          tabBarAccessibilityLabel: "Profile",
-          tabBarAccessibilityHint: "View and edit your profile",
+          tabBarAccessibilityLabel: "Menu",
+          tabBarAccessibilityHint: "See additional options",
         }}
       />
+
     </Tab.Navigator>
   );
 };

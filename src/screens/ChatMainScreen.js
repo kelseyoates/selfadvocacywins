@@ -15,6 +15,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { isSupporterFor } from '../services/cometChat';
+import { auth } from '../config/firebase';
 
 const ChatMainScreen = ({ navigation }) => {
   const [conversations, setConversations] = useState([]);
@@ -23,6 +24,7 @@ const ChatMainScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [supporterAccess, setSupporterAccess] = useState({});
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     navigation.setOptions({
@@ -142,6 +144,51 @@ const ChatMainScreen = ({ navigation }) => {
       subscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        if (auth.currentUser) {
+          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            setUserData(data);
+            console.log('Fetched profile picture:', data.profilePicture);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
+          accessible={true}
+          accessibilityLabel="Go to profile"
+          accessibilityHint="Navigate to your profile page"
+        >
+          <Image
+            source={
+              userData?.profilePicture 
+                ? { uri: userData.profilePicture } 
+                : require('../../assets/default-profile.png')
+            }
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileText}>Profile</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, userData]);
 
   const announceToScreenReader = (message) => {
     if (isScreenReaderEnabled) {
@@ -305,6 +352,23 @@ const ChatMainScreen = ({ navigation }) => {
           </View>
         }
       />
+      
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => {
+          announceToScreenReader('Starting new chat');
+          navigation.navigate('NewChat');
+        }}
+        accessible={true}
+        accessibilityLabel="New Chat"
+        accessibilityHint="Double tap to start a new conversation"
+        accessibilityRole="button"
+      >
+        <View style={styles.fabContent}>
+          <MaterialCommunityIcons name="message-plus" size={24} color="#FFFFFF" />
+          <Text style={styles.fabText}>New Chat</Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -444,6 +508,52 @@ const styles = StyleSheet.create({
   supporterBadgeText: {
     color: '#fff',
     fontSize: 12,
+  },
+
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    backgroundColor: '#24269B',
+    borderRadius: 30,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  fabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  profileButton: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileImage: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    borderWidth: 2,
+    borderColor: '#24269B',
+  },
+  profileText: {
+    fontSize: 12,
+    color: '#24269B',
+    marginTop: 2,
   },
 });
 

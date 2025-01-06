@@ -24,6 +24,8 @@ import ManageSubscriptionScreen from './src/screens/ManageSubscriptionScreen';
 import SupportedUserChatScreen from './src/screens/SupportedUserChatScreen';
 import SupportedUserChatDetailsScreen from './src/screens/SupportedUserChatDetailsScreen';
 import SupportedUserGroupChatDetailsScreen from './src/screens/SupportedUserGroupChatDetailsScreen';
+import CommunityScreen from './src/screens/CommunityScreen';
+import CreateCommunityScreen from './src/screens/CreateCommunityScreen';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useEffect } from 'react';
@@ -169,6 +171,16 @@ export default function App() {
               name="SupportedUserGroupChatDetails"
               component={SupportedUserGroupChatDetailsScreen}
               options={{ title: 'Group Chat Details' }}
+            />
+            <Stack.Screen
+              name="Community"
+              component={CommunityScreen}
+              options={{ title: 'Community' }}
+            />
+            <Stack.Screen
+              name="CreateCommunity"
+              component={CreateCommunityScreen}
+              options={{ title: 'Create Community' }}
             />
           
 

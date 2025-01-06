@@ -82,8 +82,9 @@ const GroupInfoButton = ({ onPress }) => {
 
 const GroupChatScreen = ({ route, navigation }) => {
   console.log('GroupChatScreen rendering');
+  console.log('Route params:', route.params);
   
-  const { uid: groupId, name: groupName } = route.params;
+  const { uid, name } = route.params;
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
@@ -134,10 +135,10 @@ const GroupChatScreen = ({ route, navigation }) => {
   // Fetch group info and members
   const fetchGroupInfo = async () => {
     try {
-      const group = await CometChat.getGroup(groupId);
+      const group = await CometChat.getGroup(uid);
       setGroupInfo(group);
       
-      const membersRequest = new CometChat.GroupMembersRequestBuilder(groupId)
+      const membersRequest = new CometChat.GroupMembersRequestBuilder(uid)
         .setLimit(100)
         .build();
       
@@ -145,7 +146,6 @@ const GroupChatScreen = ({ route, navigation }) => {
       console.log('Members:', membersList);
       setMembers(membersList);
       
-      // Fetch Firestore profiles after getting CometChat members
       await fetchMemberProfiles(membersList);
       
       console.log('Group info:', group);
@@ -182,7 +182,7 @@ const GroupChatScreen = ({ route, navigation }) => {
 
         // Set the navigation header title to the group name
         navigation.setOptions({
-          title: groupName || 'Group Chat',
+          title: name || 'Group Chat',
           headerTitleStyle: {
             color: '#24269B',
             fontSize: 18,
@@ -196,12 +196,12 @@ const GroupChatScreen = ({ route, navigation }) => {
     };
 
     initializeChat();
-  }, [navigation, groupName]); // Add navigation and groupName to dependencies
+  }, [navigation, name]); // Update dependency array to use name
 
   const fetchMessages = async () => {
     try {
       const messagesRequest = new CometChat.MessagesRequestBuilder()
-        .setGUID(groupId)
+        .setGUID(uid)
         .setLimit(50)
         .build();
 
@@ -219,7 +219,7 @@ const GroupChatScreen = ({ route, navigation }) => {
       containsProfanity(inputText);
       // Create message with data masking enabled
       const textMessage = new CometChat.TextMessage(
-        groupId,
+        uid,
         inputText.trim(),
         CometChat.RECEIVER_TYPE.GROUP
       );
@@ -296,7 +296,7 @@ const GroupChatScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await CometChat.leaveGroup(groupId);
+              await CometChat.leaveGroup(uid);
               navigation.goBack();
             } catch (error) {
               console.error('Error leaving group:', error);
@@ -309,14 +309,14 @@ const GroupChatScreen = ({ route, navigation }) => {
   };
 
   const updateGroupName = async () => {
-    if (!newGroupName.trim() || !groupId) return;
+    if (!newGroupName.trim() || !uid) return;
 
     try {
-      console.log('Updating group name for group:', groupId);
+      console.log('Updating group name for group:', uid);
       
       // Create group object with required parameters
       const group = new CometChat.Group(
-        groupId,
+        uid,
         newGroupName.trim(),
         CometChat.GROUP_TYPE.PRIVATE
       );
@@ -372,7 +372,7 @@ const GroupChatScreen = ({ route, navigation }) => {
 
         // Create media message with moderation enabled
         const mediaMessage = new CometChat.MediaMessage(
-          groupId,
+          uid,
           {
             uri: imageUri,
             type: 'image/jpeg',

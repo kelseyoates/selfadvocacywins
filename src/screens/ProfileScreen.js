@@ -264,10 +264,10 @@ const ProfileScreen = () => {
           style={styles.headerButton}
         >
           <Image 
-            source={require('../../assets/settings-inactive.png')}
+            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
             style={styles.headerButtonImage}
           />
-          <Text style={styles.headerButtonText}>Settings</Text>
+          <Text style={styles.headerButtonText}>Menu</Text>
         </TouchableOpacity>
       ),
     });

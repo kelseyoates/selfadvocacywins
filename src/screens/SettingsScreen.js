@@ -22,6 +22,7 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
   const [userSubscription, setUserSubscription] = useState(null);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [userData, setUserData] = useState(null);
 
   // Add screen reader detection
   useEffect(() => {
@@ -106,6 +107,53 @@ const SettingsScreen = () => {
       ]
     );
   };
+
+  // Add this effect to fetch user profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        if (auth.currentUser) {
+          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            setUserData(data);
+            console.log('Fetched profile picture:', data.profilePicture);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Add this effect to set up the header
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
+          accessible={true}
+          accessibilityLabel="Go to profile"
+          accessibilityHint="Navigate to your profile page"
+        >
+          <Image
+            source={
+              userData?.profilePicture 
+                ? { uri: userData.profilePicture } 
+                : require('../../assets/default-profile.png')
+            }
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileText}>Profile</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, userData]);
 
   return (
     <View 
@@ -234,6 +282,37 @@ const SettingsScreen = () => {
               importantForAccessibility="no"
             />
           </TouchableOpacity>
+
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              announceToScreenReader("Opening the communities screen");
+              navigation.navigate('Community');
+            }}
+            accessible={true}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Communities"
+            accessibilityHint="Join or create communities"
+          >
+            <Image 
+              source={require('../../assets/megaphone.png')}
+              style={styles.menuIcon}
+              accessible={true}
+              accessibilityLabel="communities icon"
+              accessibilityRole="image"
+            />
+            <Text style={styles.menuItemText}>Communities</Text>
+            <MaterialCommunityIcons 
+              name="chevron-right" 
+              size={24} 
+              color="#666"
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no"
+            />
+          </TouchableOpacity>
+
+
         </View>
       </View>
 
@@ -325,6 +404,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  profileButton: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileImage: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    borderWidth: 2,
+    borderColor: '#24269B',
+  },
+  profileText: {
+    fontSize: 12,
+    color: '#24269B',
+    marginTop: 2,
   },
 });
 

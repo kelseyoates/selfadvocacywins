@@ -1,0 +1,307 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { CometChat } from '@cometchat-pro/react-native-chat';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+const CommunityScreen = ({ navigation }) => {
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState(null);
+
+  // Fetch user profile for header
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        if (auth.currentUser) {
+          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            setUserData(data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Set up header with profile button
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
+          accessible={true}
+          accessibilityLabel="Go to profile"
+          accessibilityHint="Navigate to your profile page"
+        >
+          <Image
+            source={
+              userData?.profilePicture 
+                ? { uri: userData.profilePicture } 
+                : require('../../assets/default-profile.png')
+            }
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileText}>Profile</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, userData]);
+
+  // Fetch groups
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        setLoading(true);
+        const groupsRequest = new CometChat.GroupsRequestBuilder()
+          .setLimit(30)
+          .joinedOnly(false)
+          .build();
+
+        const groupsList = await groupsRequest.fetchNext();
+        console.log('Fetched groups:', groupsList);
+        setGroups(groupsList);
+      } catch (error) {
+        console.error('Error fetching groups:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroups();
+  }, []);
+
+  const joinGroup = async (group) => {
+    try {
+      const joinedGroup = await CometChat.joinGroup(
+        group.guid,
+        group.type,
+        group.password || ''
+      );
+      console.log('Group joined successfully:', joinedGroup);
+      
+      navigation.navigate('GroupChat', {
+        uid: group.guid,
+        name: group.name
+      });
+    } catch (error) {
+      console.error('Error joining group:', error);
+      Alert.alert('Error', 'Failed to join group');
+    }
+  };
+
+  const renderGroup = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.groupItem}
+      onPress={() => {
+        if (item.hasJoined) {
+          navigation.navigate('GroupChat', {
+            uid: item.guid,
+            name: item.name
+          });
+        } else {
+          joinGroup(item);
+        }
+      }}
+    >
+      <Image 
+        source={
+          item.icon 
+            ? { uri: item.icon }
+            : require('../../assets/group-default.png')
+        }
+        style={styles.groupIcon}
+      />
+      <View style={styles.groupInfo}>
+        <Text style={styles.groupName}>{item.name}</Text>
+        <Text style={styles.groupDescription} numberOfLines={2}>
+          {item.description || 'No description available'}
+        </Text>
+        <Text style={styles.memberCount}>
+          {item.membersCount} members
+        </Text>
+      </View>
+      <TouchableOpacity 
+        style={[
+          styles.joinButton,
+          item.hasJoined && styles.joinedButton
+        ]}
+        onPress={() => !item.hasJoined && joinGroup(item)}
+      >
+        <Text style={[
+          styles.joinButtonText,
+          item.hasJoined && styles.joinedButtonText
+        ]}>
+          {item.hasJoined ? 'Joined' : 'Join'}
+        </Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={groups}
+        renderItem={renderGroup}
+        keyExtractor={item => item.guid}
+        ListEmptyComponent={
+          !loading && (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No communities available</Text>
+            </View>
+          )
+        }
+      />
+      
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('CreateCommunity')}
+      >
+        <View style={styles.fabContent}>
+          <MaterialCommunityIcons name="plus" size={24} color="#FFFFFF" />
+          <Text style={styles.fabText}>Create Community</Text>
+        </View>
+      </TouchableOpacity>
+
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#24269B" />
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  groupItem: {
+    flexDirection: 'row',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    alignItems: 'center',
+  },
+  groupIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+  },
+  groupInfo: {
+    flex: 1,
+  },
+  groupName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  groupDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  memberCount: {
+    fontSize: 12,
+    color: '#999',
+  },
+  joinButton: {
+    backgroundColor: '#24269B',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  joinedButton: {
+    backgroundColor: '#E8E8FF',
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+  joinButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  joinedButtonText: {
+    color: '#24269B',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    backgroundColor: '#24269B',
+    borderRadius: 30,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  fabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fabText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  profileButton: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileImage: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    borderWidth: 2,
+    borderColor: '#24269B',
+  },
+  profileText: {
+    fontSize: 12,
+    color: '#24269B',
+    marginTop: 2,
+  },
+});
+
+export default CommunityScreen; 

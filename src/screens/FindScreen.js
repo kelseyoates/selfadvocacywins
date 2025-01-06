@@ -7,9 +7,59 @@ import {
   Image,
   AccessibilityInfo 
 } from 'react-native';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const FindScreen = ({ navigation }) => {
+  const [userData, setUserData] = useState(null);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        if (auth.currentUser) {
+          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            setUserData(data);
+            console.log('Fetched profile picture:', data.profilePicture);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Set up header with profile button
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
+          accessible={true}
+          accessibilityLabel="Go to profile"
+          accessibilityHint="Navigate to your profile page"
+        >
+          <Image
+            source={
+              userData?.profilePicture 
+                ? { uri: userData.profilePicture } 
+                : require('../../assets/default-profile.png')
+            }
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileText}>Profile</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, userData]);
 
   // Add screen reader detection
   useEffect(() => {
@@ -207,7 +257,24 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 15,
-  }
+  },
+
+  profileButton: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileImage: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    borderWidth: 2,
+    borderColor: '#24269B',
+  },
+  profileText: {
+    fontSize: 12,
+    color: '#24269B',
+    marginTop: 2,
+  },
 });
 
 export default FindScreen; 

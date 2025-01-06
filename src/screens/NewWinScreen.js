@@ -76,6 +76,7 @@ const NewWinScreen = ({ navigation }) => {
   const [media, setMedia] = useState([]);
   const [isGeneratingAltText, setIsGeneratingAltText] = useState(false);
   const screenWidth = Dimensions.get('window').width - 40;
+  const [userData, setUserData] = useState(null);
 
   const clearForm = () => {
     setText('');
@@ -323,6 +324,51 @@ const NewWinScreen = ({ navigation }) => {
       });
     }
   }, [image]);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        if (auth.currentUser) {
+          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            setUserData(data);
+            console.log('Fetched profile picture:', data.profilePicture);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
+          accessible={true}
+          accessibilityLabel="Go to profile"
+          accessibilityHint="Navigate to your profile page"
+        >
+          <Image
+            source={
+              userData?.profilePicture 
+                ? { uri: userData.profilePicture } 
+                : require('../../assets/default-profile.png')
+            }
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileText}>Profile</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, userData]);
 
   return (
     <ScrollView 
@@ -597,6 +643,22 @@ const styles = StyleSheet.create({
   submitButtonDisabled: {
     opacity: 0.5,
     backgroundColor: '#cccccc',
+  },
+  profileButton: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileImage: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    borderWidth: 2,
+    borderColor: '#24269B',
+  },
+  profileText: {
+    fontSize: 12,
+    color: '#24269B',
+    marginTop: 2,
   },
 });
 
