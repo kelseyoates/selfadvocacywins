@@ -95,8 +95,10 @@ const CreateCommunityScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
+      // First create the group without an icon
+      const groupId = name.toLowerCase().replace(/\s+/g, '-');
       const group = new CometChat.Group(
-        name.toLowerCase().replace(/\s+/g, '-'),
+        groupId,
         name,
         CometChat.GROUP_TYPE.PUBLIC,
         ''
@@ -106,18 +108,54 @@ const CreateCommunityScreen = ({ navigation }) => {
         group.setDescription(description);
       }
 
-      if (groupIcon) {
-        // Convert local URI to blob
-        const response = await fetch(groupIcon);
-        const blob = await response.blob();
-        
-        // Create File object
-        const iconFile = new File([blob], 'group-icon.jpg', { type: 'image/jpeg' });
-        group.setIcon(iconFile);
-      }
-
+      // Create the group first
       const createdGroup = await CometChat.createGroup(group);
       console.log('Group created successfully:', createdGroup);
+
+      // If there's an icon, upload it first then update the group
+      if (groupIcon) {
+        try {
+          // Create a media message for the file upload
+          const mediaMessage = new CometChat.MediaMessage(
+            createdGroup.guid,
+            {
+              uri: groupIcon,
+              type: 'image/jpeg',
+              name: `${groupId}-icon.jpg`,
+            },
+            CometChat.MESSAGE_TYPE.IMAGE,
+            CometChat.RECEIVER_TYPE.GROUP
+          );
+
+          // Send the media message to get the URL
+          const message = await CometChat.sendMediaMessage(mediaMessage);
+          console.log('Media message sent:', message);
+
+          if (message?.data?.url) {
+            // Update group using REST API
+            const response = await fetch(
+              `https://api-us.cometchat.io/v3/groups/${createdGroup.guid}`,
+              {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apiKey': process.env.EXPO_PUBLIC_COMETCHAT_API_KEY,
+                  'onBehalfOf': auth.currentUser.uid,
+                },
+                body: JSON.stringify({
+                  icon: message.data.url
+                })
+              }
+            );
+
+            const updateData = await response.json();
+            console.log('Group icon updated successfully:', updateData);
+          }
+        } catch (iconError) {
+          console.error('Error updating group icon:', iconError);
+          // Continue since group was created successfully
+        }
+      }
 
       Alert.alert(
         'Success',
