@@ -14,11 +14,13 @@ import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { auth, db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 const CommunityScreen = ({ navigation }) => {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
+  const { showHelpers } = useAccessibility();
 
   // Fetch user profile for header
   useEffect(() => {
@@ -207,6 +209,42 @@ const CommunityScreen = ({ navigation }) => {
       accessibilityLabel="Communities list"
     >
       <FlatList
+        ListHeaderComponent={() => (
+          showHelpers && (
+            <View style={styles.helperSection}>
+              <View style={styles.helperHeader}>
+                <MaterialCommunityIcons 
+                  name="information" 
+                  size={24} 
+                  color="#24269B"
+                  style={styles.infoIcon}
+                  accessible={true}
+                  accessibilityLabel="Helper information"
+                />
+              </View>
+              <View style={styles.helperContent}>
+                <Image 
+                  source={require('../../assets/community.png')}
+                  style={styles.helperImage}
+                  accessible={true}
+                  accessibilityLabel="Ezra showing community features"
+                />
+                <Text style={styles.helperTitle}>Join Communities!</Text>
+                <View style={styles.helperTextContainer}>
+                  <Text style={styles.helperText}>
+                    • Browse and join public communities
+                  </Text>
+                  <Text style={styles.helperText}>
+                    • Chat with people who share your interests
+                  </Text>
+                  <Text style={styles.helperText}>
+                    • Create your own public community with the dark blue Create Community button
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )
+        )}
         data={groups}
         renderItem={renderGroup}
         keyExtractor={item => item.guid}
@@ -378,6 +416,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+  },
+  helperSection: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    marginVertical: 10,
+    marginHorizontal: 10,
+    padding: 12,
+    alignSelf: 'center',
+    width: '95%',
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
+  },
+  helperContent: {
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  helperImage: {
+    width: 200,
+    height: 150,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  helperTextContainer: {
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  helperText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
   },
 });
 

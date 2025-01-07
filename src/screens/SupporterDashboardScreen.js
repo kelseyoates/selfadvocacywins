@@ -12,11 +12,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 const SupporterDashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [supportedUsers, setSupportedUsers] = useState([]);
+  const { showHelpers } = useAccessibility();
 
   useEffect(() => {
     fetchUserData();
@@ -81,10 +83,51 @@ const SupporterDashboardScreen = ({ navigation }) => {
       accessibilityRole="scrollview"
       accessibilityLabel="Supported Users List"
     >
-      <Text 
-        style={styles.title}
-        accessibilityRole="header"
-      >
+      {showHelpers && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              accessible={true}
+              accessibilityLabel="Helper information"
+            />
+          </View>
+          <View style={styles.helperContent}>
+            <Image 
+              source={require('../../assets/read-only-chats.png')}
+              style={styles.helperImage}
+              accessible={true}
+              accessibilityLabel="Ezra explaining supporter features"
+            />
+            <Text style={styles.helperTitle}>Being a Supporter!</Text>
+            <View style={styles.helperTextContainer}>
+            <Text style={styles.helperText}>
+                • A user must add you as a supporter before you can view their chats.
+              </Text>
+              <Text style={styles.helperText}>
+                • Once you are a supporter, you can view that user's chats
+              </Text>
+              <Text style={styles.helperText}>
+                • These chats are read-only and you will not be able to send, edit, or delete messages.
+              </Text>
+              <Text style={styles.helperText}>
+                • If you see concerning behavior, have the user block and report
+              </Text>
+              <Text style={styles.helperText}>
+                • Email safety concerns to:
+              </Text>
+              <Text style={styles.helperEmail}>
+                kelsey.oates@selfadvocacywins.com
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      <Text style={styles.title} accessibilityRole="header">
         You are supporting:
       </Text>
       
@@ -185,6 +228,60 @@ const styles = StyleSheet.create({
     color: '#24269B',
     fontSize: 14,
     marginRight: 4,
+    fontWeight: '500',
+  },
+  helperSection: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    marginVertical: 10,
+    marginHorizontal: 10,
+    padding: 12,
+    alignSelf: 'center',
+    width: '95%',
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
+  },
+  helperContent: {
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  helperImage: {
+    width: 200,
+    height: 150,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  helperTextContainer: {
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  helperText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  helperEmail: {
+    fontSize: 16,
+    color: '#24269B',
+    marginBottom: 8,
+    lineHeight: 22,
     fontWeight: '500',
   },
 });
