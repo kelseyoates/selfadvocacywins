@@ -604,13 +604,15 @@ const styles = StyleSheet.create({
   },
 
   helperSection: {
-    width: '100%',
-    padding: 15,
     backgroundColor: '#f8f8f8',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#24269B',
-    margin: 15,
+    marginVertical: 10,
+    marginHorizontal: 10,
+    padding: 12,
+    alignSelf: 'center',
+    width: '95%',
   },
   helperHeader: {
     width: '100%',

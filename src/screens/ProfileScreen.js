@@ -28,6 +28,7 @@ import WinCard from '../components/WinCard';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { checkCometChatState, cleanupCometChat } from '../services/cometChat';
 import StateDropdown from '../components/StateDropdown';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 
 
@@ -50,6 +51,7 @@ const ProfileScreen = () => {
   const route = useRoute();
   const { profileUserId } = route.params || {};
   const { user } = useAuth();
+  const { showHelpers } = useAccessibility();
   
   // Accessibility-related state and refs
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
@@ -1229,6 +1231,29 @@ const ProfileScreen = () => {
       accessible={true}
       accessibilityLabel="Profile screen"
     >
+
+
+{showHelpers && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              accessible={true}
+              accessibilityLabel="Helper information"
+            />
+          </View>
+          <Text style={styles.helperTextBold}>
+            Your Profile Picture
+          </Text>
+          <Text style={styles.helperText}>
+            This image is your profile picture. Tap the circle to upload or change your profile picture.
+          </Text>
+        </View>
+      )}
+
       <View style={styles.profileHeader}>
         <TouchableOpacity 
           ref={profileImageRef}
@@ -1281,15 +1306,33 @@ const ProfileScreen = () => {
         </View>
       </View>
 
+     
 
-      <View 
-        style={styles.statsContainer}
-        accessible={true}
-        accessibilityLabel={`Profile statistics: ${wins.length} wins, ${calculateStats(wins).totalCheers} cheers, and ${calculateStats(wins).totalComments} comments`}
-      >
+      {showHelpers && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              accessible={true}
+              accessibilityLabel="Helper information"
+            />
+          </View>
+          <Text style={styles.helperTextBold}>
+            Your Stats
+          </Text>
+          <Text style={styles.helperText}>
+            Your stats show your total number of wins, how many cheers you've received, and how many comments people have left on your wins. They will automatically update.
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Image 
-            source={require('../../assets/wins.png')} 
+            source={require('../../assets/wins-stats.png')} 
             style={styles.statIcon}
           />
           <Text style={styles.statNumber}>{wins.length}</Text>
@@ -1319,6 +1362,28 @@ const ProfileScreen = () => {
         </View>
       </View>
 
+      {showHelpers && !profileUserId && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              accessible={true}
+              accessibilityLabel="Helper information"
+            />
+          </View>
+          <Text style={styles.helperTextBold}>
+            Your State
+          </Text>
+          <Text style={styles.helperText}>
+            Select your state to help other people find you better in the Find a Friend feature.
+          </Text>
+        </View>
+      )}
+
+  
       {!profileUserId ? ( // Only show these sections for own profile
         <>
           <StateDropdown
@@ -1326,9 +1391,58 @@ const ProfileScreen = () => {
             onStateSelect={(state) => setUserData(prev => ({ ...prev, state }))}
             style={styles.stateDropdown}
           />
+
+{showHelpers && !profileUserId && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              accessible={true}
+              accessibilityLabel="Helper information"
+            />
+          </View>
+          <Text style={styles.helperTextBold}>
+            Your Birthday
+          </Text>
+          <Text style={styles.helperText}>
+            Tap to select your birthday. This helps people find you better in the Find a Friend feature.
+          </Text>
+        </View>
+      )}
+
           {renderPersonalInfo()}
         </>
       ) : null}
+
+
+{showHelpers && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              accessible={true}
+              accessibilityLabel="Helper information"
+            />
+          </View>
+          <Text style={styles.helperTextBold}>
+            Your Profile Questions
+          </Text>
+          <Text style={styles.helperText}>
+            Answer these questions to tell people about yourself. You can:
+          </Text>
+          <View style={styles.helperList}>
+            <Text style={styles.helperListItem}>• Write your own answer with the left button</Text>
+            <Text style={styles.helperListItem}>• Pick from suggested words with the middle button</Text>
+            <Text style={styles.helperListItem}>• Record a video answer with the right button</Text>
+          </View>
+        </View>
+      )}
 
       <View style={styles.questionSection}>
         <Text style={styles.sectionTitle}>My Profile</Text>
@@ -1346,9 +1460,26 @@ const ProfileScreen = () => {
         ))}
       </View>
 
+      {showHelpers && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              accessible={true}
+              accessibilityLabel="Helper information"
+            />
+          </View>
+          <Text style={styles.helperText}>
+            View all of your previous wins here
+          </Text>
+        </View>
+      )}
 
       <View style={styles.winsContainer}>
-        <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
+        <Text style={styles.sectionTitle}>My Win History</Text>
         {wins && wins.length > 0 ? (
           wins.map((win) => (
             <WinCard 
@@ -2033,6 +2164,48 @@ datingProfileContainer: {
 
 stateDropdown: {
   marginBottom: 16,
+},
+
+helperSection: {
+  backgroundColor: '#f8f8f8',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#24269B',
+  marginVertical: 10,
+  marginHorizontal: 10,
+  padding: 12,
+  alignSelf: 'center',
+  width: '95%',
+},
+helperHeader: {
+  width: '100%',
+  alignItems: 'flex-end',
+  marginBottom: -20,
+  zIndex: 1,
+},
+infoIcon: {
+  padding: 5,
+},
+helperText: {
+  fontSize: 16,
+  color: '#333',
+  lineHeight: 22,
+  marginTop: 20,
+},
+helperList: {
+  marginTop: 10,
+  paddingLeft: 10,
+},
+helperListItem: {
+  fontSize: 16,
+  color: '#333',
+  lineHeight: 22,
+  marginBottom: 5,
+},
+helperTextBold: {
+  fontSize: 18,
+  color: '#24269B',
+  fontWeight: 'bold',
 },
 });
 

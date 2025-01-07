@@ -440,56 +440,80 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
         style={styles.modeButtons}
         accessibilityRole="tablist"
       >
-        <TouchableOpacity 
-          style={[styles.modeButton, mode === 'text' && styles.selectedMode]}
-          onPress={() => setMode('text')}
-          accessible={true}
-          accessibilityRole="tab"
-          accessibilityLabel="Text answer mode"
-          accessibilityState={{ selected: mode === 'text' }}
-          accessibilityHint="Double tap to switch to text answer mode"
-        >
-          <MaterialCommunityIcons 
-            name="text" 
-            size={24} 
-            color={mode === 'text' ? '#fff' : '#24269B'} 
-            accessibilityRole="image"
-          />
-        </TouchableOpacity>
+        <View style={styles.modeButtonContainer}>
+          <TouchableOpacity 
+            style={[styles.modeButton, mode === 'text' && styles.selectedMode]}
+            onPress={() => setMode('text')}
+            accessible={true}
+            accessibilityRole="tab"
+            accessibilityLabel="Text answer mode"
+            accessibilityState={{ selected: mode === 'text' }}
+            accessibilityHint="Double tap to switch to text answer mode"
+          >
+            <MaterialCommunityIcons 
+              name="pencil" 
+              size={24} 
+              color={mode === 'text' ? '#fff' : '#24269B'} 
+              accessibilityRole="image"
+            />
+          </TouchableOpacity>
+          <Text style={[
+            styles.modeButtonLabel, 
+            mode === 'text' && styles.selectedModeLabel
+          ]}>
+            Write
+          </Text>
+        </View>
 
-        <TouchableOpacity 
-          style={[styles.modeButton, mode === 'preset' && styles.selectedMode]}
-          onPress={() => setMode('preset')}
-          accessible={true}
-          accessibilityRole="tab"
-          accessibilityLabel="Word selection mode"
-          accessibilityState={{ selected: mode === 'preset' }}
-          accessibilityHint="Double tap to switch to word selection mode"
-        >
-          <MaterialCommunityIcons 
-            name="format-list-bulleted" 
-            size={24} 
-            color={mode === 'preset' ? '#fff' : '#24269B'} 
-            accessibilityRole="image"
-          />
-        </TouchableOpacity>
+        <View style={styles.modeButtonContainer}>
+          <TouchableOpacity 
+            style={[styles.modeButton, mode === 'preset' && styles.selectedMode]}
+            onPress={() => setMode('preset')}
+            accessible={true}
+            accessibilityRole="tab"
+            accessibilityLabel="Word selection mode"
+            accessibilityState={{ selected: mode === 'preset' }}
+            accessibilityHint="Double tap to switch to word selection mode"
+          >
+            <MaterialCommunityIcons 
+              name="format-list-bulleted" 
+              size={24} 
+              color={mode === 'preset' ? '#fff' : '#24269B'} 
+              accessibilityRole="image"
+            />
+          </TouchableOpacity>
+          <Text style={[
+            styles.modeButtonLabel, 
+            mode === 'preset' && styles.selectedModeLabel
+          ]}>
+            Pick Words
+          </Text>
+        </View>
 
-        <TouchableOpacity 
-          style={[styles.modeButton, mode === 'video' && styles.selectedMode]}
-          onPress={() => setMode('video')}
-          accessible={true}
-          accessibilityRole="tab"
-          accessibilityLabel="Video answer mode"
-          accessibilityState={{ selected: mode === 'video' }}
-          accessibilityHint="Double tap to switch to video answer mode"
-        >
-          <MaterialCommunityIcons 
-            name="video" 
-            size={24} 
-            color={mode === 'video' ? '#fff' : '#24269B'} 
-            accessibilityRole="image"
-          />
-        </TouchableOpacity>
+        <View style={styles.modeButtonContainer}>
+          <TouchableOpacity 
+            style={[styles.modeButton, mode === 'video' && styles.selectedMode]}
+            onPress={() => setMode('video')}
+            accessible={true}
+            accessibilityRole="tab"
+            accessibilityLabel="Video answer mode"
+            accessibilityState={{ selected: mode === 'video' }}
+            accessibilityHint="Double tap to switch to video answer mode"
+          >
+            <MaterialCommunityIcons 
+              name="video" 
+              size={24} 
+              color={mode === 'video' ? '#fff' : '#24269B'} 
+              accessibilityRole="image"
+            />
+          </TouchableOpacity>
+          <Text style={[
+            styles.modeButtonLabel, 
+            mode === 'video' && styles.selectedModeLabel
+          ]}>
+            Upload Video
+          </Text>
+        </View>
       </View>
 
       {mode === 'text' && (
@@ -841,6 +865,18 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '500',
+  },
+  modeButtonContainer: {
+    alignItems: 'center',
+  },
+  modeButtonLabel: {
+    fontSize: 12,
+    color: '#24269B',
+    marginTop: 4,
+  },
+  selectedModeLabel: {
+    color: '#24269B',
+    fontWeight: 'bold',
   },
 });
 
