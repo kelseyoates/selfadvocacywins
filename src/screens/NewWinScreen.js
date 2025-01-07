@@ -17,6 +17,7 @@ import { auth, db, storage } from '../config/firebase';
 import { collection, addDoc, doc, serverTimestamp, runTransaction, setDoc, updateDoc, arrayUnion, getDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigation } from '@react-navigation/native';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 const generateAltText = async (imageUrl, setLoading) => {
   try {
@@ -77,6 +78,7 @@ const NewWinScreen = ({ navigation }) => {
   const [isGeneratingAltText, setIsGeneratingAltText] = useState(false);
   const screenWidth = Dimensions.get('window').width - 40;
   const [userData, setUserData] = useState(null);
+  const { showHelpers } = useAccessibility();
 
   const clearForm = () => {
     setText('');
@@ -378,8 +380,38 @@ const NewWinScreen = ({ navigation }) => {
       accessibilityLabel="Create a new win"
       accessibilityHint="Screen for sharing your win with text and media"
     >
+      {showHelpers && (
+        <View style={styles.helperSection}>
+          <View style={styles.helperCard}>
+            <View style={styles.helperHeader}>
+              <MaterialCommunityIcons 
+                name="information" 
+                size={24} 
+                color="#24269B"
+                style={styles.infoIcon}
+                accessible={true}
+                accessibilityLabel="Helper information"
+              />
+            </View>
+            <Image 
+              source={require('../../assets/new-win-demo.png')} 
+              style={styles.helperImage}
+              accessible={true}
+              accessibilityLabel="Illustration showing how to create a win"
+            />
+            <Text style={styles.helperTitle}>How to Share Your Win</Text>
+            <View style={styles.helperInstructions}>
+              <Text style={styles.helperText}>1. Write about your win in the text box</Text>
+              <Text style={styles.helperText}>2. Add a photo or video if you'd like</Text>
+              <Text style={styles.helperText}>3. Tap "Post Win" to share with everyone!</Text>
+              <Text style={styles.helperText}>FYI You do not need to add text to share your win. You can just add a photo or video.</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <TextInput
-        style={styles.input}
+        style={[styles.input, showHelpers && styles.inputWithHelper]}
         placeholder="What's your win?"
         value={text}
         onChangeText={setText}
@@ -659,6 +691,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+  },
+  helperSection: {
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#24269B',
+  },
+  helperCard: {
+    alignItems: 'center',
+  },
+  helperImage: {
+    width: 200,
+    height: 150,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  helperInstructions: {
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  helperText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  inputWithHelper: {
+    marginTop: 10,
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
   },
 });
 

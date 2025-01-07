@@ -17,6 +17,7 @@ import WinCard from '../components/WinCard';
 import { useFocusEffect } from '@react-navigation/native';
 import { db, auth } from '../config/firebase';
 import { useAccessibility } from '../context/AccessibilityContext';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 const MainScreen = ({ navigation }) => {
   const { showHelpers } = useAccessibility();
@@ -271,7 +272,7 @@ const MainScreen = ({ navigation }) => {
 
         <View style={styles.headerWide}>
       
-        <Text style={styles.bodyTextBold}>About the Home Feed:</Text>
+        <Text style={styles.headerText}>About the Home Feed:</Text>
           <Text style={styles.bodyText}>This is a win card. You can see who posted the win, when they posted it, and what they posted.</Text>
           <Image
             source={require('../../assets/win-example.png')}
@@ -284,7 +285,6 @@ const MainScreen = ({ navigation }) => {
 
         <View style={styles.headerWide}>
         <Text style={styles.bodyTextBold}>Cheer, Comment, and Share:</Text>
-        <View style={styles.headerSmallContent}>
           <View style={styles.headerIconContainer}>
           <TouchableWithoutFeedback onPress={animatePress}>
             <Animated.Image 
@@ -301,9 +301,8 @@ const MainScreen = ({ navigation }) => {
           </TouchableWithoutFeedback>
           </View>
           <Text style={styles.bodyText}>tap the clapping emoji to cheer people on</Text>
-        </View>
+      
 
-        <View style={styles.headerSmallContent}>
           <View style={styles.headerIconContainer}>
           <TouchableWithoutFeedback onPress={animatePress}>
             <Animated.Image 
@@ -318,14 +317,12 @@ const MainScreen = ({ navigation }) => {
               accessibilityLabel="a new comment icon"
             />
           </TouchableWithoutFeedback>
-          </View>
-          
+         
           <Text style={styles.bodyText}>tap the comment icon to leave a positive comment</Text>
           
         </View> 
 
-        <View style={styles.headerSmallContent}>
-          <View style={styles.headerIconContainer}>
+        <View style={styles.headerIconContainer}>
           <TouchableWithoutFeedback onPress={animatePress}>
             <Animated.Image 
               source={require('../../assets/arrow-share.png')} 
@@ -339,19 +336,13 @@ const MainScreen = ({ navigation }) => {
               accessibilityLabel="a sharing arrow icon"
             />
           </TouchableWithoutFeedback>
-          </View>
+         
           <View style={styles.headerTextContainer}>
           <Text style={styles.bodyText}>tap the share button to share a win</Text>
           </View>
         </View> 
 
         </View>     
-
-
-
-
-
-
 
          <View style={styles.headerWide}>
          <View style={styles.headerRow}>
@@ -386,9 +377,18 @@ const MainScreen = ({ navigation }) => {
       
     
       <View style={styles.headerWide}>
-      <Text style={styles.bodyTextBold}>Are you ready to start exploring?</Text>
+      <Text style={styles.headerText}>Are you ready to start exploring?</Text>
+      <Text style={styles.bodyText}> When you see this icon <MaterialCommunityIcons 
+                name="information" 
+                size={24} 
+                color="#24269B"
+                style={styles.infoIcon}
+                accessible={true}
+                accessibilityLabel="Helper information"
+              /> you'll know that you're looking at helper text. You can turn off the helper text by going to the accessibility screen in the menu.</Text>
+         
+          <Text style={styles.bodyText}>Scroll down to see your friends' wins and have some fun!</Text>
 
-          <Text style={styles.bodyText}>Scroll down to see your friends' wins</Text>
           <ArrowAnimation />
         </View>
     </>
@@ -401,7 +401,19 @@ const MainScreen = ({ navigation }) => {
           <>
             {showHelpers && (
               <View style={styles.headerRow}>
-                {ListHeader()}
+                <View style={styles.helperHeader}>
+                  <MaterialCommunityIcons 
+                    name="information" 
+                    size={24} 
+                    color="#24269B"
+                    style={styles.infoIcon}
+                    accessible={true}
+                    accessibilityLabel="Helper information"
+                  />
+                </View>
+                <View style={styles.headerSmallContent}>
+                  {ListHeader()}
+                </View>
               </View>
             )}
           </>
@@ -546,6 +558,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     resizeMode: 'contain',
+    marginTop: 10,
   },
   headerWide: {
     alignItems: 'center',
@@ -573,6 +586,16 @@ const styles = StyleSheet.create({
   bodyImage: {
     width: 300,
     resizeMode: 'contain',
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    paddingRight: 10,
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
   },
 });
 
