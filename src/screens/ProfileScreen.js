@@ -1437,9 +1437,10 @@ const ProfileScreen = () => {
             Answer these questions to tell people about yourself. You can:
           </Text>
           <View style={styles.helperList}>
-            <Text style={styles.helperListItem}>• Write your own answer with the left button</Text>
-            <Text style={styles.helperListItem}>• Pick from suggested words with the middle button</Text>
-            <Text style={styles.helperListItem}>• Record a video answer with the right button</Text>
+            <Text style={styles.helperListItem}>• Tap the pencil icon to write your own answer.</Text>
+            <Text style={styles.helperListItem}>• Tap the list icon to pick from suggested words.</Text>
+            <Text style={styles.helperListItem}>• Tap the video icon to record a video answer.</Text>
+            <Text style={styles.helperListItem}>If you subscribe to the Dating plan, you will see questions about dating here as well.</Text>
           </View>
         </View>
       )}
@@ -1472,8 +1473,11 @@ const ProfileScreen = () => {
               accessibilityLabel="Helper information"
             />
           </View>
+          <Text style={styles.helperTextBold}>
+            Your Win History
+          </Text>
           <Text style={styles.helperText}>
-            View all of your previous wins here
+            View all of your previous wins here.
           </Text>
         </View>
       )}

@@ -73,12 +73,13 @@ const CommunityScreen = ({ navigation }) => {
         setLoading(true);
         const groupsRequest = new CometChat.GroupsRequestBuilder()
           .setLimit(30)
-          .joinedOnly(false)
           .build();
 
         const groupsList = await groupsRequest.fetchNext();
-        console.log('Fetched groups:', groupsList);
-        setGroups(groupsList);
+        // Filter public groups after fetching
+        const publicGroups = groupsList.filter(group => group.type === 'public');
+        console.log('Fetched public groups:', publicGroups);
+        setGroups(publicGroups);
       } catch (error) {
         console.error('Error fetching groups:', error);
       } finally {

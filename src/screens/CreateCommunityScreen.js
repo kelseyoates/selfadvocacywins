@@ -105,7 +105,7 @@ const CreateCommunityScreen = ({ navigation }) => {
       let iconUrl = null;
       if (groupIcon) {
         try {
-          // First upload the image to Firebase Storage
+          // Upload image to Firebase Storage
           const response = await fetch(groupIcon);
           const blob = await response.blob();
           
@@ -118,12 +118,12 @@ const CreateCommunityScreen = ({ navigation }) => {
         }
       }
 
-      // Create the group with the icon URL if we have one
+      // Create the group - always set as PUBLIC
       const groupId = name.toLowerCase().replace(/\s+/g, '-');
       const group = new CometChat.Group(
         groupId,
         name,
-        CometChat.GROUP_TYPE.PUBLIC,
+        CometChat.GROUP_TYPE.PUBLIC, // Always public
         ''
       );
 
