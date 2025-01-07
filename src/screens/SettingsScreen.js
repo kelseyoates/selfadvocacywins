@@ -341,6 +341,33 @@ const SettingsScreen = () => {
             />
           </TouchableOpacity>
 
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              announceToScreenReader("Opening the accessibility screen");
+              navigation.navigate('Accessibility');
+            }}
+            accessible={true}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Accessibility"
+            accessibilityHint="Update your accessibility settings"
+          >
+            <Image 
+              source={require('../../assets/accessibility.png')}
+              style={styles.menuIcon}
+              accessible={true}
+              accessibilityLabel="notifications icon"
+              accessibilityRole="image"
+            />
+            <Text style={styles.menuItemText}>Accessibility</Text>
+            <MaterialCommunityIcons 
+              name="chevron-right" 
+              size={24} 
+              color="#666"
+              accessibilityElementsHidden={true}
+              importantForAccessibility="no"
+            />
+          </TouchableOpacity>
 
 
         </View>

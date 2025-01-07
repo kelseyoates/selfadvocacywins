@@ -16,8 +16,10 @@ import { collection, query, orderBy, limit, getDocs, getDoc, doc } from 'firebas
 import WinCard from '../components/WinCard';
 import { useFocusEffect } from '@react-navigation/native';
 import { db, auth } from '../config/firebase';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 const MainScreen = ({ navigation }) => {
+  const { showHelpers } = useAccessibility();
   const [wins, setWins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -262,12 +264,26 @@ const MainScreen = ({ navigation }) => {
             accessible={true}
             accessibilityLabel="Three self-advocates holding a trophy, a flag, and a medal"
           />
-        </View>
-        <View style={styles.headerRow}>
-        <Text style={styles.headerText}>Welcome to Self-Advocacy Wins! This is your home feed where you can see what your friends have posted.</Text>
 
+        <Text style={styles.headerText}>Welcome to Self-Advocacy Wins!</Text>
+        <Text style={styles.bodyText}>You are now on the Home feed. This is where you can see what your friends have posted.</Text>
         </View>
-        <View style={styles.headerRow}>
+
+        <View style={styles.headerWide}>
+      
+        <Text style={styles.bodyTextBold}>About the Home Feed:</Text>
+          <Text style={styles.bodyText}>This is a win card. You can see who posted the win, when they posted it, and what they posted.</Text>
+          <Image
+            source={require('../../assets/win-example.png')}
+            style={styles.headerImage}
+            accessible={true}
+            accessibilityLabel="An example of a win card. The user's name and profile picture are on the top left of the card, and the win is displayed in the middle. The cheers emoji, new comment icon, and share icon at in a row at the bottom of the card."
+          />
+        </View>
+
+
+        <View style={styles.headerWide}>
+        <Text style={styles.bodyTextBold}>Cheer, Comment, and Share:</Text>
         <View style={styles.headerSmallContent}>
           <View style={styles.headerIconContainer}>
           <TouchableWithoutFeedback onPress={animatePress}>
@@ -284,9 +300,7 @@ const MainScreen = ({ navigation }) => {
             />
           </TouchableWithoutFeedback>
           </View>
-          <View style={styles.headerTextContainer}>
-          <Text style={styles.headerText}>tap the clapping emoji to cheer people on</Text>
-          </View>
+          <Text style={styles.bodyText}>tap the clapping emoji to cheer people on</Text>
         </View>
 
         <View style={styles.headerSmallContent}>
@@ -305,14 +319,76 @@ const MainScreen = ({ navigation }) => {
             />
           </TouchableWithoutFeedback>
           </View>
+          
+          <Text style={styles.bodyText}>tap the comment icon to leave a positive comment</Text>
+          
+        </View> 
+
+        <View style={styles.headerSmallContent}>
+          <View style={styles.headerIconContainer}>
+          <TouchableWithoutFeedback onPress={animatePress}>
+            <Animated.Image 
+              source={require('../../assets/arrow-share.png')} 
+              style={[
+                styles.headerIcon,
+                {
+                  transform: [{ scale: clapScale }]
+                }
+              ]}
+              accessible={true}
+              accessibilityLabel="a sharing arrow icon"
+            />
+          </TouchableWithoutFeedback>
+          </View>
           <View style={styles.headerTextContainer}>
-          <Text style={styles.headerText}>tap the comment icon to leave a positive comment</Text>
+          <Text style={styles.bodyText}>tap the share button to share a win</Text>
           </View>
         </View> 
-        </View>       
+
+        </View>     
+
+
+
+
+
+
+
+         <View style={styles.headerWide}>
+         <View style={styles.headerRow}>
+         <Text style={styles.headerText}>Navigation:</Text>
+        <Text style={styles.bodyText}>If you look at the bottom of the screen, you will see five buttons: Home, Chat, New Win, Find, and Menu.</Text>
+
+        </View>  
+          <Image
+            source={require('../../assets/tab-navigator-example.png')}
+            style={styles.bodyImage}
+            accessible={true}
+            accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
+          />
+          <Text style={styles.bodyText}>Tap each button to go to a different screen.</Text>
+
+        </View>
+
+        <View style={styles.headerWide}>
+         <View style={styles.headerRow}>
+         <Text style={styles.headerText}>Your Profile:</Text>
+        <Text style={styles.bodyText}>In the top right corner of the screen, you will see a profile icon. Tap it to go to your profile page. You can answer questions about yourself, and upload a profile picture.</Text>
+
+        </View>  
+          <Image
+            source={require('../../assets/profile-example.png')}
+            style={styles.bodyImage}
+            accessible={true}
+            accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
+          />
+         
+        </View>
+      
     
-      <View style={styles.headerScroll}>
-          <Text style={styles.scrollText}>scroll down to see your friends' wins</Text>
+      <View style={styles.headerWide}>
+      <Text style={styles.bodyTextBold}>Are you ready to start exploring?</Text>
+
+          <Text style={styles.bodyText}>Scroll down to see your friends' wins</Text>
           <ArrowAnimation />
         </View>
     </>
@@ -321,7 +397,15 @@ const MainScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <FlatList
-        ListHeaderComponent={ListHeader}
+        ListHeaderComponent={() => (
+          <>
+            {showHelpers && (
+              <View style={styles.headerRow}>
+                {ListHeader()}
+              </View>
+            )}
+          </>
+        )}
         data={wins}
         renderItem={({ item }) => (
           <View
@@ -418,11 +502,14 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: 'column',
     alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 10,
   },
   headerRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
+    backgroundColor: '#ffffff',
   },
   headerSmallContent: {
     flex: 1,
@@ -441,6 +528,7 @@ const styles = StyleSheet.create({
   },
   headerTextContainer: {
     alignItems: 'center',
+    backgroundColor: '#ffffff',
   },
   headerImage: {
     width: 300,
@@ -449,27 +537,42 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   headerText: {
-    fontSize: 16,
-    color: '#000000',
+    fontSize: 22,
+    color: '#24269B',
     textAlign: 'center',
+    fontWeight: 'bold',
   },
   headerIcon: {
     width: 50,
     height: 50,
     resizeMode: 'contain',
   },
-  headerScroll: {
+  headerWide: {
     alignItems: 'center',
     marginTop: 22,
+    backgroundColor: '#ffffff',
   },
-  scrollText: {
+  bodyText: {
     fontSize: 16,
     color: '#000000',
     textAlign: 'center',
-    borderWidth: 1,
-    borderColor: '#24269B',
-    borderRadius: 10,
-    padding: 10,
+    marginBottom: 10,
+  },
+  headerTextBold: {
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  bodyTextBold: {
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  bodyImage: {
+    width: 300,
+    resizeMode: 'contain',
   },
 });
 

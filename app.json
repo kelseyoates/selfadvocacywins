@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "selfadvocacywins",
+    "scheme": "selfadvocatelink",
 
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -16,14 +16,29 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.koates89.SelfAdvocacyWins"
+      "bundleIdentifier": "com.koates89.SelfAdvocacyWins",
+      "associatedDomains": ["applinks:selfadvocatelink.app"]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.koates89.SelfAdvocacyWins"
+      "package": "com.koates89.SelfAdvocacyWins",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "selfadvocatelink",
+              "host": "win",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
