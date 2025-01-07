@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, AccessibilityInfo, Platform } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, AccessibilityInfo, Platform, Share } from 'react-native';
 import { Video } from 'expo-av';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { formatDistanceToNow } from 'date-fns';
@@ -394,6 +394,23 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
     });
   };
 
+  const handleShare = async () => {
+    try {
+      const shareMessage = `${win.username}'s Win: ${win.text}\n\nShared from Self-Advocate Link`;
+      
+      const result = await Share.share({
+        message: shareMessage,
+        title: 'Share this Win',
+      });
+      
+      if (result.action === Share.sharedAction) {
+        console.log('Shared successfully');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
   return (
     <View 
       style={styles.card}
@@ -436,32 +453,47 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
    
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={[styles.cheerButton, isUpdating && styles.cheerButtonDisabled]}
+          style={styles.footerButton}
           onPress={handleCheer}
           disabled={isUpdating}
           accessible={true}
-          accessibilityRole="button"
           accessibilityLabel={`Cheer this win. Current cheers: ${cheerCount}`}
           accessibilityHint="Double tap to cheer for this win"
           accessibilityState={{ disabled: isUpdating }}
         >
-          <Text style={styles.cheerEmoji} accessibilityLabel="Clapping hands emoji">👏</Text>
+          <Text style={styles.cheerEmoji}>👏</Text>
           <Text style={styles.cheerCount}>{cheerCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.commentButton}
+          style={styles.footerButton}
           onPress={handleShowCommentOptions}
           accessible={true}
-          accessibilityRole="button"
           accessibilityLabel="Add comment"
           accessibilityHint="Double tap to show comment options"
         >
-          <MaterialCommunityIcons 
-            name="comment-outline" 
-            size={40} 
-            color="#24269B"
+          <Image
+            source={require('../../assets/new-comment.png')}
+            style={styles.actionIcon}
             accessibilityRole="image"
+            accessible={true}
+            accessibilityLabel="Add comment"
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.footerButton}
+          onPress={handleShare}
+          accessible={true}
+          accessibilityLabel="Share this win"
+          accessibilityHint="Double tap to share this win"
+        >
+          <Image
+            source={require('../../assets/arrow-share.png')}
+            style={styles.actionIcon}
+            accessibilityRole="image"
+            accessible={true}
+            accessibilityLabel="Share"
           />
         </TouchableOpacity>
       </View>
@@ -606,19 +638,20 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 5,
+    alignItems: 'center',
+    marginTop: 10,
+    paddingHorizontal: 20,
   },
-  cheerButton: {
+  footerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    
+    padding: 8,
   },
-  cheerButtonDisabled: {
-    opacity: 0.7,
+  actionIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
   },
   cheerEmoji: {
     fontSize: 40,
@@ -792,6 +825,24 @@ const styles = StyleSheet.create({
     color: '#24269B',
     fontSize: 16,
     fontWeight: '500',
+  },
+  commentIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  rightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shareButton: {
+    padding: 8,
+    marginLeft: 10,
+  },
+  shareIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
   },
 });
 

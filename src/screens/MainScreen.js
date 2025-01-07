@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,13 +8,14 @@ import {
   AccessibilityInfo,
   Image,
   Text,
-  TouchableOpacity
+  TouchableOpacity,
+  Animated,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { collection, query, orderBy, limit, getDocs, getDoc, doc } from 'firebase/firestore';
 import WinCard from '../components/WinCard';
 import { useFocusEffect } from '@react-navigation/native';
-import { db } from '../config/firebase';
-import { auth } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 
 const MainScreen = ({ navigation }) => {
   const [wins, setWins] = useState([]);
@@ -23,6 +24,10 @@ const MainScreen = ({ navigation }) => {
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const [profilePicture, setProfilePicture] = useState(null);
   const [userData, setUserData] = useState(null);
+
+  const scale = useRef(new Animated.Value(1)).current;
+  const clapScale = useRef(new Animated.Value(1)).current;
+  const commentScale = useRef(new Animated.Value(1)).current;
 
   // Add screen reader detection
   useEffect(() => {
@@ -138,6 +143,60 @@ const MainScreen = ({ navigation }) => {
     });
   }, [navigation, userData]);
 
+  const animatePress = () => {
+    Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 0.8,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    const pulseAnimation = () => {
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(clapScale, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(clapScale, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(commentScale, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(commentScale, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(() => pulseAnimation()); // This makes both loop
+    };
+
+    pulseAnimation();
+
+    return () => {
+      // Cleanup animations when component unmounts
+      clapScale.setValue(1);
+      commentScale.setValue(1);
+    };
+  }, []);
+
   if (loading) {
     return (
       <View 
@@ -151,13 +210,118 @@ const MainScreen = ({ navigation }) => {
     );
   }
 
+  // Add this component to replace the arrow containers
+  const ArrowAnimation = () => {
+    const translateY = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      const animate = () => {
+        Animated.sequence([
+          Animated.timing(translateY, {
+            toValue: 10,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]).start(() => animate());
+      };
+
+      animate();
+    }, []);
+
+    return (
+      <View style={styles.arrowContainer}>
+        <Animated.Text 
+          style={[
+            styles.arrow,
+            {
+              transform: [{ translateY }],
+            },
+          ]}
+          accessible={true}
+          accessibilityLabel="Scroll down indicator"
+        >
+          ↓
+        </Animated.Text>
+      </View>
+    );
+  };
+  
+
+  const ListHeader = () => (
+    <>
+     
+        <View style={styles.headerContent}>
+          <Image
+            source={require('../../assets/wins.png')}
+            style={styles.headerImage}
+            accessible={true}
+            accessibilityLabel="Three self-advocates holding a trophy, a flag, and a medal"
+          />
+        </View>
+        <View style={styles.headerRow}>
+        <Text style={styles.headerText}>Welcome to Self-Advocacy Wins! This is your home feed where you can see what your friends have posted.</Text>
+
+        </View>
+        <View style={styles.headerRow}>
+        <View style={styles.headerSmallContent}>
+          <View style={styles.headerIconContainer}>
+          <TouchableWithoutFeedback onPress={animatePress}>
+            <Animated.Image 
+              source={require('../../assets/clapping.png')} 
+              style={[
+                styles.headerIcon,
+                {
+                  transform: [{ scale: clapScale }]
+                }
+              ]}
+              accessible={true}
+              accessibilityLabel="the clapping hands emoji"
+            />
+          </TouchableWithoutFeedback>
+          </View>
+          <View style={styles.headerTextContainer}>
+          <Text style={styles.headerText}>tap the clapping emoji to cheer people on</Text>
+          </View>
+        </View>
+
+        <View style={styles.headerSmallContent}>
+          <View style={styles.headerIconContainer}>
+          <TouchableWithoutFeedback onPress={animatePress}>
+            <Animated.Image 
+              source={require('../../assets/new-comment.png')} 
+              style={[
+                styles.headerIcon,
+                {
+                  transform: [{ scale: clapScale }]
+                }
+              ]}
+              accessible={true}
+              accessibilityLabel="a new comment icon"
+            />
+          </TouchableWithoutFeedback>
+          </View>
+          <View style={styles.headerTextContainer}>
+          <Text style={styles.headerText}>tap the comment icon to leave a positive comment</Text>
+          </View>
+        </View> 
+        </View>       
+    
+      <View style={styles.headerScroll}>
+          <Text style={styles.scrollText}>scroll down to see your friends' wins</Text>
+          <ArrowAnimation />
+        </View>
+    </>
+  );
+
   return (
-    <View 
-      style={styles.container}
-      accessible={true}
-      accessibilityLabel="Main Screen"
-    >
+    <View style={styles.container}>
       <FlatList
+        ListHeaderComponent={ListHeader}
         data={wins}
         renderItem={({ item }) => (
           <View
@@ -217,6 +381,95 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+  },
+  sectionText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#24269B',
+    flex: 1,
+  },
+  sectionContainer: {
+    padding: 20,
+  },
+  sectionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionImage: {
+    width: 100,
+    height: 100,
+    resizeMode: 'contain',
+    marginRight: 12,
+  },
+  arrowContainer: {
+    alignItems: 'center',
+    height: 140,
+    width: 40,
+  
+  },
+  arrow: {
+    fontSize: 100,
+    color: '#24269B',
+    fontWeight: 'bold',
+  },
+  headerContainer: {
+    padding: 20,
+  },
+  headerContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  headerSmallContent: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    borderRadius: 10,
+    padding: 10,
+    marginHorizontal: 5,
+    marginVertical: 5,
+  },
+  headerIconContainer: {
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  headerTextContainer: {
+    alignItems: 'center',
+  },
+  headerImage: {
+    width: 300,
+    height: 200,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  headerText: {
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+  },
+  headerIcon: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+  },
+  headerScroll: {
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  scrollText: {
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#24269B',
+    borderRadius: 10,
+    padding: 10,
   },
 });
 

@@ -71,7 +71,7 @@ const TabNavigator = ({ navigation }) => {
       }}
     >
       <Tab.Screen
-        name="Feed"
+        name="Home"
         component={MainScreen}
         options={{
           tabBarIcon: ({ focused }) => (

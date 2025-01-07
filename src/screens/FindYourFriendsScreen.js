@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,15 @@ import {
   Image,
   Alert,
   AccessibilityInfo,
-  Keyboard
+  Keyboard,
+  Animated
 } from 'react-native';
 import { searchIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
 import StateDropdown from '../components/StateDropdown';
 import { questions } from '../constants/questions';
 import { adminIndex } from '../config/algolia';
+
 
 const FindYourFriendsScreen = ({ navigation }) => {
   const [selectedWords, setSelectedWords] = useState([]);
@@ -233,16 +235,109 @@ const FindYourFriendsScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  // Add this component to replace the arrow containers
+  const ArrowAnimation = () => {
+    const translateY = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      const animate = () => {
+        Animated.sequence([
+          Animated.timing(translateY, {
+            toValue: 10,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]).start(() => animate());
+      };
+
+      animate();
+    }, []);
+
+    return (
+      <View style={styles.arrowContainer}>
+        <Animated.Text 
+          style={[
+            styles.arrow,
+            {
+              transform: [{ translateY }],
+            },
+          ]}
+          accessible={true}
+          accessibilityLabel="Scroll down indicator"
+        >
+          ↓
+        </Animated.Text>
+      </View>
+    );
+  };
+
   return (
     <ScrollView 
       style={styles.container}
       accessible={true}
       accessibilityLabel="Find Friends Screen"
     >
+      <View style={styles.headerContainer}>
+        <View style={styles.headerContent}>
+          <Image
+            source={require('../../assets/friends-3-2.png')}
+            style={styles.headerImage}
+            accessible={true}
+            accessibilityLabel="Friends hanging out and chatting"
+          />
+          <Text style={styles.headerText}>Find Your Friends</Text>
+        </View>
+        <Text style={styles.bodyText}>
+          Connect with people who share your interests and experiences. 
+          You can use these filters or just scroll down to see potential friends.
+        </Text>
+       
+      </View>
+
+      <ArrowAnimation />
+
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionContent}>
+          <Image
+            source={require('../../assets/map.png')}
+            style={styles.sectionImage}
+            accessible={true}
+            accessibilityLabel="map icon"
+          />
+          <Text style={styles.sectionText}>Where do you want to find friends?</Text>
+        </View>
+        <Text style={styles.bodyText}>
+          Use the dropdown to search for friends in your state or anywhere in the world.
+        </Text>
+      </View>
+
       <StateDropdown 
         selectedState={selectedState}
         onStateChange={handleStateSelect}
       />
+      
+      <ArrowAnimation />
+
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionContent}>
+          <Image
+            source={require('../../assets/age.png')}
+            style={styles.sectionImage}
+            accessible={true}
+            accessibilityLabel="a young and old man"
+          />
+          <Text style={styles.sectionText}>How old do you want your new friend to be?</Text>
+        </View>
+        <Text style={styles.bodyText}>
+          Tap the number to type in the youngest and oldest ages you want to search for.
+        </Text>
+      </View>
+
       
 
  {/* Age Range Selection */}
@@ -255,7 +350,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
         <View style={styles.ageRangeContainer}>
           <View style={styles.ageInputRow}>
             <View style={styles.ageInputContainer}>
-              <Text style={styles.ageLabel}>Minimum Age</Text>
+              <Text style={styles.ageLabel}>Youngest Age</Text>
               <TextInput
                 style={styles.ageInput}
                 value={String(selectedAgeRange.min)}
@@ -267,13 +362,13 @@ const FindYourFriendsScreen = ({ navigation }) => {
                 blurOnSubmit={true}
                 maxLength={2}
                 accessible={true}
-                accessibilityLabel="Minimum age input"
-                accessibilityHint="Enter minimum age, must be at least 18"
+                accessibilityLabel="youngest age input"
+                accessibilityHint="Enter youngest age, must be at least 18"
               />
             </View>
             <Text style={styles.ageSeparatorText}>to</Text>
             <View style={styles.ageInputContainer}>
-              <Text style={styles.ageLabel}>Maximum Age</Text>
+              <Text style={styles.ageLabel}>Oldest Age</Text>
               <TextInput
                 style={styles.ageInput}
                 value={String(selectedAgeRange.max)}
@@ -285,14 +380,30 @@ const FindYourFriendsScreen = ({ navigation }) => {
                 blurOnSubmit={true}
                 maxLength={2}
                 accessible={true}
-                accessibilityLabel="Maximum age input"
-                accessibilityHint="Enter maximum age, cannot exceed 99"
+                accessibilityLabel="oldest age input"
+                accessibilityHint="Enter oldest age, cannot exceed 99"
               />
             </View>
           </View>
         </View>
       </View>
 
+      <ArrowAnimation />
+
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionContent}>
+          <Image
+            source={require('../../assets/topics.png')}
+            style={styles.sectionImage}
+            accessible={true}
+            accessibilityLabel="chat bubbles with hashtags"
+          />
+          <Text style={styles.sectionText}>Do you want to search by topic?</Text>
+        </View>
+        <Text style={styles.bodyText}>
+          Type in something you enjoy and want your friends to enjoy as well.
+        </Text>
+      </View>
 
       <View 
         style={styles.searchSection}
@@ -310,6 +421,23 @@ const FindYourFriendsScreen = ({ navigation }) => {
           accessibilityLabel="Search text input"
           accessibilityHint="Enter topics to search for friends"
         />
+      </View>
+
+      <ArrowAnimation />
+
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionContent}>
+          <Image
+            source={require('../../assets/words.png')}
+            style={styles.sectionImage}
+            accessible={true}
+            accessibilityLabel="a man with word bubbles around him"
+          />
+          <Text style={styles.sectionText}>What do you want your friends to be like?</Text>
+        </View>
+        <Text style={styles.bodyText}>
+          Tap the words that describe your new friend.
+        </Text>
       </View>
 
       <View 
@@ -372,6 +500,21 @@ const FindYourFriendsScreen = ({ navigation }) => {
       )}
       
   
+      <View style={styles.resultsContainer}>
+        <View style={styles.resultsContent}>
+          <Image
+            source={require('../../assets/friends-icon.png')}
+            style={styles.resultsImage}
+            accessible={true}
+            accessibilityLabel="friends smiling in a group"
+          />
+          <Text style={styles.resultsText}>Your Results</Text>
+        </View>
+        <Text style={styles.bodyText}>
+          Tap the card below to see your new friend's profile
+        </Text>
+      </View>
+      <ArrowAnimation />
 
       <View style={styles.resultsContainer}>
         
@@ -430,7 +573,6 @@ const styles = StyleSheet.create({
   },
   
   questionCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 10,
     padding: 20,
     marginBottom: 15,
@@ -533,7 +675,7 @@ const styles = StyleSheet.create({
   },
   
   avatarContainer: {
-    marginRight: 15,
+    marginRight: 20,
   },
   
   avatar: {
@@ -617,6 +759,7 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+    marginLeft: 10,
   },
   cardContainer: {
     position: 'relative',
@@ -686,6 +829,82 @@ const styles = StyleSheet.create({
   ageSeparatorText: {
     fontSize: 16,
     color: '#666',
+  },
+  headerContainer: {
+    padding: 20,
+  },
+  headerContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerImage: {
+    width: 300,
+    height: 200,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#24269B',
+    textAlign: 'center',
+   
+  },
+  bodyText: {
+    fontSize: 16,
+    color: '#000000',
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  sectionText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#24269B',
+    flex: 1,
+  },
+  sectionContainer: {
+    padding: 20,
+  },
+  sectionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionImage: {
+    width: 100,
+    height: 100,
+    resizeMode: 'contain',
+    marginRight: 12,
+  },
+  arrowContainer: {
+    alignItems: 'center',
+    height: 140,
+  
+  },
+  arrow: {
+    fontSize: 100,
+    color: '#24269B',
+    fontWeight: 'bold',
+  },
+  resultsContainer: {
+    padding: 20,
+  },
+  resultsContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  resultsImage: {
+    width: 300,
+    height: 200,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  resultsText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#24269B',
+    textAlign: 'center',
   },
 });
 

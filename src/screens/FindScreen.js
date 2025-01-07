@@ -113,10 +113,10 @@ const FindScreen = ({ navigation }) => {
           >
             <Text style={styles.buttonText}>Find a Friend</Text>
             <Image 
-              source={require('../../assets/friends-active.png')} 
+              source={require('../../assets/friends-icon.png')} 
               style={styles.buttonIcon}
               accessible={true}
-              accessibilityLabel="Friends icon"
+              accessibilityLabel="three friends together in a group"
               accessibilityRole="image"
             />
           </View>
@@ -144,10 +144,10 @@ const FindScreen = ({ navigation }) => {
           >
             <Text style={styles.buttonDateText}>Find a Date</Text>
             <Image 
-              source={require('../../assets/find-a-date.png')} 
+              source={require('../../assets/dating-icon.png')} 
               style={styles.buttonIcon}
               accessible={true}
-              accessibilityLabel="Dating icon"
+              accessibilityLabel="two people chatting on their phones"
               accessibilityRole="image"
             />
           </View>
