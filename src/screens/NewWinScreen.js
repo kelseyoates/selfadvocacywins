@@ -401,10 +401,10 @@ const NewWinScreen = ({ navigation }) => {
             />
             <Text style={styles.helperTitle}>How to Share Your Win</Text>
             <View style={styles.helperInstructions}>
-              <Text style={styles.helperText}>1. Write about your win in the text box</Text>
-              <Text style={styles.helperText}>2. Add a photo or video if you'd like</Text>
+              <Text style={styles.helperText}>1. Tap the box to write something about your win. You can skip this if you just want to share a photo or video.</Text>
+              <Text style={styles.helperText}>2. Tap to add a photo or video if you'd like</Text>
               <Text style={styles.helperText}>3. Tap "Post Win" to share with everyone!</Text>
-              <Text style={styles.helperText}>FYI You do not need to add text to share your win. You can just add a photo or video.</Text>
+             
             </View>
           </View>
         </View>

@@ -16,6 +16,7 @@ import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { isSupporterFor } from '../services/cometChat';
 import { auth } from '../config/firebase';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 const ChatMainScreen = ({ navigation }) => {
   const [conversations, setConversations] = useState([]);
@@ -25,6 +26,7 @@ const ChatMainScreen = ({ navigation }) => {
   const [supporterAccess, setSupporterAccess] = useState({});
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const [userData, setUserData] = useState(null);
+  const { showHelpers } = useAccessibility();
 
   useEffect(() => {
     navigation.setOptions({
@@ -326,6 +328,50 @@ const ChatMainScreen = ({ navigation }) => {
       accessibilityLabel="Chat conversations"
     >
       <FlatList
+        ListHeaderComponent={() => (
+          <>
+            {showHelpers && (
+              <View style={styles.helperSection}>
+                <View style={styles.helperHeader}>
+                  <MaterialCommunityIcons 
+                    name="information" 
+                    size={24} 
+                    color="#24269B"
+                    style={styles.infoIcon}
+                    accessible={true}
+                    accessibilityLabel="Helper information"
+                  />
+                </View>
+                <View style={styles.helperContent}>
+                  <Image 
+                    source={require('../../assets/liam-messages.png')}
+                    style={styles.helperImage}
+                    accessible={true}
+                    accessibilityLabel="Liam showing chat features"
+                  />
+                  <Text style={styles.helperTitle}>Start Chatting!</Text>
+                  <View style={styles.helperTextContainer}>
+                    <Text style={styles.helperText}>
+                      • Tap the dark blue "New Chat" button to start a conversation
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • Chat with one person or create a group chat
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • Your chats will appear in this list
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • There are lots of built in safety features. If someone is bothering you, please block and report them.
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • Have fun chatting!
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </>
+        )}
         data={conversations}
         renderItem={renderConversation}
         keyExtractor={item => item.conversationId}
@@ -555,6 +601,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+  },
+
+  helperSection: {
+    width: '100%',
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    margin: 15,
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
+  },
+  helperContent: {
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  helperImage: {
+    width: 200,
+    height: 150,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  helperTextContainer: {
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  helperText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  listHeaderSpace: {
+    height: 10,
   },
 });
 
