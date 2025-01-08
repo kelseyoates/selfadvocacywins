@@ -19,7 +19,7 @@ const SUBSCRIPTION_OPTIONS = {
     {
       id: 'selfAdvocateDating',
       title: 'Self-Advocate Dating',
-      price: '$15/month',
+      price: '$20/month',
       description: 'Access to supporters and dating',
       planType: 'selfAdvocateDating'
     }
@@ -29,21 +29,21 @@ const SUBSCRIPTION_OPTIONS = {
       id: 'supporterOne',
       title: 'Supporter One',
       price: '$10/month',
-      description: 'Support one self-advocate',
+      description: 'one user can support one self-advocate',
       planType: 'supporterOne'
     },
     {
       id: 'supporterFive',
       title: 'Supporter Five',
-      price: '$15/month',
-      description: 'Support up to five self-advocates',
+      price: '$50/month',
+      description: 'one user can support up to five self-advocates',
       planType: 'supporterFive'
     },
     {
       id: 'supporterTen',
       title: 'Supporter Ten',
-      price: '$20/month',
-      description: 'Support up to ten self-advocates',
+      price: '$100/month',
+      description: 'one user can support up to ten self-advocates',
       planType: 'supporterTen'
     }
   ]
@@ -195,7 +195,7 @@ const SubscriptionOptionsScreen = () => {
 
       <SubscriptionCard
         title="Self-Advocate - Dating"
-        price="$15/month"
+        price="$20/month"
         titleBackgroundColor="#FF99DC"
         planType="selfAdvocateDating"
         onUpgrade={handleUpgrade}
@@ -271,7 +271,7 @@ const SubscriptionOptionsScreen = () => {
 
 <SubscriptionCard
         title="Supporter - Five"
-        price="$15/month"
+        price="$50/month"
         titleBackgroundColor="#F1AD1F"
         planType="supporterFive"
         onUpgrade={handleUpgrade}

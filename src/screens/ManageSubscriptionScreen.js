@@ -87,10 +87,10 @@ const ManageSubscriptionScreen = () => {
         accessibilityRole="text"
         accessibilityLabel={`Current plan: ${
           currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus, ten dollars per month' :
-          currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating, fifteen dollars per month' :
+          currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating, twenty dollars per month' :
           currentSubscription === 'supporter1' ? 'Supporter 1, ten dollars per month' :
-          currentSubscription === 'supporter5' ? 'Supporter 5, fifteen dollars per month' :
-          currentSubscription === 'supporter10' ? 'Supporter 10, twenty dollars per month' :
+          currentSubscription === 'supporter5' ? 'Supporter 5, fifty dollars per month' :
+          currentSubscription === 'supporter10' ? 'Supporter 10, one hundred dollars per month' :
           'Self Advocate, Free plan'
         }`}
       >
@@ -99,8 +99,8 @@ const ManageSubscriptionScreen = () => {
           {currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus - $10/month' :
            currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating - $15/month' :
            currentSubscription === 'supporter1' ? 'Supporter 1 - $10/month' :
-           currentSubscription === 'supporter5' ? 'Supporter 5 - $15/month' :
-           currentSubscription === 'supporter10' ? 'Supporter 10 - $20/month' :
+           currentSubscription === 'supporter5' ? 'Supporter 5 - $50/month' :
+           currentSubscription === 'supporter10' ? 'Supporter 10 - $100/month' :
            'Self Advocate - Free'}
         </Text>
       </View>
@@ -156,7 +156,7 @@ const ManageSubscriptionScreen = () => {
               accessibilityHint="Double tap to change to the dating plan"
             >
               <Text style={styles.planTitle}>Switch to Self Advocate Dating</Text>
-              <Text style={styles.planPrice}>$15/month</Text>
+              <Text style={styles.planPrice}>$20/month</Text>
               <Text style={styles.planDescription}>All Plus features and dating access</Text>
             </TouchableOpacity>
           )}
@@ -191,7 +191,7 @@ const ManageSubscriptionScreen = () => {
               accessibilityHint="Double tap to change to the supporter 5 plan"
             >
               <Text style={styles.planTitle}>Switch to Supporter - 5</Text>
-              <Text style={styles.planPrice}>$15/month</Text>
+              <Text style={styles.planPrice}>$50/month</Text>
               <Text style={styles.planDescription}>Support up to five self-advocates</Text>
             </TouchableOpacity>
           )}
@@ -206,7 +206,7 @@ const ManageSubscriptionScreen = () => {
               accessibilityHint="Double tap to change to the supporter 10 plan"
             >
               <Text style={styles.planTitle}>Switch to Supporter - 10</Text>
-              <Text style={styles.planPrice}>$20/month</Text>
+              <Text style={styles.planPrice}>$100/month</Text>
               <Text style={styles.planDescription}>Support up to ten self-advocates</Text>
             </TouchableOpacity>
           )}

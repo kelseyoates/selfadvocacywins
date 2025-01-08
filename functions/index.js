@@ -48,7 +48,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
             subscriptionType = "selfAdvocatePlus";
             console.log("Matched Self Advocate Plus payment link");
             break;
-          case "plink_1Qcy3HKsSm8QZ3xY8CXish4i":
+          case "plink_1Qf4nbKsSm8QZ3xYk9Rvuszt":
             subscriptionType = "selfAdvocateDating";
             console.log("Matched Self Advocate Dating payment link");
             break;
@@ -56,11 +56,11 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
             subscriptionType = "supporter1";
             console.log("Matched Supporter 1 payment link");
             break;
-          case "plink_1Qcy43KsSm8QZ3xYyj686UkD":
+          case "plink_1Qf4qhKsSm8QZ3xYs07CpFKw":
             subscriptionType = "supporter5";
             console.log("Matched Supporter 5 payment link");
             break;
-          case "plink_1Qcy4QKsSm8QZ3xYp3aXfVVT":
+          case "plink_1Qf4tkKsSm8QZ3xYVyhUiT08":
             subscriptionType = "supporter10";
             console.log("Matched Supporter 10 payment link");
             break;
@@ -109,7 +109,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
               subscriptionType = "selfAdvocatePlus";
               console.log("Updated to Self Advocate Plus");
               break;
-            case "price_1QcsdUKsSm8QZ3xY5eSumBGO":
+            case "price_1Qf4mcKsSm8QZ3xYD8Hh8rzt":
               subscriptionType = "selfAdvocateDating";
               console.log("Updated to Self Advocate Dating");
               break;
@@ -117,11 +117,11 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
               subscriptionType = "supporter1";
               console.log("Updated to Supporter 1");
               break;
-            case "price_1QcsYoKsSm8QZ3xY16MyY6zn":
+            case "price_1Qf4pmKsSm8QZ3xY0C3Fwxif":
               subscriptionType = "supporter5";
               console.log("Updated to Supporter 5");
               break;
-            case "price_1Qcsa4KsSm8QZ3xYfQPyK6AA":
+            case "price_1Qf4f8KsSm8QZ3xYiuh0anYD":
               subscriptionType = "supporter10";
               console.log("Updated to Supporter 10");
               break;
