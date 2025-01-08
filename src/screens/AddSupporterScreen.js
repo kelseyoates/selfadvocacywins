@@ -9,7 +9,7 @@ import {
   Alert,
   AccessibilityInfo 
 } from 'react-native';
-import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { auth, db} from '../config/firebase';
 
 const AddSupporterScreen = ({ navigation }) => {
@@ -91,48 +91,84 @@ const AddSupporterScreen = ({ navigation }) => {
     setLoading(false);
   };
 
-  const handleAddSupporter = async (selectedUser) => {
+  const handleAddSupporter = async (userToSupport) => {
     try {
-      announceToScreenReader('Adding supporter');
-      const currentUserId = auth.currentUser.uid.toLowerCase();
-      console.log('Current user id:', currentUserId);
-      
-      // Get current user's document
-      const userDoc = await getDoc(doc(db, 'users', currentUserId));
-      if (!userDoc.exists()) {
-        throw new Error('User document not found');
-      }
+      // Check if the supporter has reached their limit
+      const supporterDoc = await getDoc(doc(db, 'users', userToSupport.id.toLowerCase()));
+      const supporterData = supporterDoc.data();
+      const supporterTier = supporterData.subscriptionType;
 
-      const currentSupporters = userDoc.data().supporters || [];
+      console.log('Supporter tier:', supporterTier);
+
+      const maxSupported = {
+        'supporter1': 1,
+        'supporter3': 3,
+        'supporter5': 5,
+        'supporter10': 10,
+        'supporter25': 25,
+        null: 0,
+        undefined: 0
+      };
+
+      const supporterLimit = supporterTier?.startsWith('supporter') 
+        ? (maxSupported[supporterTier] || 1)
+        : 0;
+
+      // Get all users this supporter is currently supporting
+      const usersRef = collection(db, 'users');
+      const allUsersSnapshot = await getDocs(usersRef);
       
-      // Check if already a supporter
-      if (currentSupporters.some(supporter => supporter.id === selectedUser.id)) {
-        Alert.alert('Already Added', 'This person is already one of your supporters');
+      let currentSupportCount = 0;
+      allUsersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        if (userData.supporters?.some(supporter => 
+          supporter.id.toLowerCase() === userToSupport.id.toLowerCase()
+        )) {
+          currentSupportCount++;
+        }
+      });
+
+      console.log('Current support count:', currentSupportCount);
+      console.log('Supporter limit:', supporterLimit);
+
+      if (currentSupportCount >= supporterLimit) {
+        Alert.alert(
+          'Supporter Limit Reached',
+          `This supporter has reached their limit of ${supporterLimit} ${supporterLimit === 1 ? 'person' : 'people'}. Please ask them to upgrade their subscription to support more users.`,
+          [
+            {
+              text: 'OK',
+              style: 'default'
+            }
+          ]
+        );
         return;
       }
 
-      // Add new supporter
-      const newSupporter = {
-        name: selectedUser.username || selectedUser.name || 'Unknown',
-        email: selectedUser.email,
-        id: selectedUser.id,
-        username: selectedUser.username,
-        profilePicture: selectedUser.profilePicture || null
-      };
-
-      await updateDoc(doc(db, 'users', currentUserId), {
-        supporters: [...currentSupporters, newSupporter]
+      // If within limits, add the supporter
+      const userRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
+      await updateDoc(userRef, {
+        supporters: arrayUnion({
+          id: userToSupport.id.toLowerCase(),
+          addedAt: new Date().toISOString(),
+          username: supporterData.username || 'Unknown User'
+        })
       });
 
-      announceToScreenReader('Supporter added successfully');
+      // Show success message
       Alert.alert(
         'Success',
         'Supporter added successfully!',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack()
+          }
+        ]
       );
+
     } catch (error) {
       console.error('Error adding supporter:', error);
-      announceToScreenReader('Failed to add supporter');
       Alert.alert('Error', 'Failed to add supporter');
     }
   };

@@ -6,10 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Image
+  Image,
+  Alert
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAccessibility } from '../context/AccessibilityContext';
@@ -18,11 +19,30 @@ const SupporterDashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [supportedUsers, setSupportedUsers] = useState([]);
+  const [userSubscription, setUserSubscription] = useState(null);
   const { showHelpers } = useAccessibility();
 
   useEffect(() => {
-    fetchUserData();
+    const loadData = async () => {
+      await fetchUserSubscription();
+      await fetchUserData();
+    };
+    
+    loadData();
   }, []);
+
+  const fetchUserSubscription = async () => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid.toLowerCase()));
+      if (userDoc.exists()) {
+        const subscription = userDoc.data().subscriptionTier;
+        console.log('Current subscription:', subscription); // Debug log
+        setUserSubscription(subscription);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -44,6 +64,32 @@ const SupporterDashboardScreen = ({ navigation }) => {
           });
         }
       });
+
+      // Debug logs
+      console.log('Current subscription tier:', userSubscription);
+      console.log('Current supported users:', supportedUsersData.length);
+
+      // Check subscription limits
+      const maxSupported = {
+        'supporter1': 1,
+        'supporter3': 3,
+        'supporter5': 5,
+        'supporter10': 10,
+        'supporter25': 25,
+        null: 0, // Default case
+        undefined: 0 // Default case
+      };
+
+      const limit = maxSupported[userSubscription] || 1; // Default to 1 if supporter1
+
+      // If over limit, only keep the first N users based on subscription
+      if (supportedUsersData.length > limit) {
+        supportedUsersData = supportedUsersData.slice(0, limit);
+        Alert.alert(
+          'Subscription Limit Reached',
+          `Your current subscription allows you to support up to ${limit} ${limit === 1 ? 'person' : 'people'}. Please upgrade your subscription to support more users.`
+        );
+      }
 
       setSupportedUsers(supportedUsersData);
     } catch (error) {
