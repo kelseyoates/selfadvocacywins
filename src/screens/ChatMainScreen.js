@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   Image,
   ActivityIndicator,
-  AccessibilityInfo
+  AccessibilityInfo,
+  Alert
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -217,6 +218,32 @@ const ChatMainScreen = ({ navigation }) => {
     }
   };
 
+  const handleDeleteConversation = async (conversation) => {
+    try {
+      console.log('Deleting conversation:', conversation.conversationId);
+      
+      // Delete the conversation from CometChat
+      await CometChat.deleteConversation(
+        conversation.conversationWith.uid,
+        conversation.conversationType
+      );
+      
+      // Update local state
+      setConversations(prev => 
+        prev.filter(conv => conv.conversationId !== conversation.conversationId)
+      );
+      
+      announceToScreenReader('Conversation deleted successfully');
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      Alert.alert(
+        'Error',
+        'Failed to delete conversation. Please try again.'
+      );
+      announceToScreenReader('Failed to delete conversation');
+    }
+  };
+
   const renderConversation = ({ item }) => {
     const isGroup = item.conversationType === CometChat.RECEIVER_TYPE.GROUP;
     
@@ -263,13 +290,34 @@ const ChatMainScreen = ({ navigation }) => {
       supporterAccess[conversationId] ? 'You are a supporter. ' : ''
     }Last message: ${lastMessage}`;
 
+    const handleLongPress = () => {
+      Alert.alert(
+        'Delete Conversation',
+        'Are you sure you want to delete this conversation?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => announceToScreenReader('Delete cancelled')
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => handleDeleteConversation(item)
+          }
+        ],
+        { cancelable: true }
+      );
+    };
+
     return (
       <TouchableOpacity 
         style={styles.conversationItem}
         onPress={navigateToChat}
+        onLongPress={handleLongPress}
         accessible={true}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityHint="Double tap to open conversation"
+        accessibilityLabel={`${accessibilityLabel}. Long press to delete conversation`}
+        accessibilityHint="Double tap to open conversation, double tap and hold to delete"
         accessibilityRole="button"
       >
         <View style={styles.avatarContainer}>
@@ -361,7 +409,16 @@ const ChatMainScreen = ({ navigation }) => {
                       • Your chats will appear in this list
                     </Text>
                     <Text style={styles.helperText}>
-                      • There are lots of built in safety features. If someone is bothering you, please block and report them.
+                      • There are lots of built in safety features. If someone is bothering you, press and hold on their message and select "Report"
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • To delete your own message, press and hold on it and select "Delete"
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • To delete a conversation, press and hold on it and select "Delete Conversation"
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • To leave a group, tap the group info button and select "Leave Group"
                     </Text>
                     <Text style={styles.helperText}>
                       • Have fun chatting!

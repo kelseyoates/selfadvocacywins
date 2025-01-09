@@ -5,7 +5,8 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  Dimensions
+  Dimensions,
+  Image
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
@@ -48,7 +49,7 @@ const SupportedUserChatDetailsScreen = ({ route, navigation }) => {
         // Filter out system messages if needed
         const validMessages = fetchedMessages.filter(msg => 
           msg.category === 'message' && 
-          msg.type === 'text'
+          (msg.type === 'text' || msg.type === 'image')
         );
 
         setMessages(validMessages.reverse());
@@ -95,6 +96,10 @@ const SupportedUserChatDetailsScreen = ({ route, navigation }) => {
 
   const renderMessage = ({ item }) => {
     const isSupported = item.sender.uid === supportedUser.uid;
+    const timestamp = new Date(item.sentAt * 1000).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
     
     return (
       <View style={[
@@ -105,18 +110,26 @@ const SupportedUserChatDetailsScreen = ({ route, navigation }) => {
           styles.messageBubble,
           isSupported ? styles.supportedBubble : styles.otherBubble
         ]}>
-          <Text style={[
-            styles.messageText,
-            isSupported ? styles.supportedText : styles.otherText
-          ]}>
-            {item.text}
-          </Text>
-          <Text style={styles.timestamp}>
-            {new Date(item.sentAt * 1000).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </Text>
+          {/* Handle image messages */}
+          {item.type === 'image' && (
+            <Image
+              source={{ uri: item.data.url }}
+              style={styles.mediaContent}
+              resizeMode="contain"
+            />
+          )}
+
+          {/* Text content */}
+          {item.text && (
+            <Text style={[
+              styles.messageText,
+              isSupported ? styles.supportedText : styles.otherText
+            ]}>
+              {item.text}
+            </Text>
+          )}
+          
+          <Text style={styles.timestamp}>{timestamp}</Text>
         </View>
       </View>
     );
@@ -208,6 +221,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  mediaContent: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    marginVertical: 4,
+  }
 });
 
 export default SupportedUserChatDetailsScreen; 

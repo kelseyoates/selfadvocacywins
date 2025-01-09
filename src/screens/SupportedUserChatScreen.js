@@ -108,6 +108,22 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
       new Date(lastMessage.sentAt * 1000).toLocaleDateString() : 
       'No date';
 
+    // Get appropriate preview text based on message type
+    const getMessagePreview = (message) => {
+      if (!message) return 'No messages';
+      
+      switch (message.type) {
+        case 'text':
+          return message.text;
+        case 'image':
+          return '📷 Image';
+        case 'video':
+          return '🎥 Video';
+        default:
+          return 'Message';
+      }
+    };
+
     return (
       <TouchableOpacity 
         style={styles.conversationItem}
@@ -120,7 +136,7 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
         )}
         accessible={true}
         accessibilityRole="button"
-        accessibilityLabel={`${isGroupChat ? 'Group chat' : 'Chat'} with ${otherUser?.name || 'Unknown User'}. Last message: ${lastMessage?.text || 'No messages'}. ${timestamp}`}
+        accessibilityLabel={`${isGroupChat ? 'Group chat' : 'Chat'} with ${otherUser?.name || 'Unknown User'}. Last message: ${getMessagePreview(lastMessage)}. ${timestamp}`}
         accessibilityHint={`Double tap to view ${isGroupChat ? 'group chat' : 'chat'} details`}
       >
         <View 
@@ -136,7 +152,7 @@ const SupportedUserChatScreen = ({ route, navigation }) => {
           </Text>
         </View>
         <Text style={styles.lastMessage}>
-          {lastMessage?.text || 'No messages'}
+          {getMessagePreview(lastMessage)}
         </Text>
         <Text 
           style={styles.readOnlyBadge}

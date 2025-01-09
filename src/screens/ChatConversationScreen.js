@@ -81,11 +81,12 @@ const ChatConversationScreen = ({ route, navigation }) => {
       const fetchedMessages = await messagesRequest.fetchPrevious();
       console.log("Fetched messages count:", fetchedMessages.length);
       
-      // Filter out action and system messages
+      // Filter out action, system, and deleted messages
       const validMessages = fetchedMessages.filter(msg => 
         msg.category !== 'action' && 
         msg.category !== 'system' && 
-        msg.senderId !== 'app_system'
+        msg.senderId !== 'app_system' &&
+        !msg.deletedAt  // Add this check for deleted messages
       );
       
       console.log("Valid messages count:", validMessages.length);
@@ -432,107 +433,111 @@ const ChatConversationScreen = ({ route, navigation }) => {
   };
 
   const handleMessageLongPress = (message) => {
-    // Don't show report option for own messages
-    if (message.sender.uid === currentUser.uid) return;
-
-    // Don't show report option if user already reported
-    if (reportedUsers.has(message.sender.uid)) {
-      Alert.alert('Already Reported', 'You have already reported this user.');
-      return;
-    }
-
+    console.log('Long press detected on message:', message.id);
+    
+    // Only show delete option for own messages
+    const isOwnMessage = message.sender.uid === currentUser?.uid;
+    console.log('Is own message:', isOwnMessage);
+    console.log('Current user:', currentUser?.uid);
+    console.log('Message sender:', message.sender.uid);
+    
     Alert.alert(
-      'Report Message',
-      'Would you like to report this message for inappropriate content?',
+      isOwnMessage ? 'Message Options' : 'Report Message',
+      isOwnMessage ? 'What would you like to do with this message?' : 'Would you like to report this message?',
       [
+        {
+          text: isOwnMessage ? 'Delete Message' : 'Report Message',
+          style: 'destructive',
+          onPress: () => {
+            if (isOwnMessage) {
+              handleDeleteMessage(message);
+            } else {
+              // Report logic
+              if (reportedUsers.has(message.sender.uid)) {
+                Alert.alert('Already Reported', 'You have already reported this user.');
+                return;
+              }
+              Alert.alert(
+                'Report Reason',
+                'Why are you reporting this message?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Inappropriate Content',
+                    onPress: () => handleReportUser(message.sender.uid, message.id, 'inappropriate_content')
+                  },
+                  {
+                    text: 'Personal Information',
+                    onPress: () => handleReportUser(message.sender.uid, message.id, 'personal_information')
+                  },
+                  {
+                    text: 'Harassment',
+                    onPress: () => handleReportUser(message.sender.uid, message.id, 'harassment')
+                  }
+                ]
+              );
+            }
+          }
+        },
         {
           text: 'Cancel',
           style: 'cancel'
-        },
-        {
-          text: 'Report',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Report Reason',
-              'Why are you reporting this message?',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel'
-                },
-                {
-                  text: 'Inappropriate Content',
-                  onPress: () => handleReportUser(message.sender.uid, message.id, 'inappropriate_content')
-                },
-                {
-                  text: 'Personal Information',
-                  onPress: () => handleReportUser(message.sender.uid, message.id, 'personal_information')
-                },
-                {
-                  text: 'Harassment',
-                  onPress: () => handleReportUser(message.sender.uid, message.id, 'harassment')
-                }
-              ]
-            );
-          }
         }
       ]
     );
   };
 
   const renderMessage = ({ item }) => {
-    // Skip action and system messages
-    if (item.category === 'action' || 
-        item.senderId === 'app_system' || 
-        item.category === 'system') {
-      return null;
-    }
-
     const isMyMessage = item.sender?.uid === currentUser?.uid;
-    const senderName = isMyMessage ? 'You' : (item.sender?.name || 'Other User');
-    const timeString = new Date(item.sentAt * 1000).toLocaleString();
-    
-    return (
-      <View 
-        style={[styles.messageContainer, isMyMessage ? styles.myMessage : styles.theirMessage]}
-        accessible={true}
-        accessibilityLabel={`Message from ${senderName} at ${timeString}: ${
-          item.type === 'text' ? item.text : 'Image message'
-        }`}
-      >
-        {!isMyMessage && (
-          <Text 
-            style={styles.senderName}
-            accessibilityLabel={`Sent by ${senderName}`}
-          >
-            {senderName}
-          </Text>
-        )}
-        
-        {item.type === 'text' ? (
-          <Text 
-            style={[styles.messageText, isMyMessage ? styles.myMessageText : styles.theirMessageText]}
-          >
-            {item.text}
-          </Text>
-        ) : item.type === 'image' ? (
-          <Image
-            source={{ uri: item.data?.url, cache: 'force-cache' }}
-            style={styles.messageImage}
-            resizeMode="contain"
-            accessible={true}
-            accessibilityLabel={`Image sent by ${senderName}`}
-          />
-        ) : null}
+    const timestamp = new Date(item.sentAt * 1000).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
-        <Text 
-          style={[styles.timestamp, isMyMessage ? styles.myTimestamp : styles.theirTimestamp]}
-          accessibilityLabel={`Sent at ${timeString}`}
-        >
-          {timeString}
-        </Text>
-      </View>
+    return (
+      <TouchableOpacity
+        onLongPress={() => {
+          console.log('Long press triggered');
+          handleMessageLongPress(item);
+        }}
+        delayLongPress={500}
+        accessible={true}
+        accessibilityLabel={`${isMyMessage ? 'Your' : item.sender?.name + "'s"} message: ${item.text}. Sent at ${timestamp}. Long press for options.`}
+        accessibilityHint="Double tap and hold to open message options"
+      >
+        <View style={[
+          styles.messageContainer,
+          isMyMessage ? styles.myMessage : styles.theirMessage
+        ]}>
+          {!isMyMessage && (
+            <Text style={styles.senderName}>{item.sender?.name}</Text>
+          )}
+          
+          {item.type === 'text' && (
+            <Text style={[
+              styles.messageText,
+              isMyMessage ? styles.myMessageText : styles.theirMessageText
+            ]}>
+              {item.text}
+            </Text>
+          )}
+          
+          {item.type === 'image' && (
+            <Image
+              source={{ uri: item.data?.url }}
+              style={styles.messageImage}
+              resizeMode="cover"
+            />
+          )}
+          
+          <Text style={[
+            styles.timestamp,
+            isMyMessage ? styles.myTimestamp : styles.theirTimestamp
+          ]}>
+            {timestamp}
+          </Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -681,6 +686,64 @@ const ChatConversationScreen = ({ route, navigation }) => {
       </View>
     );
   };
+
+  // Add this function near your other handlers
+  const handleDeleteMessage = async (message) => {
+    try {
+      console.log('Attempting to delete message:', message.id);
+      
+      // Delete the message from CometChat
+      await CometChat.deleteMessage(message.id);
+      console.log('Message deleted from CometChat');
+      
+      // Remove message from local state - ensure we're matching the exact message
+      setMessages(prevMessages => {
+        const updatedMessages = prevMessages.filter(msg => {
+          console.log('Comparing message IDs:', msg.id, message.id);
+          return msg.id.toString() !== message.id.toString();
+        });
+        console.log('Messages before:', prevMessages.length, 'Messages after:', updatedMessages.length);
+        return updatedMessages;
+      });
+      
+      // Show success message
+      Alert.alert(
+        'Success',
+        'Message deleted successfully'
+      );
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      Alert.alert(
+        'Error',
+        'Failed to delete message. Please try again.'
+      );
+    }
+  };
+
+  // Also update the message listener to handle deleted messages
+  useEffect(() => {
+    const listenerID = "MESSAGE_LISTENER_" + Date.now();
+    
+    CometChat.addMessageListener(
+      listenerID,
+      new CometChat.MessageListener({
+        onTextMessageReceived: message => {
+          console.log("New message received:", message);
+          if (message.sender.uid === uid || message.receiver.uid === uid) {
+            setMessages(prev => [...prev, message]);
+          }
+        },
+        onMessageDeleted: deletedMessage => {
+          console.log("Message deleted:", deletedMessage);
+          setMessages(prev => prev.filter(msg => msg.id.toString() !== deletedMessage.id.toString()));
+        }
+      })
+    );
+
+    return () => {
+      CometChat.removeMessageListener(listenerID);
+    };
+  }, [uid]);
 
   return (
     <KeyboardAvoidingView 
