@@ -1,30 +1,31 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const stripe = require("stripe")("sk_test_5iwXahUlMmEEjqQkE4KddFI2");
+const stripe = require("stripe")("sk_live_y5iqnq60z1CCYuD98ftQeUPw");
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST");
-  res.set("Access-Control-Allow-Headers", "Content-Type, stripe-signature");
+  const webhookSecret = "whsec_BpV5SCNlIg7w78jKwlJyhXkXubvqCdm0";
 
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-
-  console.log("Webhook received with headers:", req.headers);
-  console.log("Request path:", req.path);
+  let event;
 
   try {
-    const event = await stripe.webhooks.constructEvent(
-        req.rawBody || req.body,
-        req.headers["stripe-signature"],
-        "whsec_45TCT7uHzJFBfykkOEdguj61OFuQLIn2",
-    );
+    const sig = req.headers["stripe-signature"];
+    const rawBody = req.rawBody;
+
+    if (!sig || !rawBody) {
+      console.error("No signature or raw body found");
+      return res.status(400).send("Missing signature or raw body");
+    }
+
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    } catch (err) {
+      console.error(`Webhook signature verification failed:`, err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
 
     console.log("Event constructed:", event.type);
     console.log("Event data:", event.data.object);
@@ -36,6 +37,17 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         const session = event.data.object;
         console.log("Full session data:", JSON.stringify(session, null, 2));
 
+        if (session.promotion_code) {
+          console.log("Promotion code used:", session.promotion_code);
+        }
+        if (session.total_details && session.total_details.breakdown) {
+          console.log("Discount details:",
+              session.total_details.breakdown.discounts);
+        }
+        if (session.discount) {
+          console.log("Discount applied:", session.discount);
+        }
+
         const userId = session.client_reference_id.toLowerCase();
         if (!userId) {
           console.error("No userId found in webhook data");
@@ -44,29 +56,33 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 
         let subscriptionType = "unknown";
         switch (session.payment_link) {
-          case "plink_1Qcy2qKsSm8QZ3xYMlW2WoT7":
+          case "plink_1Qf6dRKsSm8QZ3xYyUmSeN60":
             subscriptionType = "selfAdvocatePlus";
             console.log("Matched Self Advocate Plus payment link");
             break;
-          case "plink_1Qf4nbKsSm8QZ3xYk9Rvuszt":
+          case "plink_1Qf6dKKsSm8QZ3xYZgKVuaKt":
             subscriptionType = "selfAdvocateDating";
             console.log("Matched Self Advocate Dating payment link");
             break;
-          case "plink_1Qcy3hKsSm8QZ3xYbacu5Dtd":
+          case "plink_1Qf6dMKsSm8QZ3xYBnyNxIjH":
             subscriptionType = "supporter1";
             console.log("Matched Supporter 1 payment link");
             break;
-          case "plink_1Qf4qhKsSm8QZ3xYs07CpFKw":
+          case "plink_1Qf6iIKsSm8QZ3xYrAU4jqYR":
             subscriptionType = "supporter5";
             console.log("Matched Supporter 5 payment link");
             break;
-          case "plink_1Qf4tkKsSm8QZ3xYVyhUiT08":
+          case "plink_1Qf6dBKsSm8QZ3xYTiufTvcC":
             subscriptionType = "supporter10";
             console.log("Matched Supporter 10 payment link");
             break;
           default:
             console.log("No payment link match found");
         }
+
+        console.log("User ID:", userId);
+        console.log("Subscription Type:", subscriptionType);
+        console.log("Payment Link:", session.payment_link);
 
         const userDoc = await firestore.collection("users").doc(userId).get();
         if (!userDoc.exists) {
@@ -105,23 +121,23 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
           let subscriptionType = "selfAdvocateFree";
 
           switch (subscription.items.data[0].price.id) {
-            case "price_1QcoKMKsSm8QZ3xYMdZytQWI":
+            case "price_1Qf6dRKsSm8QZ3xYVzYg8BSU":
               subscriptionType = "selfAdvocatePlus";
               console.log("Updated to Self Advocate Plus");
               break;
-            case "price_1Qf4mcKsSm8QZ3xYD8Hh8rzt":
+            case "price_1Qf6dKKsSm8QZ3xYzqXIqAVc":
               subscriptionType = "selfAdvocateDating";
               console.log("Updated to Self Advocate Dating");
               break;
-            case "price_1QZDoHKsSm8QZ3xYSkYVFVKW":
+            case "price_1Qf6dMKsSm8QZ3xYNjFNaI36":
               subscriptionType = "supporter1";
               console.log("Updated to Supporter 1");
               break;
-            case "price_1Qf4pmKsSm8QZ3xY0C3Fwxif":
+            case "price_1Qf6cJKsSm8QZ3xYTbJYOL3P":
               subscriptionType = "supporter5";
               console.log("Updated to Supporter 5");
               break;
-            case "price_1Qf4f8KsSm8QZ3xYiuh0anYD":
+            case "price_1Qf6dBKsSm8QZ3xYMxoOPvH2":
               subscriptionType = "supporter10";
               console.log("Updated to Supporter 10");
               break;
@@ -163,7 +179,7 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
 
     return res.json({received: true});
   } catch (error) {
-    console.error("Error processing webhook:", error, error.stack);
-    return res.status(500).send(`Webhook processing failed: ${error.message}`);
+    console.error("Error processing webhook:", error);
+    return res.status(500).send(`Webhook Error: ${error.message}`);
   }
 });

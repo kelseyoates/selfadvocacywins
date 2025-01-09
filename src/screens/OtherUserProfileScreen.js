@@ -144,7 +144,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
     {
       id: 3,
       question: "What I'm like as a friend 🤝:",
-      presetWords: ["supportive", "fun", "honest", "loyal", "trustworthy", "caring", "spontaneous", "funny", "dependable", "patient", "open-minded", "positive"]
+      presetWords: ["supportive", "hilarious", "honest", "loyal", "trustworthy", "caring", "spontaneous", "very fun", "dependable", "patient", "open-minded", "positive"]
     },
     {
       id: 4,
@@ -178,12 +178,6 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
       id: 9,
       question: "My favorite date activities are 🎉:",
       presetWords: ["bowling", "cooking", "dancing", "dining out", "hiking", "movies", "music", "sports", "walking", "watching movies"],
-      isDatingQuestion: true
-    },
-    {
-      id: 10,
-      question: "I would like to meet people in these states 🗺️:",
-      presetWords: ["California", "Florida", "Illinois", "Massachusetts", "New York", "Texas"],
       isDatingQuestion: true
     }
   ];
@@ -476,20 +470,23 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
   // Add this useEffect to check the current user's subscription
   useEffect(() => {
-    const checkCurrentUserSubscription = async () => {
-      if (!auth.currentUser) return;
-      
+    const fetchCurrentUserSubscription = async () => {
+      console.log('Attempting to fetch current user subscription for:', profileUserId);
       try {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        const userData = userDoc.data();
-        setCurrentUserSubscription(userData?.subscriptionType);
+        const userDoc = await getDoc(doc(db, 'users', profileUserId));
+        console.log('Current user doc exists:', userDoc.exists());
+        if (userDoc.exists()) {
+          const subscription = userDoc.data().subscriptionType;
+          console.log('Current user subscription type:', subscription);
+          setCurrentUserSubscription(subscription);
+        }
       } catch (error) {
-        console.error('Error checking subscription:', error);
+        console.error('Error fetching current user subscription:', error);
       }
     };
 
-    checkCurrentUserSubscription();
-  }, []);
+    fetchCurrentUserSubscription();
+  }, [profileUserId]);
 
   if (isLoading) {
     return (
@@ -569,7 +566,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
           accessibilityLabel={`${wins.length} Wins`}
         >
           <Image 
-            source={require('../../assets/wins.png')} 
+            source={require('../../assets/wins-stats.png')} 
             style={styles.statIcon}
             accessibilityRole="image"
           />
@@ -697,8 +694,19 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
 
         {questions.map((item) => {
-          // Skip dating questions if user doesn't have dating subscription
-          if (item.isDatingQuestion && currentUserSubscription !== 'selfAdvocateDating') {
+          console.log('Question:', item.question);
+          console.log('Is Dating Question:', item.isDatingQuestion);
+          console.log('Current User Subscription:', currentUserSubscription);
+          console.log('Profile User Subscription:', profileData?.subscriptionType);
+          
+          const shouldShowDatingQuestion = 
+            !item.isDatingQuestion || 
+            (currentUserSubscription === 'selfAdvocateDating' && 
+             profileData?.subscriptionType === 'selfAdvocateDating');
+
+          console.log('Should Show Question:', shouldShowDatingQuestion);
+          
+          if (!shouldShowDatingQuestion) {
             return null;
           }
           

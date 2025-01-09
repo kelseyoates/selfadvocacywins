@@ -48,16 +48,6 @@ const allQuestions = [
       "visiting museums", "trying new things", "traveling", 
       "going to events", "listening to music"
     ]
-  },
-  {
-    id: 'dating_4',
-    question: "I would like to meet people in these places 🗺️:",
-    words: [
-      "watching movies", "dining out", "cooking together", 
-      "playing games", "sports", "shopping", "hiking", 
-      "visiting museums", "trying new things", "traveling", 
-      "going to events", "listening to music"
-    ]
   }
 ];
 

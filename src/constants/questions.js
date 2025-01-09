@@ -11,8 +11,8 @@ export const questions = [
   },
   {
     id: 3,
-    text: "What your friend is like as a friend 🤝:",
-    words: ["supportive", "fun", "honest", "loyal", "trustworthy", "caring", "spontaneous", "funny", "dependable", "patient", "open-minded", "positive"]
+    question: "What your friend is like 🤝:",
+      presetWords: ["supportive", "hilarious", "honest", "loyal", "trustworthy", "caring", "spontaneous", "very fun", "dependable", "patient", "open-minded", "positive"]
   },
   {
     id: 4,

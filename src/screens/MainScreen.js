@@ -288,7 +288,7 @@ const MainScreen = ({ navigation }) => {
           <View style={styles.headerIconContainer}>
           <TouchableWithoutFeedback onPress={animatePress}>
             <Animated.Image 
-              source={require('../../assets/clapping.png')} 
+              source={require('../../assets/cheers.png')} 
               style={[
                 styles.headerIcon,
                 {
@@ -337,9 +337,7 @@ const MainScreen = ({ navigation }) => {
             />
           </TouchableWithoutFeedback>
          
-          <View style={styles.headerTextContainer}>
-          <Text style={styles.bodyText}>tap the share button to share a win</Text>
-          </View>
+          <Text style={styles.bodyText}>tap the share icon to share a win</Text>
         </View> 
 
         </View>     

@@ -396,18 +396,22 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
 
   const handleShare = async () => {
     try {
-      // Create a deep link URL (replace with your actual deep link format)
       const deepLink = `selfadvocatelink://win/${win.id}`;
       
+      // Create content description based on available content
+      let contentDescription = win.text 
+        ? `${win.username}'s Win: ${win.text}`
+        : `${win.username}'s Win: View ${win.mediaType || 'media'}`;
+      
       const shareMessage = 
-        `${win.username}'s Win: ${win.text}\n\n` +
+        `${contentDescription}\n\n` +
         `View this win in Self-Advocacy Wins: ${deepLink}\n\n` +
         `Download Self-Advocacy Wins to connect with other self-advocates!`;
       
       const result = await Share.share({
         message: shareMessage,
         title: 'Share this Win',
-        url: deepLink, // This will be used on iOS when available
+        url: deepLink,
       });
       
       if (result.action === Share.sharedAction) {

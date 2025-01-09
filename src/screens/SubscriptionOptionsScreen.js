@@ -294,7 +294,7 @@ const SubscriptionOptionsScreen = () => {
 
 <SubscriptionCard
         title="Supporter - Ten"
-        price="$20/month"
+        price="$100/month"
         titleBackgroundColor="#FF8262"
         planType="supporterTen"
         onUpgrade={handleUpgrade}

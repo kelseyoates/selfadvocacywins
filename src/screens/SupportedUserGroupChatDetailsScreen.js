@@ -5,6 +5,7 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { CometChat } from '@cometchat-pro/react-native-chat';
 import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
@@ -47,7 +48,7 @@ const SupportedUserGroupChatDetailsScreen = ({ route, navigation }) => {
         // Filter out system messages if needed
         const validMessages = fetchedMessages.filter(msg => 
           msg.category === 'message' && 
-          msg.type === 'text'
+          (msg.type === 'text' || msg.type === 'image')
         );
 
         setMessages(validMessages);
@@ -108,28 +109,35 @@ const SupportedUserGroupChatDetailsScreen = ({ route, navigation }) => {
         accessibilityRole="text"
         accessibilityLabel={`Message from ${item.sender.name} at ${timestamp}: ${item.text}`}
       >
+        <Image 
+          source={{ uri: item.sender.avatar || 'default_avatar_url' }}
+          style={[
+            styles.avatar,
+            isSupported ? styles.supportedAvatar : styles.otherAvatar
+          ]}
+          defaultSource={require('../../assets/default-avatar.png')}
+        />
         <View style={[
           styles.messageBubble,
           isSupported ? styles.supportedBubble : styles.otherBubble
         ]}>
-          <Text 
-            style={styles.senderName}
-            accessibilityRole="text"
-          >
+          <Text style={styles.senderName}>
             {item.sender.name}
           </Text>
-          <Text 
-            style={[
-              styles.messageText,
-              isSupported ? styles.supportedText : styles.otherText
-            ]}
-          >
+          {item.type === 'image' && (
+            <Image
+              source={{ uri: item.data.url }}
+              style={styles.messageImage}
+              resizeMode="contain"
+            />
+          )}
+          <Text style={[
+            styles.messageText,
+            isSupported ? styles.supportedText : styles.otherText
+          ]}>
             {item.text}
           </Text>
-          <Text 
-            style={styles.timestamp}
-            accessibilityRole="text"
-          >
+          <Text style={styles.timestamp}>
             {timestamp}
           </Text>
         </View>
@@ -241,6 +249,24 @@ const styles = StyleSheet.create({
         padding: 8,
         fontSize: 14,
         fontWeight: 'bold',
+      },
+      avatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginHorizontal: 8,
+      },
+      supportedAvatar: {
+        order: 1,
+      },
+      otherAvatar: {
+        order: -1,
+      },
+      messageImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 8,
+        marginVertical: 4,
       },
 });
 

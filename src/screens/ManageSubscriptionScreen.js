@@ -31,7 +31,7 @@ const ManageSubscriptionScreen = () => {
   const handleSubscriptionChange = async (newType) => {
     try {
       // For all subscription changes, use the customer portal
-      const portalLink = 'https://billing.stripe.com/p/login/test_7sI025bCyfKp9ryfYY';
+      const portalLink = 'https://billing.stripe.com/p/login/9AQ5lZaOS8EH5LWfYY';
       
       const supported = await Linking.canOpenURL(portalLink);
       

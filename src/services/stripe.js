@@ -2,13 +2,13 @@ import { Linking } from 'react-native';
 import { auth } from '../config/firebase';
 
 const STRIPE_PAYMENT_LINKS = {
-    selfAdvocatePlus: 'https://buy.stripe.com/test_bIYcP87ZlaU6dqgaEF',
-    selfAdvocateDating: 'https://buy.stripe.com/test_8wM7uO7Zl5zMae43ci',
+    selfAdvocatePlus: 'https://buy.stripe.com/9AQ4jWeKLg7O3GUbIM',
+    selfAdvocateDating: 'https://buy.stripe.com/cN27w8auv2gY7Xa8wy',
 
-    supporterOne: 'https://buy.stripe.com/test_dR69CW3J56DQ71ScMP',
-    supporterFive: 'https://buy.stripe.com/test_4gwaH0gvR4vI1Hy007',
+    supporterOne: 'https://buy.stripe.com/dR6bMo6ef5taely28b',
+    supporterFive: 'https://buy.stripe.com/00g8Ac467cVC5P29AF',
 
-    supporterTen: 'https://buy.stripe.com/test_4gw6qK5Rd2nAbi8bIQ'
+    supporterTen: 'https://buy.stripe.com/4gw2bOauv5taa5i000'
     // Add all your subscription tiers
 };
 

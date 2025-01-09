@@ -578,13 +578,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   helperSection: {
-    width: '100%',
+    width: '90%',
     padding: 15,
     backgroundColor: '#f8f8f8',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#24269B',
-    margin: 15,
+    alignSelf: 'center',
+    marginVertical: 15,
   },
   helperHeader: {
     width: '100%',
@@ -600,7 +601,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   helperImage: {
-    width: 200,
+    width: '90%',
     height: 150,
     resizeMode: 'contain',
     marginBottom: 10,
@@ -614,7 +615,7 @@ const styles = StyleSheet.create({
   },
   helperTextContainer: {
     width: '100%',
-    paddingHorizontal: 10,
+    paddingHorizontal: 5,
   },
   helperText: {
     fontSize: 16,

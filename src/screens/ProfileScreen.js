@@ -529,7 +529,7 @@ const ProfileScreen = () => {
     {
       id: 3,
       question: "What I'm like as a friend 🤝:",
-      presetWords: ["supportive", "fun", "honest", "loyal", "trustworthy", "caring", "spontaneous", "funny", "dependable", "patient", "open-minded", "positive"]
+      presetWords: ["supportive", "hilarious", "honest", "loyal", "trustworthy", "caring", "spontaneous", "very fun", "dependable", "patient", "open-minded", "positive"]
     },
     {
       id: 4,
