@@ -76,7 +76,8 @@ const ProfileScreen = () => {
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
 
-
+// gender
+const [gender, setGender] = useState('');
 
   // Add accessibility check effect
   useEffect(() => {
@@ -696,165 +697,6 @@ const ProfileScreen = () => {
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const [showComments, setShowComments] = useState(false);
-  const [selectedWin, setSelectedWin] = useState(null);
-  const [commentUsers, setCommentUsers] = useState({});
-
-  const renderCommentModal = () => {
-    if (!selectedWin) return null;
-
-    return (
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showComments}
-        onRequestClose={() => {
-          setShowComments(false);
-          setSelectedWin(null);
-          setCommentUsers({});
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.commentModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Comments</Text>
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowComments(false);
-                  setSelectedWin(null);
-                  setCommentUsers({});
-                }}
-                style={styles.closeButton}
-              >
-                <MaterialCommunityIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.commentsList}>
-              {selectedWin.comments && selectedWin.comments.length > 0 ? (
-                selectedWin.comments.map((comment, index) => {
-                  const userData = commentUsers[comment.userId];
-                  return (
-                    <View key={index} style={styles.commentItem}>
-                      <View style={styles.commentHeader}>
-                        <Image
-                          source={
-                            userData?.profilePicture
-                              ? { uri: userData.profilePicture }
-                              : require('../../assets/default-profile.png')
-                          }
-                          style={styles.commentUserImage}
-                        />
-                        <View style={styles.commentUserInfo}>
-                          <Text style={styles.commentUsername}>
-                            {userData?.username || 'Loading...'}
-                          </Text>
-                          <Text style={styles.commentTime}>
-                            {formatDate(comment.timestamp || comment.createdAt)}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={styles.commentText}>{comment.text}</Text>
-                    </View>
-                  );
-                })
-              ) : (
-                <Text style={styles.noComments}>No comments yet</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
-
-  const formatDate = (timestamp) => {
-    if (!timestamp) return '';
-    
-    try {
-      const date = new Date(timestamp);
-      
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.log('Invalid date from timestamp:', timestamp);
-        return '';
-      }
-
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      console.log('Error formatting date:', error, 'for timestamp:', timestamp);
-      return '';
-    }
-  };
-
-  // Add this function to fetch user data for comments
-  const fetchCommentUserData = async (comments) => {
-    try {
-      console.log('Starting to fetch comment user data');
-      const userPromises = comments.map(async (comment) => {
-        // Use the same approach as profile data fetching
-        const userRef = doc(db, 'users', comment.userId.toLowerCase());
-        console.log('Fetching user data for:', comment.userId.toLowerCase());
-        
-        try {
-          const userSnapshot = await getDoc(userRef);
-          console.log('User snapshot exists:', userSnapshot.exists());
-          
-          if (userSnapshot.exists()) {
-            const userData = userSnapshot.data();
-            console.log('Found user data:', userData);
-            return {
-              userId: comment.userId,
-              userData: {
-                username: userData.username,
-                state: userData.state,
-                profilePicture: userData.profilePicture
-              }
-            };
-          }
-        } catch (e) {
-          console.error('Error fetching user:', e);
-        }
-        return null;
-      });
-
-      const users = await Promise.all(userPromises);
-      const userDataMap = {};
-      users.forEach(user => {
-        if (user) {
-          userDataMap[user.userId] = user.userData;
-        }
-      });
-      
-      console.log('Final user data map:', userDataMap);
-      setCommentUsers(userDataMap);
-    } catch (error) {
-      console.error('Error in fetchCommentUserData:', error);
-    }
-  };
-
-  // Update the handleShowComments to be async and await the fetch
-  const handleShowComments = async (win) => {
-    try {
-      console.log('Showing comments for win:', win.id);
-      setSelectedWin(win);
-      setShowComments(true);
-      
-      if (win.comments && win.comments.length > 0) {
-        console.log('Found comments:', win.comments);
-        await fetchCommentUserData(win.comments);
-      }
-    } catch (error) {
-      console.error('Error in handleShowComments:', error);
-    }
   };
 
   // Add this function to calculate total cheers and comments
@@ -1490,7 +1332,6 @@ const ProfileScreen = () => {
               key={win.id} 
               win={win}
               onCheersPress={() => handleCheersPress(win)}
-              onCommentsPress={() => handleCommentsPress(win)}
               lazyLoad={true}
             />
           ))
@@ -1498,8 +1339,6 @@ const ProfileScreen = () => {
           <Text style={styles.noWinsText}>No wins yet</Text>
         )}
       </View>
-
-      {renderCommentModal()}
 
    
     </ScrollView>
@@ -1638,44 +1477,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  calendarContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    margin: 10,
-    padding: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  commentModalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '80%',
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#24269B',
-  },
+  
   winsList: {
     padding: 10,
   },
@@ -1691,42 +1493,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '90%',
-    height: '80%', // Make modal take up most of the screen
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
+ 
   scrollView: {
     width: '100%',
     flex: 1, // This allows the ScrollView to take up available space
   },
-  closeButton: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#24269B',
-    borderRadius: 8,
-    width: '100%',
-  },
-  closeButtonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+ 
   birthdateContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1739,22 +1511,16 @@ const styles = StyleSheet.create({
   },
   birthdateButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#000000',
     borderRadius: 5,
     padding: 12,
     backgroundColor: '#fff',
   },
   birthdateText: {
     fontSize: 16,
+    color: '#000000',
   },
-  webDateInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    width: '100%',
-    marginBottom: 10,
-  },
+  
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -1895,82 +1661,7 @@ questionsContainer: {
   backgroundColor: 'white',
   marginTop: 10,
 },
-modalOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  justifyContent: 'flex-end',
-},
-modalContent: {
-  backgroundColor: 'white',
-  borderTopLeftRadius: 20,
-  borderTopRightRadius: 20,
-  padding: 20,
-  maxHeight: '80%',
-},
-modalHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 20,
-  paddingBottom: 10,
-  borderBottomWidth: 1,
-  borderBottomColor: '#eee',
-},
-modalTitle: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#24269B',
-},
-closeButton: {
-  padding: 5,
-},
-commentItem: {
-  marginBottom: 15,
-  padding: 10,
-  backgroundColor: '#f8f8f8',
-  borderRadius: 10,
-},
-commentHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 10,
-},
-commentUserImage: {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  marginRight: 10,
-},
-commentUserInfo: {
-  flex: 1,
-  justifyContent: 'center',
-},
-commentUsername: {
-  fontWeight: 'bold',
-  fontSize: 14,
-  color: '#24269B',
-},
-commentTime: {
-  fontSize: 12,
-  color: '#666',
-  marginTop: 2,
-},
-commentText: {
-  fontSize: 14,
-  marginLeft: 50, // Aligns with the username
-  color: '#333',
-},
-noComments: {
-  textAlign: 'center',
-  color: '#666',
-  fontStyle: 'italic',
-  marginTop: 20,
-},
-commentButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  padding: 5,
-},
+
 
 statsContainer: {
   flexDirection: 'row',
