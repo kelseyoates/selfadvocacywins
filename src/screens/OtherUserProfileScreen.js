@@ -646,8 +646,37 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
       <View style={styles.questionsContainer}>
         <Text style={styles.sectionTitle}>My Profile</Text>
 
+        {questions.map((item) => {
+          console.log('Question:', item.question);
+          console.log('Is Dating Question:', item.isDatingQuestion);
+          console.log('Current User Subscription:', currentUserSubscription);
+          console.log('Profile User Subscription:', profileData?.subscriptionType);
+          
+          const shouldShowDatingQuestion = 
+            !item.isDatingQuestion || 
+            (currentUserSubscription === 'selfAdvocateDating' && 
+             profileData?.subscriptionType === 'selfAdvocateDating');
 
-        {profileData?.subscriptionType === 'selfAdvocateDating' && 
+          console.log('Should Show Question:', shouldShowDatingQuestion);
+          
+          if (!shouldShowDatingQuestion) {
+            return null;
+          }
+          
+          return (
+            <OtherUserQuestionCard
+              key={item.id}
+              question={item.question}
+              questionId={item.id}
+              backgroundColor={item.backgroundColor}
+              userId={route.params?.profileUserId}
+            />
+          );
+        })}
+      </View>
+
+<View style={styles.datingContainer}>
+      {profileData?.subscriptionType === 'selfAdvocateDating' && 
          currentUserSubscription === 'selfAdvocateDating' && (
           <View 
             style={styles.datingSection}
@@ -691,45 +720,14 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
           </View>
         )}
-
-
-        {questions.map((item) => {
-          console.log('Question:', item.question);
-          console.log('Is Dating Question:', item.isDatingQuestion);
-          console.log('Current User Subscription:', currentUserSubscription);
-          console.log('Profile User Subscription:', profileData?.subscriptionType);
-          
-          const shouldShowDatingQuestion = 
-            !item.isDatingQuestion || 
-            (currentUserSubscription === 'selfAdvocateDating' && 
-             profileData?.subscriptionType === 'selfAdvocateDating');
-
-          console.log('Should Show Question:', shouldShowDatingQuestion);
-          
-          if (!shouldShowDatingQuestion) {
-            return null;
-          }
-          
-          return (
-            <OtherUserQuestionCard
-              key={item.id}
-              question={item.question}
-              questionId={item.id}
-              backgroundColor={item.backgroundColor}
-              userId={route.params?.profileUserId}
-            />
-          );
-        })}
-      </View>
-
-     
+</View>
 
       <View 
         style={styles.winsContainer}
         accessible={true}
         accessibilityLabel={`Wins section: ${wins.length} wins`}
       >
-        <Text style={styles.sectionTitle}>Wins({wins.length})</Text>
+        <Text style={styles.sectionTitle}>Wins History</Text>
         {wins && wins.length > 0 ? (
           wins.map((win) => (
             <View 
@@ -1032,15 +1030,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 0,
     marginVertical: 8,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#000000',
   },
@@ -1085,6 +1075,20 @@ const styles = StyleSheet.create({
   bannerText: {
     textAlign: 'center',
     color: '#FF69B4',
+  },
+  datingContainer: {
+   marginHorizontal: 10,
+   marginVertical: 10,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
 });
 

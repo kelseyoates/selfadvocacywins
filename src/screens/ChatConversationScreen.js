@@ -559,15 +559,15 @@ const ChatConversationScreen = ({ route, navigation }) => {
               style={styles.headerContainer}
               onPress={() => {
                 console.log('Header tapped');
-                Alert.alert('Navigating to profile...');
                 navigation.navigate('OtherUserProfile', {
-                  screen: 'OtherUserProfile',
-                  params: {
-                    userId: uid,
-                    username: userData?.name || cometChatUser.name || name || 'Chat'
-                  }
+                  profileUserId: uid,
+                  username: userData?.name || cometChatUser.name || name || 'User',
+                  isCurrentUser: false
                 });
               }}
+              accessible={true}
+              accessibilityLabel={`View ${userData?.name || cometChatUser.name || name || 'User'}'s profile`}
+              accessibilityRole="button"
               activeOpacity={0.6}
             >
               <Image 

@@ -179,7 +179,7 @@ const SettingsScreen = () => {
             accessibilityHint="Navigate to manage your followers and following"
           >
             <Image 
-              source={require('../../assets/people.png')}
+              source={require('../../assets/followers-following.png')}
               style={styles.menuIcon}
               accessible={true}
               accessibilityLabel="People icon"
@@ -316,7 +316,7 @@ const SettingsScreen = () => {
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={() => {
-              announceToScreenReader("Opening the notifcations screen");
+              announceToScreenReader("Opening the notifications screen");
               navigation.navigate('NotificationSettings');
             }}
             accessible={true}
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },

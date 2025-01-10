@@ -28,10 +28,7 @@ const generateAltText = async (imageUrl, setLoading) => {
     const imageBlob = await imageResponse.blob();
     const base64data = await new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result.split(',')[1];
-        resolve(base64String);
-      };
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
       reader.readAsDataURL(imageBlob);
     });
 
@@ -43,7 +40,7 @@ const generateAltText = async (imageUrl, setLoading) => {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: "Generate a brief, descriptive alt text for this image that would be helpful for screen readers."
+            text: "Describe this image in a single concise sentence for use as alt text. Respond with only the description."
           }, {
             inline_data: {
               mime_type: "image/jpeg",
@@ -55,10 +52,11 @@ const generateAltText = async (imageUrl, setLoading) => {
     });
 
     const data = await response.json();
-    if (data.candidates && data.candidates[0]?.content?.parts) {
-      return data.candidates[0].content.parts[0].text;
-    }
-    return null;
+    
+    // Only return the text content, ignore status
+    const altText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return altText ? altText.trim() : null;
+    
   } catch (error) {
     console.error('Error generating alt text:', error);
     return null;
@@ -97,67 +95,47 @@ const NewWinScreen = ({ navigation }) => {
 
       setIsSubmitting(true);
       const lowerCaseUid = auth.currentUser.uid.toLowerCase();
-      console.log('Starting win submission with:', {
-        hasText: Boolean(text.trim()),
-        hasImage: Boolean(image?.uri),
-        imageDetails: image
-      });
-
       const userRef = doc(db, 'users', lowerCaseUid);
       const winRef = doc(collection(db, 'wins'));
       const winId = winRef.id;
-      console.log('Generated win ID:', winId);
       
       const userDoc = await getDoc(userRef);
-      console.log('User document exists:', userDoc.exists());
-      
       const now = new Date();
-      const localTimestamp = {
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString(),
-        timestamp: now.getTime(),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      };
-
+      
       let mediaUrl = null;
       let altText = null;
+      let mediaType = null;
 
       if (image) {
+        mediaType = 'photo';
         const imageRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
         const response = await fetch(image.uri);
         const blob = await response.blob();
         await uploadBytes(imageRef, blob);
         mediaUrl = await getDownloadURL(imageRef);
-        console.log('Image uploaded, URL:', mediaUrl);
         
-        console.log('Generating alt text...');
-        altText = await generateAltText(mediaUrl, setIsGeneratingAltText);
-        console.log('Generated alt text:', altText);
-      } else if (video) {
-        const videoRef = ref(storage, `wins/${lowerCaseUid}/${winId}`);
-        const response = await fetch(video.uri);
-        const blob = await response.blob();
-        await uploadBytes(videoRef, blob);
-        mediaUrl = await getDownloadURL(videoRef);
-        console.log('Video uploaded, URL:', mediaUrl);
+        if (mediaType === 'photo') {
+          altText = await generateAltText(mediaUrl, setIsGeneratingAltText);
+        }
       }
 
+      // Only include necessary fields in winData
       const winData = {
         text: text.trim() || null,
         createdAt: now.toISOString(),
-        localTimestamp,
         userId: lowerCaseUid,
         username: userDoc.data().username,
         cheers: 0,
-        mediaType,
+        comments: [],
         mediaUrl,
-        altText,
-        comments: []
+        mediaType,
+        altText
       };
 
-      console.log('Saving win with data:', winData);
-
-      let newTopics = userDoc.data().winTopics || [];
+      const batch = writeBatch(db);
+      batch.set(winRef, winData);
+      
+      // Update user's winTopics if there's text
       if (text.trim()) {
         const topics = text.toLowerCase()
           .split(/[\s,.-]+/)
@@ -165,29 +143,20 @@ const NewWinScreen = ({ navigation }) => {
           .filter(word => !['this', 'that', 'with', 'from', 'what', 'have', 'and', 'the'].includes(word));
 
         const currentTopics = userDoc.data().winTopics || [];
-        newTopics = Array.from(new Set([...currentTopics, ...topics]));
+        const newTopics = Array.from(new Set([...currentTopics, ...topics]));
+        
+        batch.update(userRef, {
+          winTopics: newTopics,
+          lastModified: serverTimestamp()
+        });
       }
 
-      const batch = writeBatch(db);
-      batch.set(winRef, winData);
-      batch.update(userRef, {
-        winTopics: newTopics,
-        lastModified: serverTimestamp()
-      });
-
       await batch.commit();
-      console.log('Win saved successfully:', winId);
-      
       navigation.goBack();
 
     } catch (error) {
-      const errorMessage = error?.message || 'Unknown error occurred';
-      console.error('Error saving win:', {
-        message: errorMessage,
-        code: error.code,
-        stack: error.stack
-      });
-      Alert.alert('Error', `Failed to save win: ${errorMessage}`);
+      console.error('Error saving win:', error);
+      Alert.alert('Error', 'Failed to save win');
     } finally {
       setIsSubmitting(false);
     }
@@ -694,11 +663,13 @@ const styles = StyleSheet.create({
   },
   helperSection: {
     marginBottom: 20,
-    padding: 15,
+    
     backgroundColor: '#f8f8f8',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#24269B',
+    paddingHorizontal: 10, // Reduced from 10
+    paddingVertical: 10, // Added to control vertical spacing
   },
   helperCard: {
     alignItems: 'center',

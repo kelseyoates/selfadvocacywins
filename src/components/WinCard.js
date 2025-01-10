@@ -422,6 +422,25 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
     }
   };
 
+  const getFormattedTime = () => {
+    // Ensure we have valid timestamp data
+    if (win?.localTimestamp?.timestamp) {
+      const date = new Date(win.localTimestamp.timestamp);
+      return {
+        date: win.localTimestamp.date,
+        time: win.localTimestamp.time
+      };
+    }
+    
+    // Fallback to a default value if no valid timestamp
+    return {
+      date: 'Recent',
+      time: ''
+    };
+  };
+
+  const { date, time } = getFormattedTime();
+
   return (
     <View 
       style={styles.card}
@@ -443,7 +462,7 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
             style={styles.timestamp}
             accessibilityLabel={`Posted ${formatDateForAccessibility(win.createdAt)}`}
           >
-            {formatDistanceToNow(new Date(win.createdAt), { addSuffix: true })}
+            {date}{time ? ` at ${time}` : ''}
           </Text>
         </View>
       </View>
@@ -605,6 +624,8 @@ const styles = StyleSheet.create({
     boxShadow: '0 8px 16px -8px rgba(0,0,0,0.4)',
     borderWidth: 1,
     borderColor: '#000000',
+    paddingHorizontal: 10, // Reduced from 10
+    paddingVertical: 10, // Added to control vertical spacing
   },
   header: {
     flexDirection: 'row',
@@ -629,16 +650,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     color: '#24269B',
+    flexWrap: 'wrap',
+    paddingRight: 5,
   },
   time: {
     fontSize: 12,
     color: '#666',
+    flexWrap: 'wrap',
   },
   text: {
     fontSize: 16,
     color: '#333',
-    marginBottom: 10,
+    marginVertical: 10,
     lineHeight: 22,
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   media: {
     width: '100%',
@@ -672,6 +698,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
+    marginLeft: 5,
+    flexWrap: 'wrap',
   },
   commentButton: {
     padding: 8,
@@ -761,6 +789,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     textAlign: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   mediaContainer: {
     width: '100%',
@@ -795,22 +825,28 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 10,
+    flexWrap: 'wrap',
+    paddingRight: 5,
   },
   nameTimeContainer: {
     flex: 1,
     justifyContent: 'center',
     marginLeft: 10,
+    flexWrap: 'wrap',
   },
   username: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#24269B',
+    flexWrap: 'wrap',
+    paddingRight: 5,
   },
   timestamp: {
     fontSize: 12,
     color: '#666',
+    flexWrap: 'wrap',
   },
   videoPlaceholder: {
     flex: 1,
@@ -821,6 +857,9 @@ const styles = StyleSheet.create({
   tapToLoadText: {
     color: 'white',
     marginTop: 10,
+    flexWrap: 'wrap',
+    textAlign: 'center',
+    paddingHorizontal: 5,
   },
   altTextIndicator: {
     flexDirection: 'row',
@@ -836,6 +875,8 @@ const styles = StyleSheet.create({
     color: '#24269B',
     fontSize: 16,
     fontWeight: '500',
+    flexWrap: 'wrap',
+    flex: 1,
   },
   commentIcon: {
     width: 40,

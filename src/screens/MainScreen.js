@@ -463,6 +463,7 @@ const styles = StyleSheet.create({
   profileButton: {
     alignItems: 'center',
     marginRight: 15,
+    maxWidth: 80,
   },
   profileImage: {
     width: 35,
@@ -475,6 +476,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
   sectionText: {
     fontSize: 20,
@@ -513,7 +516,8 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    paddingHorizontal: 10,
+    paddingHorizontal: 5,
+    paddingVertical: 5,
   },
   headerRow: {
     flexDirection: 'column',
@@ -551,6 +555,8 @@ const styles = StyleSheet.create({
     color: '#24269B',
     textAlign: 'center',
     fontWeight: 'bold',
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   headerIcon: {
     width: 50,
@@ -562,24 +568,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 22,
     backgroundColor: '#ffffff',
+    paddingHorizontal: 5, // Reduced from 10
+    paddingVertical: 5, // Added to control vertical spacing
   },
   bodyText: {
     fontSize: 16,
     color: '#000000',
     textAlign: 'center',
     marginBottom: 10,
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   headerTextBold: {
     fontSize: 16,
     color: '#000000',
     textAlign: 'center',
     fontWeight: 'bold',
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   bodyTextBold: {
     fontSize: 16,
     color: '#000000',
     textAlign: 'center',
     fontWeight: 'bold',
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   bodyImage: {
     width: 300,
@@ -594,6 +608,53 @@ const styles = StyleSheet.create({
   },
   infoIcon: {
     padding: 5,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginVertical: 5,
+    flexWrap: 'wrap',
+    textAlign: 'center',
+    paddingHorizontal: 5,
+  },
+  helperText: {
+    fontSize: 16,
+    marginVertical: 2,
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
+  },
+  conversationItem: {
+    flexDirection: 'row',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    alignItems: 'flex-start',
+  },
+  conversationInfo: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: 'center',
+  },
+  conversationName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+    flexWrap: 'wrap',
+    paddingRight: 5,
+  },
+  lastMessage: {
+    fontSize: 14,
+    color: '#666',
+    flexWrap: 'wrap',
+    paddingRight: 5,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginVertical: 10,
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
 });
 

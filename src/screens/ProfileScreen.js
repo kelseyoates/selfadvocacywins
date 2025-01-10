@@ -1501,62 +1501,7 @@ const ProfileScreen = () => {
 
       {renderCommentModal()}
 
-      <TouchableOpacity 
-        style={styles.datePickerButton} 
-        onPress={showPicker}
-      >
-        <Text style={styles.datePickerButtonText}>
-          {userData?.birthdate || 'Select Birthday'}
-        </Text>
-      </TouchableOpacity>
-
-      {Platform.OS === 'ios' ? (
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showDatePicker}
-          onRequestClose={() => setShowDatePicker(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <View style={styles.pickerHeader}>
-                <TouchableOpacity 
-                  onPress={() => setShowDatePicker(false)}
-                  style={styles.pickerButton}
-                >
-                  <Text style={styles.pickerButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setShowDatePicker(false)}
-                  style={styles.pickerButton}
-                >
-                  <Text style={[styles.pickerButtonText, { color: '#24269B' }]}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display="spinner"
-                onChange={onDateChange}
-                maximumDate={new Date()}
-                minimumDate={new Date(1900, 0, 1)}
-                style={styles.datePickerIOS}
-              />
-            </View>
-          </View>
-        </Modal>
-      ) : (
-        showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={onDateChange}
-            maximumDate={new Date()}
-            minimumDate={new Date(1900, 0, 1)}
-          />
-        )
-      )}
+   
     </ScrollView>
   );
 };
@@ -1665,26 +1610,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  // modalView: {
-  //   flex: 1,
-  //   justifyContent: 'center',
-  //   alignItems: 'center',
-  //   backgroundColor: 'rgba(0,0,0,0.5)',
-  // },
-  // modalContent: {
-  //   backgroundColor: '#fff',
-  //   borderRadius: 10,
-  //   padding: 20,
-  //   width: '80%',
-  //   maxHeight: '80%',
-  // },
-  // modalTitle: {
-  //   fontSize: 18,
-  //   fontWeight: '600',
-  //   color: '#24269B',
-  //   marginBottom: 15,
-  //   textAlign: 'center',
-  // },
+
   stateOption: {
     padding: 15,
     borderBottomWidth: 1,

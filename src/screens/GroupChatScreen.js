@@ -135,22 +135,25 @@ const GroupChatScreen = ({ route, navigation }) => {
   // Fetch group info and members
   const fetchGroupInfo = async () => {
     try {
-      const group = await CometChat.getGroup(uid);
+      // Make sure we're using the correct group ID format
+      const groupId = uid.startsWith('group_') ? uid : `group_${uid}`;
+      
+      const group = await CometChat.getGroup(groupId);
       setGroupInfo(group);
       
-      const membersRequest = new CometChat.GroupMembersRequestBuilder(uid)
+      // Fetch group members
+      const membersRequest = new CometChat.GroupMembersRequestBuilder(groupId)
         .setLimit(100)
         .build();
       
-      const membersList = await membersRequest.fetchNext();
-      console.log('Members:', membersList);
-      setMembers(membersList);
+      const members = await membersRequest.fetchNext();
+      setMembers(members);
       
-      await fetchMemberProfiles(membersList);
+      await fetchMemberProfiles(members);
       
       console.log('Group info:', group);
     } catch (error) {
-      console.error('Error fetching group info:', error);
+      console.log('Error fetching group info:', error);
     }
   };
 
@@ -200,15 +203,28 @@ const GroupChatScreen = ({ route, navigation }) => {
 
   const fetchMessages = async () => {
     try {
+      console.log('Fetching messages for:', uid);
+      
+      // Make sure we're using the correct group ID format
+      const groupId = uid.startsWith('group_') ? uid : `group_${uid}`;
+      
       const messagesRequest = new CometChat.MessagesRequestBuilder()
-        .setGUID(uid)
+        .setGUID(groupId)
         .setLimit(50)
         .build();
 
-      const fetchedMessages = await messagesRequest.fetchPrevious();
-      setMessages(fetchedMessages.filter(msg => msg.category === 'message'));
+      const messages = await messagesRequest.fetchPrevious();
+      console.log('Messages fetched:', messages);
+      
+      // Filter out any undefined or null messages
+      const validMessages = messages.filter(message => message);
+      setMessages(validMessages);
+      
     } catch (error) {
       console.log('Error fetching messages:', error);
+      // Don't show an error alert as this might be a temporary issue
+      // Just set empty messages array
+      setMessages([]);
     }
   };
 
@@ -630,6 +646,36 @@ const GroupChatScreen = ({ route, navigation }) => {
     });
   }, [navigation]);
 
+  const deleteGroup = async () => {
+    if (groupInfo?.owner !== currentUser?.uid) {
+      Alert.alert('Error', 'Only the group owner can delete this group');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Group',
+      'Are you sure you want to delete this group? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await CometChat.deleteGroup(uid);
+              navigation.goBack();
+              announceToScreenReader('Group successfully deleted');
+            } catch (error) {
+              console.error('Error deleting group:', error);
+              Alert.alert('Error', 'Failed to delete group. Please try again.');
+              announceToScreenReader('Failed to delete group');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
@@ -863,6 +909,22 @@ const GroupChatScreen = ({ route, navigation }) => {
               accessible={true}
               accessibilityLabel="Group members list"
             />
+
+            {groupInfo?.owner === currentUser?.uid && (
+              <TouchableOpacity 
+                style={[styles.leaveButton, { backgroundColor: '#ff4444' }]}
+                onPress={() => {
+                  announceToScreenReader('Deleting group');
+                  deleteGroup();
+                }}
+                accessible={true}
+                accessibilityLabel="Delete group"
+                accessibilityHint="Double tap to permanently delete this group"
+                accessibilityRole="button"
+              >
+                <Text style={styles.leaveButtonText}>Delete Group</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity 
               style={styles.leaveButton}

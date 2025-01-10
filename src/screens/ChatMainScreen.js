@@ -218,29 +218,31 @@ const ChatMainScreen = ({ navigation }) => {
     }
   };
 
-  const handleDeleteConversation = async (conversation) => {
+  const deleteConversation = async (conversation) => {
     try {
-      console.log('Deleting conversation:', conversation.conversationId);
+      // Check if it's a group conversation
+      if (conversation.conversationType === CometChat.RECEIVER_TYPE.GROUP) {
+        Alert.alert(
+          'Community Chat',
+          'You cannot delete a group or community chat from this screen. Please tap the Group Info button in the chat to leave the group.'
+        );
+        return;
+      }
+
+      const conversationId = conversation.conversationId || conversation.conversationWith?.uid;
       
-      // Delete the conversation from CometChat
-      await CometChat.deleteConversation(
-        conversation.conversationWith.uid,
-        conversation.conversationType
-      );
+      // Only handle individual chat deletion
+      await CometChat.deleteConversation(conversationId, conversation.conversationType);
       
-      // Update local state
-      setConversations(prev => 
-        prev.filter(conv => conv.conversationId !== conversation.conversationId)
-      );
+      // Refresh the conversations list
+      fetchConversations();
       
-      announceToScreenReader('Conversation deleted successfully');
     } catch (error) {
       console.error('Error deleting conversation:', error);
       Alert.alert(
         'Error',
         'Failed to delete conversation. Please try again.'
       );
-      announceToScreenReader('Failed to delete conversation');
     }
   };
 
@@ -303,7 +305,7 @@ const ChatMainScreen = ({ navigation }) => {
           {
             text: 'Delete',
             style: 'destructive',
-            onPress: () => handleDeleteConversation(item)
+            onPress: () => deleteConversation(item)
           }
         ],
         { cancelable: true }
@@ -511,8 +513,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    alignItems: 'center',
-    
+    alignItems: 'flex-start',
   },
   avatar: {
     width: 50,
@@ -525,15 +526,26 @@ const styles = StyleSheet.create({
   },
   conversationInfo: {
     flex: 1,
+    marginLeft: 15,
+    justifyContent: 'center',
   },
   userName: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
+  conversationName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    flexWrap: 'wrap',
+    paddingRight: 10,
+  },
   lastMessage: {
     fontSize: 14,
     color: '#666',
+    flexWrap: 'wrap',
+    paddingRight: 10,
   },
   emptyContainer: {
     flex: 1,
@@ -544,8 +556,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
+    textAlign: 'center',
+    marginVertical: 20,
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
   },
 
   buttonText: {
@@ -620,32 +634,27 @@ const styles = StyleSheet.create({
     bottom: 20,
     backgroundColor: '#24269B',
     borderRadius: 30,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    padding: 12,
     elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    minWidth: 110,
   },
   fabContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexWrap: 'wrap',
   },
   fabText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
     marginLeft: 8,
+    fontSize: 16,
+    flexWrap: 'wrap',
   },
 
   profileButton: {
     alignItems: 'center',
     marginRight: 15,
+    maxWidth: 80,
   },
   profileImage: {
     width: 35,
@@ -658,6 +667,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
 
   helperSection: {
@@ -665,9 +676,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#24269B',
-    marginVertical: 10,
-    marginHorizontal: 10,
-    padding: 12,
+    marginVertical: 5,
+    marginHorizontal: 5,
+    padding: 5,
     alignSelf: 'center',
     width: '95%',
   },
@@ -691,11 +702,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   helperTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#24269B',
-    marginBottom: 10,
+    marginVertical: 10,
+    flexWrap: 'wrap',
     textAlign: 'center',
+    paddingHorizontal: 10,
   },
   helperTextContainer: {
     width: '100%',
@@ -703,13 +716,14 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 16,
-    color: '#333',
-    marginBottom: 8,
-    lineHeight: 22,
+    marginVertical: 5,
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
   },
   listHeaderSpace: {
     height: 10,
   },
+ 
 });
 
 export default ChatMainScreen;

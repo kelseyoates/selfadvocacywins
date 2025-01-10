@@ -147,7 +147,9 @@ export default function App() {
               <Stack.Screen
                 name="OtherUserProfile"
                 component={OtherUserProfileScreen}
-                options={{ title: 'Profile' }}
+                options={({ route }) => ({
+                  title: route.params?.username ? `${route.params.username}'s Profile` : 'Profile',
+                })}
               />
               <Stack.Screen
                 name="GroupChat"
@@ -162,7 +164,7 @@ export default function App() {
               <Stack.Screen
                 name="People"
                 component={PeopleScreen}
-                options={{ title: 'People' }}
+                options={{ title: 'Followers and Following' }}
               />
            
               <Stack.Screen

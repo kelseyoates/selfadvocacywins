@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   },
   helperContent: {
     alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: 0,
   },
   helperTitle: {
     fontSize: 18,
@@ -357,8 +357,7 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 16,
     color: '#333',
-    marginBottom: 8,
-    lineHeight: 22,
+    marginBottom: 10,
   },
   helperImage: {
     width: 200,

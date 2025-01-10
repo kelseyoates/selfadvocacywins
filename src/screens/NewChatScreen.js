@@ -13,6 +13,7 @@ const NewChatScreen = ({ navigation }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const { user } = useAuth();
   const { showHelpers } = useAccessibility();
 
@@ -112,87 +113,56 @@ const NewChatScreen = ({ navigation }) => {
       return;
     }
 
+    setIsCreatingGroup(true);
+
     try {
-      // Create a unique group ID
       const groupId = 'group_' + Date.now();
-      
-      // Create the group
-      const groupType = CometChat.GROUP_TYPE.PRIVATE;
       const groupName = `Group Chat (${selectedMembers.length + 1})`;
       
+      // Create the group
       const group = new CometChat.Group(
         groupId,
         groupName,
-        groupType,
-        ''  // Empty string for password as it's not needed for private groups
+        CometChat.GROUP_TYPE.PRIVATE,
+        ''
       );
 
       console.log('Creating group:', group);
-      
       const createdGroup = await CometChat.createGroup(group);
-      console.log('Group created:', createdGroup);
-
-      // Add members to the group
-      const membersList = selectedMembers.map(member => {
-        return new CometChat.GroupMember(
+      
+      // Add members one by one to ensure proper count
+      for (const member of selectedMembers) {
+        const groupMember = new CometChat.GroupMember(
           member.uid || member.id,
           CometChat.GROUP_MEMBER_SCOPE.PARTICIPANT
         );
-      });
+        await CometChat.addMembersToGroup(groupId, [groupMember], []);
+      }
 
-      console.log('Adding members:', membersList);
+      // Fetch the updated group info after all members are added
+      const updatedGroup = await CometChat.getGroup(groupId);
       
-      await CometChat.addMembersToGroup(groupId, membersList, []);
-      console.log('Members added to group');
-
-      // Send initial message to the group
+      // Send initial message
       const textMessage = new CometChat.TextMessage(
         groupId,
-        '👋 Group chat created!',
+        'Group chat created',
         CometChat.RECEIVER_TYPE.GROUP
       );
-      
       await CometChat.sendMessage(textMessage);
-      console.log('Initial message sent');
 
-      // Navigate to the new group chat
-      navigation.navigate('GroupChat', {
+      // Navigate with the updated group info
+      navigation.replace('GroupChat', {
         uid: groupId,
-        name: groupName
+        name: groupName,
+        conversationType: CometChat.RECEIVER_TYPE.GROUP,
+        group: updatedGroup
       });
 
-      // Clear selected members
-      setSelectedMembers([]);
-      setSearchQuery('');
-      setSearchResults([]);
-
-      // Show success message
-      Alert.alert(
-        'Success',
-        'Group chat created successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Navigate to the group chat after a short delay
-              setTimeout(() => {
-                navigation.navigate('ChatConversation', {
-                  uid: groupId,
-                  name: groupName,
-                  conversationType: CometChat.RECEIVER_TYPE.GROUP
-                });
-              }, 100);
-            }
-          }
-        ]
-      );
-
     } catch (error) {
-      console.error('Error creating group:', error);
-      Alert.alert(
-        'Error',
-        'Failed to create group chat. Please try again.'
-      );
+      console.error('Error creating group chat:', error);
+      Alert.alert('Error', 'Failed to create group chat. Please try again.');
+    } finally {
+      setIsCreatingGroup(false);
     }
   };
 
@@ -381,27 +351,26 @@ const NewChatScreen = ({ navigation }) => {
             <Text style={styles.selectedMembersTitle}>
               Selected Members ({selectedMembers.length}):
             </Text>
-            <FlatList
-              horizontal
-              data={selectedMembers}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.selectedMemberChip}
-                  onPress={() => {
-                    toggleMemberSelection(item);
-                    announceToScreenReader(`Removed ${item.username} from selection`);
-                  }}
-                  accessible={true}
-                  accessibilityLabel={`${item.username}, selected member`}
-                  accessibilityHint="Double tap to remove from selection"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.selectedMemberText}>{item.username}</Text>
-                </TouchableOpacity>
-              )}
-              contentContainerStyle={styles.selectedMembersList}
-            />
+            <ScrollView style={styles.membersList}>
+              <View style={styles.selectedMembersContainer}>
+                {selectedMembers.map((member) => (
+                  <View key={member.uid || member.id} style={styles.selectedMemberChip}>
+                    <Text style={styles.selectedMemberText} numberOfLines={1}>
+                      {member.username || member.name}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => toggleMemberSelection(member)}
+                      style={styles.removeButton}
+                      accessible={true}
+                      accessibilityLabel={`Remove ${member.username || member.name}`}
+                      accessibilityRole="button"
+                    >
+                      <MaterialCommunityIcons name="close-circle" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         )}
 
@@ -415,16 +384,20 @@ const NewChatScreen = ({ navigation }) => {
 
         {activeTab === 'group' && selectedMembers.length >= 2 && (
           <View style={styles.createGroupButtonContainer}>
-            <TouchableOpacity 
-              style={styles.createGroupButton}
+            <TouchableOpacity
+              style={[
+                styles.createGroupButton,
+                { opacity: isCreatingGroup ? 0.7 : 1 }
+              ]}
               onPress={createGroupChat}
+              disabled={isCreatingGroup}
               accessible={true}
-              accessibilityLabel={`Create group chat with ${selectedMembers.length} members`}
-              accessibilityHint="Double tap to create group chat"
+              accessibilityLabel={isCreatingGroup ? "Creating chat now" : "Create group chat"}
+              accessibilityHint="Double tap to create a new group chat"
               accessibilityRole="button"
             >
               <Text style={styles.createGroupButtonText}>
-                Create Group Chat ({selectedMembers.length} members)
+                {isCreatingGroup ? "Creating chat now..." : "Create Group Chat"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -440,28 +413,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   contentContainer: {
-    flexGrow: 1,
+    padding: 15,
   },
   container: {
     flex: 1,
   },
   tabContainer: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#fff',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    borderWidth: 2,
-    
-    borderRadius: 5,
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    flexWrap: 'wrap',
   },
   tabButton: {
     flex: 1,
-    padding: 15,
+    marginHorizontal: 5,
+    padding: 10,
+    minHeight: 80,
   },
   tabContent: {
     alignItems: 'center',
@@ -482,9 +449,11 @@ const styles = StyleSheet.create({
   },
 
   tabText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
     textAlign: 'center',
+    marginTop: 5,
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   activeTabText: {
     color: '#ffffff',
@@ -503,12 +472,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
     backgroundColor: '#fff',
-    padding: 10,
+    padding: 15,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#24269B',
-    height: 40,
+    height: 50,
     width: '100%',
+    flexWrap: 'wrap',
   },
   userItem: {
     flexDirection: 'row',
@@ -519,8 +489,10 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 16,
-    color: '#000',
     fontWeight: '500',
+    flexWrap: 'wrap',
+    flex: 1,
+    paddingRight: 10,
   },
   noResults: {
     textAlign: 'center',
@@ -529,14 +501,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   selectedMembersContainer: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    padding: 10,
   },
   selectedMembersTitle: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
+    fontWeight: '500',
     marginBottom: 10,
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   selectedMembersList: {
     paddingVertical: 5,
@@ -546,13 +518,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#24269B',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 8,
+    marginBottom: 8,
+    marginHorizontal: 5,
   },
   selectedMemberText: {
     color: '#fff',
-    marginRight: 6,
+    marginRight: 10,
+    fontSize: 16,
+    flex: 1,
+  },
+  removeButton: {
+    padding: 4,
   },
   selectedUserItem: {
     backgroundColor: '#f0f0f0',
@@ -563,19 +541,18 @@ const styles = StyleSheet.create({
   },
   createGroupButton: {
     backgroundColor: '#24269B',
-    padding: 15,
-    borderRadius: 25,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderRadius: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    minHeight: 50,
   },
   createGroupButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    textAlign: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
   },
   helperSection: {
     width: '90%',
@@ -607,11 +584,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   helperTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#24269B',
-    marginBottom: 10,
+    marginVertical: 10,
     textAlign: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
   },
   helperTextContainer: {
     width: '100%',
@@ -619,9 +598,9 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 16,
-    color: '#333',
     marginBottom: 8,
-    lineHeight: 22,
+    flexWrap: 'wrap',
+    paddingHorizontal: 5,
   },
   searchResultsContainer: {
     padding: 15,
@@ -630,19 +609,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#24269B',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    minHeight: 70,
   },
   selectedUserCard: {
     backgroundColor: '#f0f4ff',
@@ -658,10 +627,20 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+    marginLeft: 15,
+    marginRight: 10,
   },
   actionIcon: {
     marginLeft: 10,
   },
+  membersList: {
+    maxHeight: 300,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  }
 });
 
 export default NewChatScreen; 

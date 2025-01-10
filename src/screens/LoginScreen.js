@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   headerImage: {
     width: '100%',
     height: windowHeight * 0.2, // 20% of screen height
-    marginBottom: 20,
+    marginBottom: 0,
   },
   title: {
     fontSize: 32,
@@ -270,6 +270,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
     marginTop: 0,
+    paddingHorizontal: 10,
   },
   labelContainer: {
     flexDirection: 'row',
@@ -277,6 +278,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
     marginTop: 30,
+    flexWrap: 'wrap',
+    minHeight: 30,
   },
   iconContainer: {
     width: 24,
@@ -288,6 +291,7 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 20,
     lineHeight: 24,
+    flexShrink: 1,
   },
   input: {
     width: '100%',
@@ -296,6 +300,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    minHeight: 60,
   },
   
   loginButtonText: {
@@ -306,7 +311,9 @@ const styles = StyleSheet.create({
   footerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
   },
   footerText: {
     fontSize: 16,
@@ -326,7 +333,8 @@ const styles = StyleSheet.create({
 
   buttonContainer: {
     position: 'relative',
-    marginVertical: 40,
+    marginVertical: 10,
+    width: '90%',
   },
 
   buttonShadow: {
@@ -351,15 +359,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 5,
-    width: 300,
-    height: 60,
+    width: '100%',
+    minHeight: 60,
     borderWidth: 1,
     borderColor: '#24269B',
+    flexWrap: 'wrap',
   },
 
   buttonContent: {
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    padding: 5,
   },
 
   buttonIcon: {
@@ -371,7 +382,10 @@ const styles = StyleSheet.create({
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
     marginTop: 8,
-    marginBottom: 20,
+    marginBottom: 10,
+    paddingVertical: 5,
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   forgotPasswordText: {
     color: '#24269B',

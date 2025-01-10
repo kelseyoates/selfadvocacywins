@@ -612,6 +612,7 @@ const FindADateScreen = ({ navigation }) => {
                 announceToScreenReader(`Opening profile for ${user.username}`);
                 navigation.navigate('OtherUserProfile', { 
                   profileUserId: user.path.split('/')[1],
+                  username: user.username,
                   isCurrentUser: false
                 });
               }}

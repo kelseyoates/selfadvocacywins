@@ -61,13 +61,25 @@ const TabNavigator = ({ navigation }) => {
         tabBarInactiveTintColor: 'gray',
         tabBarStyle: {
           paddingBottom: 5,
-          height: 60,
+          height: 75,
+          paddingTop: 5,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           paddingBottom: 5,
+          flexWrap: 'wrap',
+          textAlign: 'center',
+          maxWidth: '100%',
+          paddingHorizontal: 1,
         },
         tabBarAllowFontScaling: true,
+        tabBarItemStyle: {
+          paddingVertical: 5,
+          height: '100%',
+        },
+        tabBarIconStyle: {
+          marginTop: 5,
+        }
       }}
     >
       <Tab.Screen
