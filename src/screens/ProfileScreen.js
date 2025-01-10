@@ -78,6 +78,7 @@ const ProfileScreen = () => {
 
 // gender
 const [gender, setGender] = useState('');
+const [lookingFor, setLookingFor] = useState('');
 
   // Add accessibility check effect
   useEffect(() => {
@@ -1051,6 +1052,254 @@ const [gender, setGender] = useState('');
     // Return true if contrast ratio is at least 4.5:1
   };
 
+  // Add these state variables with your other state declarations
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showLookingForModal, setShowLookingForModal] = useState(false);
+
+  // Add these arrays for the options
+  const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary'];
+  const LOOKING_FOR_OPTIONS = ['Men', 'Women', 'Everyone'];
+
+  // Update the renderDatingInfo function
+  const renderDatingInfo = () => {
+    if (userData?.subscriptionType !== 'selfAdvocateDating') return null;
+
+    return (
+      <View 
+        style={styles.datingContainer}
+        accessible={true}
+        accessibilityLabel="Dating Profile Section"
+      >
+        <Text style={styles.sectionTitle}>
+          Dating Profile
+        </Text>
+        
+        <View style={styles.datingInfo}>
+          <View 
+            style={styles.datingInfoItem}
+            accessible={true}
+            accessibilityLabel="Gender selection section"
+          >
+            <Text style={styles.label}>My Gender:</Text>
+            <TouchableOpacity 
+              style={styles.dropdownButton}
+              onPress={() => setShowGenderModal(true)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Select gender. Current selection: ${userData?.gender || 'None selected'}`}
+              accessibilityHint="Double tap to open gender selection"
+            >
+              <Text style={styles.dropdownButtonText}>
+                {userData?.gender || 'Select Gender'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View 
+            style={styles.datingInfoItem}
+            accessible={true}
+            accessibilityLabel="Looking for preference section"
+          >
+            <Text style={styles.label}>I'm Looking For:</Text>
+            <TouchableOpacity 
+              style={styles.dropdownButton}
+              onPress={() => setShowLookingForModal(true)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Select preference. Current selection: ${userData?.lookingFor || 'None selected'}`}
+              accessibilityHint="Double tap to open preference selection"
+            >
+              <Text style={styles.dropdownButtonText}>
+                {userData?.lookingFor || 'Select Preference'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Gender Modal */}
+        <Modal
+          visible={showGenderModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowGenderModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowGenderModal(false)}
+            accessible={true}
+            accessibilityLabel="Tap outside to close gender selection"
+            accessibilityHint="Double tap to close the gender selection screen"
+          >
+            <View 
+              style={styles.modalContent}
+              accessible={true}
+              accessibilityLabel="Gender selection options"
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  Select Gender
+                </Text>
+                <TouchableOpacity 
+                  style={styles.closeModalButton}
+                  onPress={() => setShowGenderModal(false)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close gender selection"
+                  accessibilityHint="Double tap to close"
+                >
+                  <Text style={styles.closeModalButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView 
+                style={styles.optionsContainer}
+                accessible={true}
+                accessibilityLabel="List of gender options"
+              >
+                {GENDER_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionItem}
+                    onPress={() => {
+                      handleGenderSelect(option);
+                      setShowGenderModal(false);
+                    }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={option}
+                    accessibilityState={{ selected: userData?.gender === option }}
+                    accessibilityHint={`Double tap to select ${option} as your gender`}
+                  >
+                    <Text style={styles.optionText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Looking For Modal */}
+        <Modal
+          visible={showLookingForModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowLookingForModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowLookingForModal(false)}
+            accessible={true}
+            accessibilityLabel="Tap outside to close preference selection"
+            accessibilityHint="Double tap to close the preference selection screen"
+          >
+            <View 
+              style={styles.modalContent}
+              accessible={true}
+              accessibilityLabel="Preference selection options"
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  I'm Looking For
+                </Text>
+                <TouchableOpacity 
+                  style={styles.closeModalButton}
+                  onPress={() => setShowLookingForModal(false)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close preference selection"
+                  accessibilityHint="Double tap to close"
+                >
+                  <Text style={styles.closeModalButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView 
+                style={styles.optionsContainer}
+                accessible={true}
+                accessibilityLabel="List of preference options"
+              >
+                {LOOKING_FOR_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionItem}
+                    onPress={() => {
+                      handleLookingForSelect(option);
+                      setShowLookingForModal(false);
+                    }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={option}
+                    accessibilityState={{ selected: userData?.lookingFor === option }}
+                    accessibilityHint={`Double tap to select that you are looking for ${option}`}
+                  >
+                    <Text style={styles.optionText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      </View>
+    );
+  };
+
+  // Update the handlers to include accessibility announcements
+  const handleGenderSelect = async (selectedGender) => {
+    try {
+      const userRef = doc(db, 'users', targetUserId);
+      await updateDoc(userRef, {
+        gender: selectedGender
+      });
+      setUserData(prev => ({
+        ...prev,
+        gender: selectedGender
+      }));
+      
+      // Announce the change to screen readers
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility(`Gender updated to ${selectedGender}`);
+      } else {
+        Alert.alert('Success', 'Gender updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating gender:', error);
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Failed to update gender');
+      } else {
+        Alert.alert('Error', 'Failed to update gender');
+      }
+    }
+  };
+
+  const handleLookingForSelect = async (selectedPreference) => {
+    try {
+      const userRef = doc(db, 'users', targetUserId);
+      await updateDoc(userRef, {
+        lookingFor: selectedPreference
+      });
+      setUserData(prev => ({
+        ...prev,
+        lookingFor: selectedPreference
+      }));
+      
+      // Announce the change to screen readers
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility(`Preference updated to ${selectedPreference}`);
+      } else {
+        Alert.alert('Success', 'Preference updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating preference:', error);
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Failed to update preference');
+      } else {
+        Alert.alert('Error', 'Failed to update preference');
+      }
+    }
+  };
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -1303,6 +1552,9 @@ const [gender, setGender] = useState('');
         ))}
       </View>
 
+      {renderDatingInfo()}
+
+
       {showHelpers && (
         <View style={styles.helperSection}>
           <View style={styles.helperHeader}>
@@ -1340,6 +1592,7 @@ const [gender, setGender] = useState('');
         )}
       </View>
 
+     
    
     </ScrollView>
   );
@@ -1827,6 +2080,100 @@ helperTextBold: {
   fontSize: 18,
   color: '#24269B',
   fontWeight: 'bold',
+},
+datingContainer: {
+  marginHorizontal: 10,
+  marginVertical: 10,
+  padding: 10,
+  backgroundColor: '#fff',
+  borderRadius: 10,
+  elevation: 2,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  borderWidth: 1,
+  borderColor: '#000000',
+},
+datingInfo: {
+  flexDirection: 'column',
+  gap: 10,
+},
+datingInfoItem: {
+  padding: 10,
+},
+label: {
+  fontSize: 16,
+  color: '#666',
+  marginBottom: 8,
+},
+pickerButton: {
+  borderWidth: 1,
+  borderColor: '#24269B',
+  borderRadius: 8,
+  padding: 12,
+  backgroundColor: '#fff',
+},
+pickerButtonText: {
+  fontSize: 16,
+  color: '#000000',
+  textAlign: 'center',
+},
+dropdownButton: {
+  borderWidth: 1,
+  borderColor: '#24269B',
+  borderRadius: 8,
+  padding: 12,
+  backgroundColor: '#fff',
+},
+dropdownButtonText: {
+  fontSize: 16,
+  color: '#000000',
+  textAlign: 'center',
+},
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'flex-end',
+},
+modalContent: {
+  backgroundColor: '#fff',
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  paddingBottom: 20,
+  maxHeight: '50%',
+},
+modalHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: 15,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+},
+modalTitle: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#24269B',
+},
+closeModalButton: {
+  padding: 8,
+},
+closeModalButtonText: {
+  fontSize: 20,
+  color: '#666',
+},
+optionsContainer: {
+  paddingHorizontal: 15,
+},
+optionItem: {
+  paddingVertical: 15,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+},
+optionText: {
+  fontSize: 16,
+  color: '#333',
 },
 });
 
