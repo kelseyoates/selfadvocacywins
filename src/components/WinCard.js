@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, AccessibilityInfo, Platform, Share } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, AccessibilityInfo, Platform, Share, Alert } from 'react-native';
 import { Video } from 'expo-av';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { formatDistanceToNow } from 'date-fns';
@@ -120,7 +120,7 @@ const PRESET_COMMENTS = [
   ];
 
 
-const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
+const WinCard = ({ win, onCheersPress, onCommentsPress, onDeleteWin, lazyLoad = false }) => {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [cheerCount, setCheerCount] = useState(win.cheers || 0);
@@ -441,6 +441,37 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
 
   const { date, time } = getFormattedTime();
 
+  // Update the timestamp formatting logic
+  const formatTimestamp = (localTimestamp) => {
+    if (!localTimestamp || !localTimestamp.timestamp) {
+      console.log('Invalid timestamp:', localTimestamp);
+      return '';
+    }
+    
+    try {
+      const now = new Date();
+      const date = new Date(localTimestamp.timestamp);
+      const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      const diffInDays = Math.floor(diffInHours / 24);
+
+      if (diffInMinutes < 1) {
+        return 'Just now';
+      } else if (diffInMinutes < 60) {
+        return `${diffInMinutes}m ago`;
+      } else if (diffInHours < 24) {
+        return `${diffInHours}h ago`;
+      } else if (diffInDays < 7) {
+        return `${diffInDays}d ago`;
+      } else {
+        return `${localTimestamp.date} at ${localTimestamp.time}`;
+      }
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return '';
+    }
+  };
+
   return (
     <View 
       style={styles.card}
@@ -454,17 +485,50 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, lazyLoad = false }) => {
         accessibilityRole="header"
       >
         {renderProfilePicture()}
-        <View accessible={true}>
+        <View style={styles.userInfoContent} accessible={true}>
           <Text style={styles.username}>
             {win.username}
           </Text>
           <Text 
             style={styles.timestamp}
-            accessibilityLabel={`Posted ${formatDateForAccessibility(win.createdAt)}`}
+            accessibilityLabel={`Posted ${formatTimestamp(win.localTimestamp)}`}
           >
-            {date}{time ? ` at ${time}` : ''}
+            {formatTimestamp(win.localTimestamp)}
           </Text>
         </View>
+        {onDeleteWin && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => {
+              Alert.alert(
+                'Delete Win',
+                'Are you sure you want to delete this win?',
+                [
+                  {
+                    text: 'Cancel',
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Delete',
+                    onPress: () => onDeleteWin(win.id),
+                    style: 'destructive',
+                  },
+                ],
+                { cancelable: true }
+              );
+            }}
+            accessible={true}
+            accessibilityLabel="Delete win"
+            accessibilityHint="Double tap to delete this win"
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons 
+              name="delete" 
+              size={24} 
+              color="#FF0000" 
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {win.text && (
@@ -825,10 +889,9 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 10,
-    flexWrap: 'wrap',
-    paddingRight: 5,
+    paddingHorizontal: 5,
   },
   nameTimeContainer: {
     flex: 1,
@@ -895,6 +958,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     resizeMode: 'contain',
+  },
+  userInfoContent: {
+    flex: 1,
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 'auto',
   },
 });
 

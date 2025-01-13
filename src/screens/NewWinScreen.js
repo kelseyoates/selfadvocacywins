@@ -102,6 +102,14 @@ const NewWinScreen = ({ navigation }) => {
       const userDoc = await getDoc(userRef);
       const now = new Date();
       
+      // Create localTimestamp object
+      const localTimestamp = {
+        date: now.toLocaleDateString('en-US'),
+        time: now.toLocaleTimeString('en-US'),
+        timestamp: now.getTime(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+      
       let mediaUrl = null;
       let altText = null;
       let mediaType = null;
@@ -123,6 +131,7 @@ const NewWinScreen = ({ navigation }) => {
       const winData = {
         text: text.trim() || null,
         createdAt: now.toISOString(),
+        localTimestamp,
         userId: lowerCaseUid,
         username: userDoc.data().username,
         cheers: 0,

@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { auth, db, storage } from '../config/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc, updateDoc, onSnapshot, setDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot, setDoc, collection, query, where, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
@@ -1458,6 +1458,48 @@ const [lookingFor, setLookingFor] = useState('');
     }
   };
 
+  const handleDeleteWin = async (winId) => {
+    try {
+      const userRef = doc(db, 'users', targetUserId);
+      const winRef = doc(db, 'users', targetUserId, 'wins', winId);
+      
+      // First get the win to know its topic
+      const winDoc = await getDoc(winRef);
+      const winData = winDoc.data();
+      const topicToRemove = winData?.topic;
+
+      // Get current user data to update winTopics
+      const userDoc = await getDoc(userRef);
+      const userData = userDoc.data();
+      
+      // Remove the topic from winTopics array
+      let updatedWinTopics = userData.winTopics || [];
+      if (topicToRemove) {
+        updatedWinTopics = updatedWinTopics.filter(topic => topic !== topicToRemove);
+      }
+
+      // Delete the win document
+      await deleteDoc(winRef);
+
+      // Update the user's winTopics
+      await updateDoc(userRef, {
+        winTopics: updatedWinTopics
+      });
+
+      // Update local state
+      setWins(prevWins => prevWins.filter(win => win.id !== winId));
+      
+      // Announce success to screen reader
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Win deleted successfully');
+      }
+
+    } catch (error) {
+      console.error('Error deleting win:', error);
+      Alert.alert('Error', 'Failed to delete win');
+    }
+  };
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -1737,6 +1779,7 @@ const [lookingFor, setLookingFor] = useState('');
             <WinCard 
               key={win.id} 
               win={win}
+              onDeleteWin={handleDeleteWin}
               onCheersPress={() => handleCheersPress(win)}
               lazyLoad={true}
             />
