@@ -352,30 +352,30 @@ const [lookingFor, setLookingFor] = useState('');
   const StateSelector = () => {
     return (
       <View 
-        style={styles.inputContainer}
+        style={styles.stateWrapper}
         accessible={true}
         accessibilityLabel="State selection section"
       >
-        <Text 
-          style={styles.label}
-        >
+        <Text style={styles.stateTitle}>
           Your State:
         </Text>
         
         <TouchableOpacity 
-          style={styles.stateButton}
-          onPress={() => {
-            console.log('Opening state selector');
-            setModalVisible(true);
-          }}
+          style={styles.stateSelectButton}
+          onPress={() => setModalVisible(true)}
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel={`Select your state. Current state: ${selectedState || userData?.state || 'None selected'}`}
           accessibilityHint="Double tap to open state selection"
         >
-          <Text style={styles.stateButtonText}>
+          <Text style={styles.stateSelectButtonText}>
             {selectedState || userData?.state || 'Select State'}
           </Text>
+          <MaterialCommunityIcons 
+            name="chevron-down" 
+            size={24} 
+            color="#24269B"
+          />
         </TouchableOpacity>
 
         <Modal
@@ -384,19 +384,10 @@ const [lookingFor, setLookingFor] = useState('');
           animationType="slide"
           onRequestClose={() => setModalVisible(false)}
         >
-          <View 
-            style={styles.modalOverlay}
-            accessible={true}
-            accessibilityLabel="State selection dialog"
-          >
+          <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <View 
-                style={styles.modalHeader}
-                accessible={true}
-              >
-                <Text style={styles.modalTitle}>
-                  Select Your State
-                </Text>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Your State</Text>
                 <TouchableOpacity 
                   onPress={() => setModalVisible(false)}
                   accessible={true}
@@ -416,8 +407,8 @@ const [lookingFor, setLookingFor] = useState('');
                   <TouchableOpacity
                     style={styles.stateItem}
                     onPress={() => {
-                      console.log('Selected state:', item);
                       handleStateSelect(item);
+                      setModalVisible(false);
                     }}
                     accessible={true}
                     accessibilityRole="button"
@@ -2312,6 +2303,47 @@ saveButtonText: {
   color: 'white',
   fontSize: 16,
   fontWeight: '600',
+},
+stateWrapper: {
+  backgroundColor: '#fff',
+  padding: 15,
+  marginHorizontal: 10,
+  marginVertical: 10,
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: '#24269B',
+  shadowColor: '#000',
+  shadowOffset: {
+    width: 0,
+    height: 2,
+  },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  elevation: 5,
+},
+
+stateTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#24269B',
+  marginBottom: 10,
+},
+
+stateSelectButton: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: '#24269B',
+  borderRadius: 8,
+  padding: 15,
+  marginTop: 5,
+},
+
+stateSelectButtonText: {
+  fontSize: 16,
+  color: '#000',
 },
 });
 
