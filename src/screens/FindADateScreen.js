@@ -155,13 +155,16 @@ const FindADateScreen = ({ navigation }) => {
       setLoading(true);
       setError(null);
 
+      // Parse age values and ensure they're valid numbers
+      const minAge = parseInt(selectedAgeRange.min) || 18;
+      const maxAge = parseInt(selectedAgeRange.max) || 99;
+
       const searchParams = {
         attributesToRetrieve: ['*'],
         hitsPerPage: 50,
-        // Convert to numbers and use valid defaults if empty
         numericFilters: [
-          `age >= ${parseInt(selectedAgeRange.min) || 18}`,
-          `age <= ${parseInt(selectedAgeRange.max) || 99}`
+          `age >= ${minAge}`,
+          `age <= ${maxAge}`
         ]
       };
 
@@ -203,9 +206,10 @@ const FindADateScreen = ({ navigation }) => {
       console.log('Search Debug Info:', {
         query: searchQuery,
         filters: searchParams.filters,
-        currentUserPath: `users/${currentUser.uid.toLowerCase()}`,
+        numericFilters: searchParams.numericFilters,
+        ageRange: { min: minAge, max: maxAge },
+        currentUserPath: `users/${lowerCaseUid}`,
         selectedState,
-        selectedAgeRange,
         selectedWords,
         datingUserIds: Array.from(datingUserIds)
       });
@@ -220,6 +224,7 @@ const FindADateScreen = ({ navigation }) => {
       
       console.log('Total hits:', hits.length);
       console.log('Dating subscriber hits:', filteredHits.length);
+      console.log('Filtered hits age range:', filteredHits.map(hit => hit.age));
 
       setUsers(filteredHits);
 
@@ -235,7 +240,7 @@ const FindADateScreen = ({ navigation }) => {
   useEffect(() => {
     const timer = setTimeout(searchUsers, 300);
     return () => clearTimeout(timer);
-  }, [selectedState, selectedWords, textAnswer]);
+  }, [selectedState, selectedWords, textAnswer, selectedAgeRange]);
 
   // Update Algolia settings
   useEffect(() => {
@@ -267,37 +272,35 @@ const FindADateScreen = ({ navigation }) => {
   }, []);
 
   const handleMinAgeChange = (text) => {
-    // Just update the text without any validation
-    setSelectedAgeRange(prev => ({ ...prev, min: text }));
+    // Allow empty or numeric values only
+    if (text === '' || /^\d*$/.test(text)) {
+      setSelectedAgeRange(prev => ({ ...prev, min: text }));
+    }
   };
 
   const handleMaxAgeChange = (text) => {
-    // Just update the text without any validation
-    setSelectedAgeRange(prev => ({ ...prev, max: text }));
+    // Allow empty or numeric values only
+    if (text === '' || /^\d*$/.test(text)) {
+      setSelectedAgeRange(prev => ({ ...prev, max: text }));
+    }
   };
 
-  // Add these validation functions for when input loses focus
+  // Only validate and set defaults when the input loses focus
   const validateMinAge = (text) => {
-    if (!text.trim()) {
-      setSelectedAgeRange(prev => ({ ...prev, min: '18' }));
-      return;
-    }
-
     const age = parseInt(text);
-    if (isNaN(age) || age < 18) {
+    if (!text.trim() || isNaN(age) || age < 18) {
       setSelectedAgeRange(prev => ({ ...prev, min: '18' }));
+    } else {
+      setSelectedAgeRange(prev => ({ ...prev, min: String(age) }));
     }
   };
 
   const validateMaxAge = (text) => {
-    if (!text.trim()) {
-      setSelectedAgeRange(prev => ({ ...prev, max: '99' }));
-      return;
-    }
-
     const age = parseInt(text);
-    if (isNaN(age) || age > 99) {
+    if (!text.trim() || isNaN(age) || age > 99) {
       setSelectedAgeRange(prev => ({ ...prev, max: '99' }));
+    } else {
+      setSelectedAgeRange(prev => ({ ...prev, max: String(age) }));
     }
   };
 

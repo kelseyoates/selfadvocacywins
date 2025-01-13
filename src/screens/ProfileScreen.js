@@ -436,7 +436,7 @@ const [lookingFor, setLookingFor] = useState('');
   };
 
   const renderPersonalInfo = () => (
-    <View style={styles.personalInfoContainer}>
+    <View>
       {renderBirthdateSelectors()}
     </View>
   );
@@ -456,7 +456,7 @@ const [lookingFor, setLookingFor] = useState('');
         
         <View style={styles.birthdateButtonsRow}>
           <TouchableOpacity 
-            style={styles.birthdateSelectButton}
+            style={styles.stateSelectButton}
             onPress={() => setShowMonthPicker(true)}
             accessible={true}
             accessibilityLabel={`Month: ${selectedMonth || 'Not selected'}. Double tap to change`}
@@ -474,7 +474,7 @@ const [lookingFor, setLookingFor] = useState('');
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.birthdateSelectButton}
+            style={styles.stateSelectButton}
             onPress={() => setShowDayPicker(true)}
             accessible={true}
             accessibilityLabel={`Day: ${selectedDay || 'Not selected'}. Double tap to change`}
@@ -492,7 +492,7 @@ const [lookingFor, setLookingFor] = useState('');
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.birthdateSelectButton}
+            style={styles.stateSelectButton}
             onPress={() => setShowYearPicker(true)}
             accessible={true}
             accessibilityLabel={`Year: ${selectedYear || 'Not selected'}. Double tap to change`}
@@ -1180,8 +1180,8 @@ const [lookingFor, setLookingFor] = useState('');
   const [showLookingForModal, setShowLookingForModal] = useState(false);
 
   // Add these arrays for the options
-  const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary'];
-  const LOOKING_FOR_OPTIONS = ['Men', 'Women', 'Everyone'];
+  const GENDER_OPTIONS = ['Man', 'Woman', 'Non-binary'];
+  const LOOKING_FOR_OPTIONS = ['Man', 'Woman', 'Everyone'];
 
   // Update the renderDatingInfo function
   const renderDatingInfo = () => {
@@ -1189,52 +1189,56 @@ const [lookingFor, setLookingFor] = useState('');
 
     return (
       <View 
-        style={styles.datingContainer}
+        style={styles.stateWrapper}
         accessible={true}
         accessibilityLabel="Dating Profile Section"
       >
-        <Text style={styles.sectionTitle}>
+        <Text style={styles.stateTitle}>
           Dating Profile
         </Text>
         
-        <View style={styles.datingInfo}>
-          <View 
-            style={styles.datingInfoItem}
-            accessible={true}
-            accessibilityLabel="Gender selection section"
-          >
-            <Text style={styles.label}>My Gender:</Text>
+        <View style={styles.datingSelectors}>
+          {/* Gender Selector */}
+          <View style={styles.datingSelectWrapper}>
+            <Text style={styles.datingLabel}>My Gender:</Text>
             <TouchableOpacity 
-              style={styles.dropdownButton}
+              style={styles.stateSelectButton}
               onPress={() => setShowGenderModal(true)}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={`Select gender. Current selection: ${userData?.gender || 'None selected'}`}
               accessibilityHint="Double tap to open gender selection"
             >
-              <Text style={styles.dropdownButtonText}>
+              <Text style={styles.stateSelectButtonText}>
                 {userData?.gender || 'Select Gender'}
               </Text>
+              <MaterialCommunityIcons 
+                name="chevron-down" 
+                size={24} 
+                color="#24269B"
+              />
             </TouchableOpacity>
           </View>
 
-          <View 
-            style={styles.datingInfoItem}
-            accessible={true}
-            accessibilityLabel="Looking for preference section"
-          >
-            <Text style={styles.label}>I'm Looking For:</Text>
+          {/* Looking For Selector */}
+          <View style={styles.datingSelectWrapper}>
+            <Text style={styles.datingLabel}>I'm Looking For:</Text>
             <TouchableOpacity 
-              style={styles.dropdownButton}
+              style={styles.stateSelectButton}
               onPress={() => setShowLookingForModal(true)}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={`Select preference. Current selection: ${userData?.lookingFor || 'None selected'}`}
               accessibilityHint="Double tap to open preference selection"
             >
-              <Text style={styles.dropdownButtonText}>
+              <Text style={styles.stateSelectButtonText}>
                 {userData?.lookingFor || 'Select Preference'}
               </Text>
+              <MaterialCommunityIcons 
+                name="chevron-down" 
+                size={24} 
+                color="#24269B"
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -1246,60 +1250,45 @@ const [lookingFor, setLookingFor] = useState('');
           animationType="slide"
           onRequestClose={() => setShowGenderModal(false)}
         >
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setShowGenderModal(false)}
-            accessible={true}
-            accessibilityLabel="Tap outside to close gender selection"
-            accessibilityHint="Double tap to close the gender selection screen"
-          >
-            <View 
-              style={styles.modalContent}
-              accessible={true}
-              accessibilityLabel="Gender selection options"
-            >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  Select Gender
-                </Text>
+                <Text style={styles.modalTitle}>Select Gender</Text>
                 <TouchableOpacity 
-                  style={styles.closeModalButton}
                   onPress={() => setShowGenderModal(false)}
                   accessible={true}
                   accessibilityRole="button"
                   accessibilityLabel="Close gender selection"
-                  accessibilityHint="Double tap to close"
                 >
-                  <Text style={styles.closeModalButtonText}>✕</Text>
+                  <Text style={styles.closeButton}>✕</Text>
                 </TouchableOpacity>
               </View>
-
-              <ScrollView 
-                style={styles.optionsContainer}
-                accessible={true}
-                accessibilityLabel="List of gender options"
-              >
-                {GENDER_OPTIONS.map((option) => (
+              <FlatList
+                data={GENDER_OPTIONS}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
                   <TouchableOpacity
-                    key={option}
-                    style={styles.optionItem}
+                    style={styles.stateItem}
                     onPress={() => {
-                      handleGenderSelect(option);
+                      handleGenderSelect(item);
                       setShowGenderModal(false);
                     }}
                     accessible={true}
                     accessibilityRole="button"
-                    accessibilityLabel={option}
-                    accessibilityState={{ selected: userData?.gender === option }}
-                    accessibilityHint={`Double tap to select ${option} as your gender`}
+                    accessibilityLabel={item}
+                    accessibilityState={{ selected: userData?.gender === item }}
                   >
-                    <Text style={styles.optionText}>{option}</Text>
+                    <Text style={[
+                      styles.stateItemText,
+                      userData?.gender === item && styles.selectedStateText
+                    ]}>
+                      {item}
+                    </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+              />
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
 
         {/* Looking For Modal */}
@@ -1309,60 +1298,45 @@ const [lookingFor, setLookingFor] = useState('');
           animationType="slide"
           onRequestClose={() => setShowLookingForModal(false)}
         >
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setShowLookingForModal(false)}
-            accessible={true}
-            accessibilityLabel="Tap outside to close preference selection"
-            accessibilityHint="Double tap to close the preference selection screen"
-          >
-            <View 
-              style={styles.modalContent}
-              accessible={true}
-              accessibilityLabel="Preference selection options"
-            >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  I'm Looking For
-                </Text>
+                <Text style={styles.modalTitle}>I'm Looking For</Text>
                 <TouchableOpacity 
-                  style={styles.closeModalButton}
                   onPress={() => setShowLookingForModal(false)}
                   accessible={true}
                   accessibilityRole="button"
                   accessibilityLabel="Close preference selection"
-                  accessibilityHint="Double tap to close"
                 >
-                  <Text style={styles.closeModalButtonText}>✕</Text>
+                  <Text style={styles.closeButton}>✕</Text>
                 </TouchableOpacity>
               </View>
-
-              <ScrollView 
-                style={styles.optionsContainer}
-                accessible={true}
-                accessibilityLabel="List of preference options"
-              >
-                {LOOKING_FOR_OPTIONS.map((option) => (
+              <FlatList
+                data={LOOKING_FOR_OPTIONS}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
                   <TouchableOpacity
-                    key={option}
-                    style={styles.optionItem}
+                    style={styles.stateItem}
                     onPress={() => {
-                      handleLookingForSelect(option);
+                      handleLookingForSelect(item);
                       setShowLookingForModal(false);
                     }}
                     accessible={true}
                     accessibilityRole="button"
-                    accessibilityLabel={option}
-                    accessibilityState={{ selected: userData?.lookingFor === option }}
-                    accessibilityHint={`Double tap to select that you are looking for ${option}`}
+                    accessibilityLabel={item}
+                    accessibilityState={{ selected: userData?.lookingFor === item }}
                   >
-                    <Text style={styles.optionText}>{option}</Text>
+                    <Text style={[
+                      styles.stateItemText,
+                      userData?.lookingFor === item && styles.selectedStateText
+                    ]}>
+                      {item}
+                    </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+              />
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       </View>
     );
@@ -2177,6 +2151,7 @@ modalContent: {
   borderTopLeftRadius: 20,
   borderTopRightRadius: 20,
   paddingBottom: 20,
+  maxHeight: '80%',
 },
 
 pickerHeader: {
@@ -2460,6 +2435,20 @@ birthdateSelectButton: {
   borderRadius: 8,
   padding: 15,
   marginTop: 5,
+},
+
+datingSelectors: {
+  gap: 15,
+},
+
+datingSelectWrapper: {
+  gap: 5,
+},
+
+datingLabel: {
+  fontSize: 16,
+  color: '#666',
+  marginLeft: 5,
 },
 });
 
