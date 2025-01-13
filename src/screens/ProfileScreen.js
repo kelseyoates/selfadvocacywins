@@ -123,13 +123,6 @@ const [lookingFor, setLookingFor] = useState('');
   // Update the targetUserId initialization
   const targetUserId = (profileUserId || user?.uid || '').toLowerCase();
 
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [initialBirthdate, setInitialBirthdate] = useState(null);
-  const [shouldUpdate, setShouldUpdate] = useState(false);
-
-
-
-
   // Add a ref to track if this is the initial set of values
   const isSettingInitialValues = useRef(true);
 
@@ -156,7 +149,6 @@ const [lookingFor, setLookingFor] = useState('');
             setSelectedDay(day);
             setSelectedMonth(monthName);
             setSelectedYear(year);
-            setInitialBirthdate(data.birthdate);
           }
         } else {
           console.log('No user document found for ID:', lowercaseUid);
@@ -172,57 +164,51 @@ const [lookingFor, setLookingFor] = useState('');
   }, [targetUserId]);
 
   const updateBirthdateWithValues = async (day, month, year) => {
-    // Multiple checks to prevent automatic updates
-    if (isInitialLoad || !shouldUpdate) {
-      console.log('Skipping update: initial load or update not requested');
+    if (!month || !day || !year) {
+      console.log('Missing required date information');
       return;
     }
 
-    console.log('Starting manual birthdate update with:', {
-      day,
-      month,
-      year,
-      isInitialLoad,
-      shouldUpdate
-    });
+    try {
+      const paddedDay = day.toString().padStart(2, '0');
+      const monthIndex = months.indexOf(month);
+      const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
+      const birthdate = `${year}-${paddedMonth}-${paddedDay}`;
 
-    if (month && day && year) {
-      try {
-        const paddedDay = day.toString().padStart(2, '0');
-        const monthIndex = months.indexOf(month);
-        const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
-        const birthdate = `${year}-${paddedMonth}-${paddedDay}`;
-
-        if (birthdate === initialBirthdate) {
-          console.log('Birthday unchanged, skipping update');
-          return;
-        }
-
-        const userRef = doc(db, 'users', targetUserId);
-        await updateDoc(userRef, {
-          birthdate: birthdate
-        });
-        
-        setUserData(prev => ({
-          ...prev,
-          birthdate
-        }));
-        
-        setInitialBirthdate(birthdate);
-        setShouldUpdate(false); // Reset update flag
-        Alert.alert('Success', 'Birthday updated successfully');
-      } catch (error) {
-        console.error('Error updating birthdate:', error);
-        Alert.alert('Error', 'Failed to update birthday');
-      }
+      const userRef = doc(db, 'users', targetUserId);
+      await updateDoc(userRef, {
+        birthdate: birthdate
+      });
+      
+      setUserData(prev => ({
+        ...prev,
+        birthdate
+      }));
+      
+      Alert.alert('Success', 'Birthday updated successfully');
+    } catch (error) {
+      console.error('Error updating birthdate:', error);
+      Alert.alert('Error', 'Failed to update birthday');
     }
   };
 
-  // Add this function to handle the save button press
-  // Add this function to handle the save button press
-  const handleSaveBirthdate = () => {
-    setShouldUpdate(true);
-    updateBirthdateWithValues(selectedDay, selectedMonth, selectedYear);
+  // Update the handlers to directly call updateBirthdateWithValues
+  const handleMonthSelect = (month) => {
+    setSelectedMonth(month);
+    setShowMonthPicker(false);
+    updateBirthdateWithValues(selectedDay, month, selectedYear);
+  };
+
+  const handleDaySelect = (day) => {
+    setSelectedDay(day);
+    setShowDayPicker(false);
+    updateBirthdateWithValues(day, selectedMonth, selectedYear);
+  };
+
+  const handleYearSelect = (year) => {
+    setSelectedYear(year);
+    setShowYearPicker(false);
+    updateBirthdateWithValues(selectedDay, selectedMonth, year);
   };
 
   useEffect(() => {
@@ -463,25 +449,6 @@ const [lookingFor, setLookingFor] = useState('');
       {renderBirthdateSelectors()}
     </View>
   );
-
-  // Modify the handlers to prevent updates during initial load
-  const handleMonthSelect = (month) => {
-    if (isSettingInitialValues.current) return;
-    setSelectedMonth(month);
-    setShowMonthPicker(false);
-  };
-
-  const handleDaySelect = (day) => {
-    if (isSettingInitialValues.current) return;
-    setSelectedDay(day);
-    setShowDayPicker(false);
-  };
-
-  const handleYearSelect = (year) => {
-    if (isSettingInitialValues.current) return;
-    setSelectedYear(year);
-    setShowYearPicker(false);
-  };
 
   // Update your picker render code to use these new handlers
   // Update your picker render code to use these new handlers
@@ -1376,6 +1343,58 @@ const [lookingFor, setLookingFor] = useState('');
       targetUserId
     });
   }, [profileUserId, user, targetUserId]);
+
+  // Update the handleBirthdateSelect function
+  const handleBirthdateSelect = async (type, value) => {
+    console.log('Selecting birthdate:', type, value);
+    
+    try {
+      let newDay = selectedDay;
+      let newMonth = selectedMonth;
+      let newYear = selectedYear;
+
+      // Update the appropriate value
+      switch (type) {
+        case 'month':
+          newMonth = value;
+          setSelectedMonth(value);
+          break;
+        case 'day':
+          newDay = value;
+          setSelectedDay(value);
+          break;
+        case 'year':
+          newYear = value;
+          setSelectedYear(value);
+          break;
+      }
+
+      // Only proceed if we have all values
+      if (newMonth && newDay && newYear) {
+        const monthIndex = months.indexOf(newMonth);
+        const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
+        const paddedDay = newDay.toString().padStart(2, '0');
+        const birthdate = `${newYear}-${paddedMonth}-${paddedDay}`;
+
+        const userRef = doc(db, 'users', targetUserId.toLowerCase());
+        await updateDoc(userRef, {
+          birthdate: birthdate
+        });
+
+        setUserData(prev => ({
+          ...prev,
+          birthdate
+        }));
+
+        console.log('Birthdate updated successfully:', birthdate);
+        Alert.alert('Success', 'Birthday updated successfully');
+        setShowBirthdateModal(false);
+      }
+    } catch (error) {
+      console.error('Error updating birthdate:', error);
+      Alert.alert('Error', 'Failed to update birthday');
+    }
+  };
 
   if (!user && !profileUserId) {
     return (
