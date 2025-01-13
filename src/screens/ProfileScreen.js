@@ -75,6 +75,7 @@ const ProfileScreen = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
+  const [showBirthdateModal, setShowBirthdateModal] = useState(false);
 
 // gender
 const [gender, setGender] = useState('');
@@ -119,8 +120,8 @@ const [lookingFor, setLookingFor] = useState('');
     (_, i) => (currentYear - i).toString()
   );
 
-  // Use the passed profileUserId if available, otherwise show current user's profile
-  const targetUserId = (profileUserId || user?.uid)?.toLowerCase();
+  // Update the targetUserId initialization
+  const targetUserId = (profileUserId || user?.uid || '').toLowerCase();
 
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [initialBirthdate, setInitialBirthdate] = useState(null);
@@ -135,33 +136,39 @@ const [lookingFor, setLookingFor] = useState('');
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        isSettingInitialValues.current = true;
-        setIsInitialLoad(true);
-        const userDoc = await getDoc(doc(db, 'users', targetUserId));
-        const data = userDoc.data();
+        const lowercaseUid = targetUserId.toLowerCase();
+        console.log('Fetching user data with lowercase UID:', lowercaseUid);
         
-        setUserData(data);
+        const userRef = doc(db, 'users', lowercaseUid);
+        const userDoc = await getDoc(userRef);
         
-        if (data?.birthdate) {
-          const [year, month, day] = data.birthdate.split('-');
-          const monthName = months[parseInt(month) - 1];
-          
-          setSelectedDay(day);
-          setSelectedMonth(monthName);
-          setSelectedYear(year);
-          setInitialBirthdate(data.birthdate);
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          console.log('Successfully fetched user data:', data);
+          setUserData(data);
+          if (data.state) {
+            setSelectedState(data.state);
+            setStateToSave(data.state);
+          }
+          if (data.birthdate) {
+            const [year, month, day] = data.birthdate.split('-');
+            const monthName = months[parseInt(month) - 1];
+            setSelectedDay(day);
+            setSelectedMonth(monthName);
+            setSelectedYear(year);
+            setInitialBirthdate(data.birthdate);
+          }
+        } else {
+          console.log('No user document found for ID:', lowercaseUid);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
-      } finally {
-        setTimeout(() => {
-          setIsInitialLoad(false);
-          isSettingInitialValues.current = false;
-        }, 1000);
       }
     };
 
-    fetchUserData();
+    if (targetUserId) {
+      fetchUserData();
+    }
   }, [targetUserId]);
 
   const updateBirthdateWithValues = async (day, month, year) => {
@@ -211,6 +218,7 @@ const [lookingFor, setLookingFor] = useState('');
     }
   };
 
+  // Add this function to handle the save button press
   // Add this function to handle the save button press
   const handleSaveBirthdate = () => {
     setShouldUpdate(true);
@@ -315,36 +323,74 @@ const [lookingFor, setLookingFor] = useState('');
     }
   };
 
-  const renderStateSelector = () => {
+  const [stateToSave, setStateToSave] = useState('');
+
+  const handleStateSelect = async (state) => {
+    console.log('State selected:', state);
+    
+    try {
+      const lowercaseUid = targetUserId.toLowerCase();
+      console.log('Saving state for user:', lowercaseUid);
+
+      const userRef = doc(db, 'users', lowercaseUid);
+      
+      // Update Firestore
+      await updateDoc(userRef, {
+        state: state
+      });
+
+      // Update local state
+      setSelectedState(state);
+      setUserData(prev => ({
+        ...prev,
+        state: state
+      }));
+
+      // Announce the change to screen readers
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility(`State updated to ${state}`);
+      }
+
+      console.log('State saved successfully:', state);
+      setModalVisible(false);
+    } catch (error) {
+      console.error('Failed to save state:', error);
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Failed to save state');
+      } else {
+        Alert.alert('Error', 'Failed to save state');
+      }
+    }
+  };
+
+  const StateSelector = () => {
     return (
       <View 
-        style={styles.stateContainer}
+        style={styles.inputContainer}
         accessible={true}
         accessibilityLabel="State selection section"
       >
-        <Text style={styles.stateLabel}>📍 Your State</Text>
+        <Text 
+          style={styles.label}
+        >
+          Your State:
+        </Text>
         
         <TouchableOpacity 
           style={styles.stateButton}
-          onPress={() => setModalVisible(true)}
+          onPress={() => {
+            console.log('Opening state selector');
+            setModalVisible(true);
+          }}
           accessible={true}
-          accessibilityLabel={`Current state: ${selectedState || 'None selected'}. Double tap to change`}
-          accessibilityHint="Opens state selection modal"
           accessibilityRole="button"
+          accessibilityLabel={`Select your state. Current state: ${selectedState || userData?.state || 'None selected'}`}
+          accessibilityHint="Double tap to open state selection"
         >
           <Text style={styles.stateButtonText}>
-            {selectedState || 'Select your state'}
+            {selectedState || userData?.state || 'Select State'}
           </Text>
         </TouchableOpacity>
-
-        {selectedState && (
-          <TouchableOpacity 
-            style={styles.saveButton}
-            onPress={saveState}
-          >
-            <Text style={styles.buttonText}>Save State</Text>
-          </TouchableOpacity>
-        )}
 
         <Modal
           visible={modalVisible}
@@ -352,38 +398,61 @@ const [lookingFor, setLookingFor] = useState('');
           animationType="slide"
           onRequestClose={() => setModalVisible(false)}
         >
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setModalVisible(false)}
+          <View 
+            style={styles.modalOverlay}
+            accessible={true}
+            accessibilityLabel="State selection dialog"
           >
             <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Your State</Text>
+              <View 
+                style={styles.modalHeader}
+                accessible={true}
+              >
+                <Text style={styles.modalTitle}>
+                  Select Your State
+                </Text>
                 <TouchableOpacity 
-                  style={styles.closeModalButton}
                   onPress={() => setModalVisible(false)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close state selection"
+                  accessibilityHint="Double tap to close"
                 >
-                  <Text style={styles.closeModalButtonText}>✕</Text>
+                  <Text style={styles.closeButton}>✕</Text>
                 </TouchableOpacity>
               </View>
-
-              <ScrollView style={styles.stateListContainer}>
-                {US_STATES.map((state) => (
+              
+              <FlatList
+                data={US_STATES}
+                keyExtractor={(item) => item}
+                accessibilityLabel="List of states"
+                renderItem={({ item }) => (
                   <TouchableOpacity
-                    key={state}
                     style={styles.stateItem}
                     onPress={() => {
-                      setSelectedState(state);
-                      setModalVisible(false);
+                      console.log('Selected state:', item);
+                      handleStateSelect(item);
                     }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={item}
+                    accessibilityState={{
+                      selected: selectedState === item || userData?.state === item
+                    }}
+                    accessibilityHint={`Double tap to select ${item} as your state`}
                   >
-                    <Text style={styles.stateItemText}>{state}</Text>
+                    <Text style={[
+                      styles.stateItemText,
+                      (selectedState === item || userData?.state === item) && 
+                      styles.selectedStateText
+                    ]}>
+                      {item}
+                    </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+              />
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       </View>
     );
@@ -414,6 +483,7 @@ const [lookingFor, setLookingFor] = useState('');
     setShowYearPicker(false);
   };
 
+  // Update your picker render code to use these new handlers
   // Update your picker render code to use these new handlers
   const renderBirthdateSelectors = () => {
     return (
@@ -513,8 +583,6 @@ const [lookingFor, setLookingFor] = useState('');
       Alert.alert('Error', 'Failed to save state');
     }
   };
-
-
 
 
   const questions = [
@@ -1300,6 +1368,15 @@ const [lookingFor, setLookingFor] = useState('');
     }
   };
 
+  // Make sure targetUserId is properly initialized
+  useEffect(() => {
+    console.log('Current auth state:', {
+      profileUserId,
+      currentUserId: user?.uid,
+      targetUserId
+    });
+  }, [profileUserId, user, targetUserId]);
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -1477,11 +1554,7 @@ const [lookingFor, setLookingFor] = useState('');
   
       {!profileUserId ? ( // Only show these sections for own profile
         <>
-          <StateDropdown
-            selectedState={userData.state}
-            onStateSelect={(state) => setUserData(prev => ({ ...prev, state }))}
-            style={styles.stateDropdown}
-          />
+          <StateSelector />
 
 {showHelpers && !profileUserId && (
         <View style={styles.helperSection}>
@@ -2141,7 +2214,7 @@ modalContent: {
   borderTopLeftRadius: 20,
   borderTopRightRadius: 20,
   paddingBottom: 20,
-  maxHeight: '50%',
+  maxHeight: '80%',
 },
 modalHeader: {
   flexDirection: 'row',
@@ -2152,28 +2225,74 @@ modalHeader: {
   borderBottomColor: '#eee',
 },
 modalTitle: {
-  fontSize: 20,
+  fontSize: 18,
   fontWeight: 'bold',
   color: '#24269B',
 },
-closeModalButton: {
-  padding: 8,
-},
-closeModalButtonText: {
-  fontSize: 20,
+closeButton: {
+  fontSize: 24,
   color: '#666',
 },
-optionsContainer: {
-  paddingHorizontal: 15,
-},
-optionItem: {
-  paddingVertical: 15,
+stateItem: {
+  padding: 15,
   borderBottomWidth: 1,
   borderBottomColor: '#eee',
 },
-optionText: {
+stateItemText: {
   fontSize: 16,
   color: '#333',
+},
+inputContainer: {
+  padding: 15,
+  backgroundColor: '#fff',
+  borderRadius: 10,
+  marginHorizontal: 10,
+  marginVertical: 5,
+},
+selectedStateText: {
+  color: '#24269B',
+  fontWeight: 'bold',
+},
+birthdateSelectors: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  padding: 15,
+},
+selectorContainer: {
+  flex: 1,
+  marginHorizontal: 5,
+},
+selectorLabel: {
+  fontSize: 14,
+  marginBottom: 5,
+  color: '#666',
+},
+selector: {
+  height: 200,
+},
+selectorItem: {
+  padding: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+},
+selectedItem: {
+  backgroundColor: '#f0f0f0',
+},
+selectorItemText: {
+  fontSize: 16,
+  textAlign: 'center',
+},
+saveButton: {
+  backgroundColor: '#24269B',
+  margin: 15,
+  padding: 15,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+saveButtonText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '600',
 },
 });
 
