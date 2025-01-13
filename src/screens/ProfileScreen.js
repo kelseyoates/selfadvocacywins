@@ -446,80 +446,177 @@ const [lookingFor, setLookingFor] = useState('');
   const renderBirthdateSelectors = () => {
     return (
       <View 
-        style={styles.birthdateContainer}
+        style={styles.stateWrapper}
         accessible={true}
         accessibilityLabel="Birthday selection section"
       >
-        <TouchableOpacity 
-          style={styles.pickerButton}
-          onPress={() => setShowMonthPicker(true)}
-          accessible={true}
-          accessibilityLabel={`Month: ${selectedMonth || 'Not selected'}. Double tap to change`}
-          accessibilityHint="Opens month selection picker"
-          accessibilityRole="button"
-        >
-          <Text style={styles.pickerButtonText}>
-            {selectedMonth || 'Month'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.pickerButton}
-          onPress={() => setShowDayPicker(true)}
-          accessible={true}
-          accessibilityLabel={`Day: ${selectedDay || 'Not selected'}. Double tap to change`}
-          accessibilityHint="Opens day selection picker"
-          accessibilityRole="button"
-        >
-          <Text style={styles.pickerButtonText}>
-            {selectedDay || 'Day'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.pickerButton}
-          onPress={() => setShowYearPicker(true)}
-          accessible={true}
-          accessibilityLabel={`Year: ${selectedYear || 'Not selected'}. Double tap to change`}
-          accessibilityHint="Opens year selection picker"
-          accessibilityRole="button"
-        >
-          <Text style={styles.pickerButtonText}>
-            {selectedYear || 'Year'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Add Save button
-        {selectedMonth && selectedDay && selectedYear && (
+        <Text style={styles.stateTitle}>
+          Your Birthday:
+        </Text>
+        
+        <View style={styles.birthdateButtonsRow}>
           <TouchableOpacity 
-            style={styles.saveButton}
-            onPress={handleSaveBirthdate}
+            style={styles.birthdateSelectButton}
+            onPress={() => setShowMonthPicker(true)}
+            accessible={true}
+            accessibilityLabel={`Month: ${selectedMonth || 'Not selected'}. Double tap to change`}
+            accessibilityHint="Opens month selection picker"
+            accessibilityRole="button"
           >
-            <Text style={styles.saveButtonText}>Save Birthday</Text>
+            <Text style={styles.stateSelectButtonText}>
+              {selectedMonth || 'Month'}
+            </Text>
+            <MaterialCommunityIcons 
+              name="chevron-down" 
+              size={24} 
+              color="#24269B"
+            />
           </TouchableOpacity>
-        )} */}
 
-        {/* Your existing picker modals with updated handlers */}
-        {showMonthPicker && renderPicker(
-          months,
-          selectedMonth,
-          handleMonthSelect,
-          () => setShowMonthPicker(false)
-        )}
+          <TouchableOpacity 
+            style={styles.birthdateSelectButton}
+            onPress={() => setShowDayPicker(true)}
+            accessible={true}
+            accessibilityLabel={`Day: ${selectedDay || 'Not selected'}. Double tap to change`}
+            accessibilityHint="Opens day selection picker"
+            accessibilityRole="button"
+          >
+            <Text style={styles.stateSelectButtonText}>
+              {selectedDay || 'Day'}
+            </Text>
+            <MaterialCommunityIcons 
+              name="chevron-down" 
+              size={24} 
+              color="#24269B"
+            />
+          </TouchableOpacity>
 
-        {showDayPicker && renderPicker(
-          days,
-          selectedDay,
-          handleDaySelect,
-          () => setShowDayPicker(false)
-        )}
+          <TouchableOpacity 
+            style={styles.birthdateSelectButton}
+            onPress={() => setShowYearPicker(true)}
+            accessible={true}
+            accessibilityLabel={`Year: ${selectedYear || 'Not selected'}. Double tap to change`}
+            accessibilityHint="Opens year selection picker"
+            accessibilityRole="button"
+          >
+            <Text style={styles.stateSelectButtonText}>
+              {selectedYear || 'Year'}
+            </Text>
+            <MaterialCommunityIcons 
+              name="chevron-down" 
+              size={24} 
+              color="#24269B"
+            />
+          </TouchableOpacity>
+        </View>
 
-        {showYearPicker && renderPicker(
-          years,
-          selectedYear,
-          handleYearSelect,
-          () => setShowYearPicker(false)
-        )}
+        {/* Month Picker Modal */}
+        <Modal
+          visible={showMonthPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowMonthPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Month</Text>
+                <TouchableOpacity onPress={() => setShowMonthPicker(false)}>
+                  <Text style={styles.closeButton}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={months}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.stateItem}
+                    onPress={() => handleMonthSelect(item)}
+                  >
+                    <Text style={[
+                      styles.stateItemText,
+                      selectedMonth === item && styles.selectedStateText
+                    ]}>
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* Day Picker Modal */}
+        <Modal
+          visible={showDayPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDayPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Day</Text>
+                <TouchableOpacity onPress={() => setShowDayPicker(false)}>
+                  <Text style={styles.closeButton}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={days}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.stateItem}
+                    onPress={() => handleDaySelect(item)}
+                  >
+                    <Text style={[
+                      styles.stateItemText,
+                      selectedDay === item && styles.selectedStateText
+                    ]}>
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* Year Picker Modal */}
+        <Modal
+          visible={showYearPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowYearPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Year</Text>
+                <TouchableOpacity onPress={() => setShowYearPicker(false)}>
+                  <Text style={styles.closeButton}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={years}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.stateItem}
+                    onPress={() => handleYearSelect(item)}
+                  >
+                    <Text style={[
+                      styles.stateItemText,
+                      selectedYear === item && styles.selectedStateText
+                    ]}>
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   };
@@ -2344,6 +2441,25 @@ stateSelectButton: {
 stateSelectButtonText: {
   fontSize: 16,
   color: '#000',
+},
+
+birthdateButtonsRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  gap: 10,
+},
+
+birthdateSelectButton: {
+  flex: 1,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: '#24269B',
+  borderRadius: 8,
+  padding: 15,
+  marginTop: 5,
 },
 });
 
