@@ -26,8 +26,8 @@ try {
     console.error('Algolia admin client connection test failed:', error);
   });
 
-  searchIndex = searchClient.initIndex('users');
-  adminIndex = adminClient.initIndex('users');
+  searchIndex = searchClient.initIndex('users_friends');
+  adminIndex = adminClient.initIndex('users_friends');
 
 } catch (error) {
   console.error('Error initializing Algolia clients:', error);

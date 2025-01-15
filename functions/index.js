@@ -1,6 +1,9 @@
 const functions = require("firebase-functions");
+const {onDocumentWritten} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const stripe = require("stripe")("sk_live_y5iqnq60z1CCYuD98ftQeUPw");
+const Typesense = require("typesense");
+
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -183,3 +186,135 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     return res.status(500).send(`Webhook Error: ${error.message}`);
   }
 });
+
+// Initialize Typesense client
+const client = new Typesense.Client({
+  nodes: [{
+    host: "e6dqryica24hsu75p-1.a1.typesense.net",
+    port: "443",
+    protocol: "https",
+  }],
+  apiKey: "vcXv0c4EKrJ6AHFR1nCKQSXGch2EEzE7",
+  connectionTimeoutSeconds: 2,
+});
+
+/**
+ * Creates a Typesense collection with the specified schema if it doesn't exist
+ * @async
+ * @return {Promise<void>}
+ * A promise that resolves when the collection is created
+ * @throws {Error}
+ * If there's an error creating the collection (except 409 Conflict)
+ */
+async function createCollection() {
+  const schema = {
+    name: "users",
+    fields: [
+      {name: "username", type: "string"},
+      {name: "state", type: "string"},
+      {name: "subscriptionStatus", type: "string"},
+      {name: "subscriptionType", type: "string"},
+      {name: "age", type: "int32", optional: true},
+      {
+        name: "questionAnswers",
+        type: "object[]",
+        facet: true,
+        fields: [
+          {name: "textAnswer", type: "string", facet: true},
+          {name: "selectedWords", type: "string[]", facet: true},
+        ],
+      },
+      {name: "profilePicture", type: "string", optional: true},
+      {name: "_searchableContent", type: "string", optional: true},
+      {name: "matchScore", type: "float"},
+    ],
+    default_sorting_field: "matchScore",
+    enable_nested_fields: true,
+  };
+
+  try {
+    await client.collections().create(schema);
+  } catch (error) {
+    if (error.httpStatus !== 409) {
+      throw error;
+    }
+    // Collection already exists
+    console.log("Collection already exists");
+  }
+}
+
+exports.onUserUpdateTypesense =
+onDocumentWritten("users/{userId}", async (event) => {
+  try {
+    const userData = event.data.after.data();
+    const userId = event.params.userId;
+
+    if (!userData) {
+      console.log("Document was deleted");
+      try {
+        await client.collections("users").documents(userId).delete();
+      } catch (error) {
+        console.log("Document not found in Typesense or already deleted");
+      }
+      return null;
+    }
+
+    console.log(`Processing Typesense index for user: ${userId}`);
+
+    // Ensure collection exists
+    await createCollection();
+
+    // Prepare user data for Typesense
+    const typesenseObject = {
+      id: userId,
+      subscriptionStatus: userData.subscriptionStatus,
+      subscriptionType: userData.subscriptionType,
+      username: userData.username,
+      profilePicture: userData.profilePicture,
+      state: userData.state,
+      questionAnswers: userData.questionAnswers ?
+        userData.questionAnswers.map((qa) => ({
+          textAnswer: qa.textAnswer,
+          selectedWords: qa.selectedWords || [],
+        })) : [],
+      age: calculateAge(userData.birthDate),
+      _searchableContent: userData.questionAnswers ?
+        userData.questionAnswers.map((qa) =>
+          `${qa.textAnswer} ${(qa.selectedWords || []).join(" ")}`,
+        ).join(" ") : "",
+      matchScore: 1.0,
+    };
+
+    // Upsert to Typesense
+    await client.collections("users").documents().upsert(typesenseObject);
+    console.log(`Indexed user ${userId} to Typesense with data:`,
+        typesenseObject);
+
+    return null;
+  } catch (error) {
+    console.error("Error processing Typesense index:", error);
+    throw error;
+  }
+});
+
+/**
+ * Calculates age from a birth date
+ * @param {Date} birthDate -
+ * The birth date to calculate age from
+ * @return {number|null}
+ * The calculated age or null if no birth date provided
+ */
+function calculateAge(birthDate) {
+  if (!birthDate) return null;
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return age;
+}

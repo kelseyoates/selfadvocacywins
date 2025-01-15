@@ -15,11 +15,13 @@
   "main": "index.js",
   "dependencies": {
     "@react-native-picker/picker": "^2.10.2",
+    "cors": "^2.8.5",
     "express": "^4.21.2",
     "firebase-admin": "^11.11.1",
     "firebase-functions": "^6.2.0",
     "react-native-multiple-select": "^0.5.12",
-    "stripe": "^12.18.0"
+    "stripe": "^12.18.0",
+    "typesense": "^1.8.2"
   },
   "devDependencies": {
     "eslint": "^8.15.0",
