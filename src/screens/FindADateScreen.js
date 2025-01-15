@@ -12,12 +12,12 @@ import {
   Keyboard,
   Animated
 } from 'react-native';
-import { searchIndex, adminIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
 import StateDropdown from '../components/StateDropdown';
 import { questions } from '../constants/questions';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { typesenseClient } from '../config/typesense';
 
 // Only include dating questions
 const allQuestions = [
@@ -155,121 +155,73 @@ const FindADateScreen = ({ navigation }) => {
       setLoading(true);
       setError(null);
 
-      // Parse age values and ensure they're valid numbers
       const minAge = parseInt(selectedAgeRange.min) || 18;
       const maxAge = parseInt(selectedAgeRange.max) || 99;
 
-      const searchParams = {
-        attributesToRetrieve: ['*'],
-        hitsPerPage: 50,
-        numericFilters: [
-          `age >= ${minAge}`,
-          `age <= ${maxAge}`
-        ]
+      // Start with minimal filters to debug
+      const searchParameters = {
+        q: '*',
+        query_by: 'username,state',
+        per_page: 20,
+        timeout_ms: 5000,
       };
 
-      const lowerCaseUid = currentUser.uid.toLowerCase();
-
-      // First get all dating subscribers from Firestore
-      const datingUsersQuery = query(
-        collection(db, 'users'),
-        where('subscriptionType', '==', 'selfAdvocateDating')
-      );
-      const datingUsersSnapshot = await getDocs(datingUsersQuery);
-      const datingUserIds = new Set(
-        datingUsersSnapshot.docs.map(doc => doc.id.toLowerCase())
-      );
-
-      // Start with basic filters
-      let filters = [`NOT path:"users/${lowerCaseUid}"`];
+      // Log all users first
+      const allUsers = await typesenseClient
+        .collections('users')
+        .documents()
+        .search({
+          q: '*',
+          per_page: 100
+        });
       
+      console.log('All users in Typesense:', allUsers.found);
+      console.log('User subscription types:', allUsers.hits.map(hit => ({
+        id: hit.document.id,
+        type: hit.document.subscriptionType,
+        age: hit.document.age
+      })));
+
+      // Then add filters one by one
+      searchParameters.filter_by = `subscriptionType:=selfAdvocateDating`;
+
+      // Add age filter
+      searchParameters.filter_by += ` && age:>=${minAge} && age:<=${maxAge}`;
+
+      // Add current user filter
+      searchParameters.filter_by += ` && id:!=${currentUser.uid.toLowerCase()}`;
+
+      // Add state filter if selected
       if (selectedState) {
-        filters.push(`state:"${selectedState}"`);
+        searchParameters.filter_by += ` && state:=${selectedState}`;
       }
 
-      searchParams.filters = filters.join(' AND ');
+      console.log('Final search parameters:', searchParameters);
 
-      // Build search query for text matching
-      let searchTerms = [];
-      
-      if (textAnswer.trim()) {
-        searchTerms.push(textAnswer.trim());
-      }
+      const results = await typesenseClient
+        .collections('users')
+        .documents()
+        .search(searchParameters);
 
-      if (selectedWords.length > 0) {
-        searchTerms.push(...selectedWords);
-      }
+      console.log('Search completed. Found:', results.found);
+      console.log('Matched users:', results.hits.map(hit => ({
+        id: hit.document.id,
+        type: hit.document.subscriptionType,
+        age: hit.document.age
+      })));
 
-      const searchQuery = searchTerms.join(' ');
-      
-      // Debug logs
-      console.log('Search Debug Info:', {
-        query: searchQuery,
-        filters: searchParams.filters,
-        numericFilters: searchParams.numericFilters,
-        ageRange: { min: minAge, max: maxAge },
-        currentUserPath: `users/${lowerCaseUid}`,
-        selectedState,
-        selectedWords,
-        datingUserIds: Array.from(datingUserIds)
-      });
-
-      const { hits } = await searchIndex.search(searchQuery, searchParams);
-      
-      // Filter hits to only include dating subscribers
-      const filteredHits = hits.filter(hit => {
-        const hitUserId = hit.path.split('/')[1].toLowerCase();
-        return datingUserIds.has(hitUserId);
-      });
-      
-      console.log('Total hits:', hits.length);
-      console.log('Dating subscriber hits:', filteredHits.length);
-      console.log('Filtered hits age range:', filteredHits.map(hit => hit.age));
-
-      setUsers(filteredHits);
+      setUsers(results.hits.map(hit => ({
+        ...hit.document,
+        objectID: hit.document.id
+      })));
 
     } catch (err) {
-      console.error('Error searching users:', err);
-      setError('Failed to search users');
+      console.error('Search error details:', err.response?.data || err);
+      setError('Failed to search users. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
-  // Search when inputs change
-  useEffect(() => {
-    const timer = setTimeout(searchUsers, 300);
-    return () => clearTimeout(timer);
-  }, [selectedState, selectedWords, textAnswer, selectedAgeRange]);
-
-  // Update Algolia settings
-  useEffect(() => {
-    const setupAlgolia = async () => {
-      try {
-        await adminIndex.setSettings({
-          searchableAttributes: [
-            'questionAnswers.selectedWords',
-            'questionAnswers.textAnswer',
-            'datingAnswers.selectedWords',
-            'datingAnswers.textAnswer',
-            'winTopics',
-            'state',
-            'age'
-          ],
-          attributesForFaceting: [
-            'state',
-            'path',
-            'age',
-            'subscriptionType'
-          ]
-        });
-        console.log('DEBUG: Algolia settings updated');
-      } catch (error) {
-        console.error('Error setting up Algolia:', error);
-      }
-    };
-    setupAlgolia();
-  }, []);
 
   const handleMinAgeChange = (text) => {
     // Allow empty or numeric values only
@@ -614,7 +566,7 @@ const FindADateScreen = ({ navigation }) => {
               onPress={() => {
                 announceToScreenReader(`Opening profile for ${user.username}`);
                 navigation.navigate('OtherUserProfile', { 
-                  profileUserId: user.path.split('/')[1],
+                  profileUserId: user.id,
                   username: user.username,
                   isCurrentUser: false
                 });
@@ -646,6 +598,26 @@ const FindADateScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         ))}
+      </View>
+
+      <View style={styles.searchButtonContainer}>
+        <TouchableOpacity
+          style={[
+            styles.searchButton,
+            loading && styles.searchButtonDisabled
+          ]}
+          onPress={searchUsers}
+          disabled={loading}
+          accessible={true}
+          accessibilityLabel={loading ? "Searching..." : "Search for dates"}
+          accessibilityHint="Double tap to search for potential dates with your selected filters"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: loading }}
+        >
+          <Text style={styles.searchButtonText}>
+            {loading ? "Searching..." : "Search for Dates"}
+          </Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -992,6 +964,38 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#24269B',
     textAlign: 'center',
+  },
+  searchButtonContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  searchButton: {
+    backgroundColor: '#24269B',
+    borderRadius: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#24269B',
+    // Add shadow
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  searchButtonDisabled: {
+    backgroundColor: '#9999aa',
+    borderColor: '#9999aa',
+  },
+  searchButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

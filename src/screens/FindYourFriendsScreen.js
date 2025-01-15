@@ -10,14 +10,13 @@ import {
   Alert,
   AccessibilityInfo,
   Keyboard,
-  Animated
+  Animated,
+  Button
 } from 'react-native';
-import { searchIndex } from '../config/algolia';
 import { auth } from '../config/firebase';
 import StateDropdown from '../components/StateDropdown';
 import { questions } from '../constants/questions';
-import { adminIndex } from '../config/algolia';
-
+import Typesense from 'typesense';
 
 const FindYourFriendsScreen = ({ navigation }) => {
   const [selectedWords, setSelectedWords] = useState([]);
@@ -29,6 +28,19 @@ const FindYourFriendsScreen = ({ navigation }) => {
   const currentUser = auth.currentUser;
   const [selectedAgeRange, setSelectedAgeRange] = useState({ min: 18, max: 99 });
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+
+  // Add Typesense client initialization
+  const client = new Typesense.Client({
+    nodes: [{
+      host: 'e6dqryica24hsu75p-1.a1.typesense.net',
+      port: '443',
+      protocol: 'https'
+    }],
+    apiKey: 'vcXv0c4EKrJ6AHFR1nCKQSXGch2EEzE7',
+    connectionTimeoutSeconds: 10,
+    retryIntervalSeconds: 0.1,
+    numRetries: 3
+  });
 
   // Add screen reader detection
   useEffect(() => {
@@ -83,93 +95,66 @@ const FindYourFriendsScreen = ({ navigation }) => {
       setLoading(true);
       setError(null);
 
-      const searchParams = {
-        attributesToRetrieve: ['*'],
-        hitsPerPage: 50,
-        numericFilters: [
-          `age >= ${parseInt(selectedAgeRange.min) || 18}`,
-          `age <= ${parseInt(selectedAgeRange.max) || 99}`
-        ]
+      const searchParameters = {
+        searches: [{
+          q: textAnswer || '*',
+          query_by: 'username,state,questionAnswers',
+          per_page: 50,
+          collection: 'users',
+          filter_by: `age:>=${parseInt(selectedAgeRange.min) || 18} && age:<=${parseInt(selectedAgeRange.max) || 99}`
+        }]
       };
 
-      // Add other filters
-      let filters = [`NOT path:"users/${currentUser.uid.toLowerCase()}"`];
       if (selectedState && selectedState !== 'Anywhere') {
-        filters.push(`state:"${selectedState}"`);
+        searchParameters.searches[0].filter_by += ` && state:=${selectedState}`;
       }
-      
-      searchParams.filters = filters.join(' AND ');
 
-      // Debug logging
-      console.log('Search Debug Info:', {
-        query: textAnswer,
-        filters: searchParams.filters,
-        numericFilters: searchParams.numericFilters,
-        currentUserPath: `users/${currentUser.uid.toLowerCase()}`,
-        selectedState,
-        selectedAgeRange,
-        selectedWords
-      });
+      searchParameters.searches[0].filter_by += ` && id:!=${currentUser.uid}`;
 
-      const { hits } = await searchIndex.search(textAnswer, searchParams);
-      
-      // Double-check age filtering on client side
-      const filteredResults = hits.filter(hit => 
-        hit.age >= selectedAgeRange.min && 
-        hit.age <= selectedAgeRange.max
+      console.log('Search parameters:', JSON.stringify(searchParameters));
+
+      const response = await fetch(
+        'https://e6dqryica24hsu75p-1.a1.typesense.net/multi_search',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-TYPESENSE-API-KEY': 'vcXv0c4EKrJ6AHFR1nCKQSXGch2EEzE7'
+          },
+          body: JSON.stringify(searchParameters)
+        }
       );
 
-      console.log('Total hits:', hits.length);
-      console.log('Filtered results:', filteredResults.length);
-      
-      setUsers(filteredResults);
-      announceToScreenReader(`Found ${filteredResults.length} potential friends`);
+      const results = await response.json();
+
+      if (results.results && results.results[0] && results.results[0].hits) {
+        if (results.results[0].hits.length === 0) {
+          setUsers([]);
+          setError('No other users found yet. Be the first to invite your friends!');
+          announceToScreenReader('No other users found yet');
+        } else {
+          const transformedResults = results.results[0].hits.map(hit => ({
+            ...hit.document,
+            objectID: hit.document.id,
+            profilePicture: hit.document.profilePicture || '',
+            username: hit.document.username || 'Anonymous',
+            state: hit.document.state || 'Unknown',
+            questionAnswers: hit.document.questionAnswers || []
+          }));
+
+          setUsers(transformedResults);
+          announceToScreenReader(`Found ${transformedResults.length} potential friends`);
+        }
+      }
 
     } catch (err) {
-      console.error('Error searching users:', err);
-      setError('Failed to search users');
+      console.error('Search error details:', err.message);
+      setError('Failed to search users. Please try again.');
       announceToScreenReader('Error searching for friends');
     } finally {
       setLoading(false);
     }
   };
-
-  // Search when inputs change
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      console.log('Search triggered with age range:', selectedAgeRange); // Debug log
-      searchUsers();
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [selectedState, selectedWords, textAnswer, selectedAgeRange]); // Add selectedAgeRange to dependencies
-
-  // Update Algolia settings
-  useEffect(() => {
-    const setupAlgolia = async () => {
-      try {
-        await adminIndex.setSettings({
-          searchableAttributes: [
-            'questionAnswers.selectedWords',
-            'questionAnswers.textAnswer',
-            'winTopics',
-            'state'
-          ],
-          attributesForFaceting: [
-            'state',
-            'path',
-            'age',
-            'filterOnly(age)'
-          ],
-          numericAttributesForFiltering: ['age']
-        });
-        console.log('DEBUG: Algolia settings updated');
-      } catch (error) {
-        console.error('Error setting up Algolia:', error);
-      }
-    };
-    setupAlgolia();
-  }, []);
 
   const handleMinAgeChange = (text) => {
     // Just update the text without any validation
@@ -206,34 +191,28 @@ const FindYourFriendsScreen = ({ navigation }) => {
     }
   };
 
-  const renderUserCard = (user) => (
-    <TouchableOpacity 
-      key={user.id} 
-      style={styles.userCard}
-      onPress={() => navigation.navigate('OtherUserProfile', { userId: user.id })}
-    >
-      <View style={styles.userInfo}>
-        <View style={styles.avatarContainer}>
-          {user.profilePicture ? (
-            <Image 
-              source={{ uri: user.profilePicture }} 
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.defaultAvatar]}>
-              <Text style={styles.defaultAvatarText}>
-                {user.name ? user.name[0].toUpperCase() : '?'}
-              </Text>
-            </View>
-          )}
+  const renderUserCard = (user) => {
+    return (
+      <TouchableOpacity 
+        style={styles.card} 
+        onPress={() => navigation.navigate('ViewProfile', { userId: user.id })}
+        accessible={true}
+        accessibilityLabel={`View ${user.username}'s profile`}
+      >
+        <Image 
+          source={{ uri: user.profilePicture }} 
+          style={styles.profileImage}
+          accessible={true}
+          accessibilityLabel={`${user.username}'s profile picture`}
+        />
+        <View style={styles.cardContent}>
+          <Text style={styles.username}>{user.username}</Text>
+          <Text style={styles.location}>{user.state}</Text>
+          {/* Add other user information you want to display */}
         </View>
-        <View style={styles.userDetails}>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userLocation}>{user.state}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   // Add this component to replace the arrow containers
   const ArrowAnimation = () => {
@@ -526,7 +505,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
               onPress={() => {
                 announceToScreenReader(`Opening profile for ${user.username}`);
                 navigation.navigate('OtherUserProfile', { 
-                  profileUserId: user.path.split('/')[1],
+                  profileUserId: user.id,
                   username: user.username,
                   isCurrentUser: false
                 });
@@ -560,8 +539,30 @@ const FindYourFriendsScreen = ({ navigation }) => {
         ))}
       </View>
 
+      <View style={styles.searchButtonContainer}>
+        <TouchableOpacity 
+          style={styles.searchButton}
+          onPress={searchUsers}
+          disabled={loading}
+        >
+          <Text style={styles.searchButtonText}>
+            {loading ? 'Searching...' : 'Search Friends'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-      
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <Text>Searching for friends...</Text>
+        </View>
+      )}
+
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
     </ScrollView>
   );
 };
@@ -906,6 +907,61 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#24269B',
     textAlign: 'center',
+  },
+  searchButtonContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  searchButton: {
+    backgroundColor: '#24269B',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+    width: '80%',
+  },
+  searchButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorContainer: {
+    padding: 20,
+    backgroundColor: '#ffebee',
+    margin: 10,
+    borderRadius: 5,
+  },
+  errorText: {
+    color: '#c62828',
+    textAlign: 'center',
+  },
+  messageContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    margin: 10,
+    borderRadius: 10,
+  },
+  messageText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 15,
+    color: '#666',
+  },
+  inviteButton: {
+    backgroundColor: '#24269B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  inviteButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

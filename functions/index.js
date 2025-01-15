@@ -260,35 +260,63 @@ onDocumentWritten("users/{userId}", async (event) => {
     }
 
     console.log(`Processing Typesense index for user: ${userId}`);
+    console.log("User data:", userData);
+    console.log("Raw birthdate:", userData.birthdate);
 
     // Ensure collection exists
     await createCollection();
 
+    // Enhanced debugging for birthdate and age calculation
+    console.log("Raw userData:", JSON.stringify(userData, null, 2));
+    console.log("Birthdate type:",
+    userData.birthdate ? typeof userData.birthdate : "undefined");
+    console.log("Birthdate instanceof Date:",
+        userData.birthdate instanceof Date);
+    console.log("Birthdate has toDate:",
+        userData.birthdate && typeof
+        userData.birthdate.toDate === "function");
+
+    let age = 0;
+    if (userData.birthdate) {
+      const birthDate =
+      userData.birthdate.toDate ?
+      userData.birthdate.toDate() : userData.birthdate;
+      console.log("Processed birthDate:", birthDate);
+      console.log("Processed birthDate type:", typeof birthDate);
+      console.log("Processed birthDate value:",
+          birthDate.toString());
+
+      age = calculateAge(birthDate);
+      console.log("Calculated age:", age);
+    } else {
+      console.log("No birthdate found for user");
+    }
+
     // Prepare user data for Typesense
     const typesenseObject = {
       id: userId,
-      subscriptionStatus: userData.subscriptionStatus,
-      subscriptionType: userData.subscriptionType,
-      username: userData.username,
-      profilePicture: userData.profilePicture,
-      state: userData.state,
+      subscriptionStatus: userData.subscriptionStatus || "inactive",
+      subscriptionType: userData.subscriptionType || "selfAdvocateFree",
+      username: userData.username || "",
+      profilePicture: userData.profilePicture || "",
+      state: userData.state || "",
+      age: age,
       questionAnswers: userData.questionAnswers ?
         userData.questionAnswers.map((qa) => ({
-          textAnswer: qa.textAnswer,
+          textAnswer: qa.textAnswer || "",
           selectedWords: qa.selectedWords || [],
         })) : [],
-      age: calculateAge(userData.birthDate),
       _searchableContent: userData.questionAnswers ?
         userData.questionAnswers.map((qa) =>
-          `${qa.textAnswer} ${(qa.selectedWords || []).join(" ")}`,
+          `${qa.textAnswer || ""} ${(qa.selectedWords || []).join(" ")}`,
         ).join(" ") : "",
       matchScore: 1.0,
     };
 
-    // Upsert to Typesense
+    console.log("Final typesense object age:", typesenseObject.age);
+
     await client.collections("users").documents().upsert(typesenseObject);
-    console.log(`Indexed user ${userId} to Typesense with data:`,
-        typesenseObject);
+    console.log(`Indexed user ${userId} to Typesense with age: ${age}`);
 
     return null;
   } catch (error) {
@@ -305,16 +333,99 @@ onDocumentWritten("users/{userId}", async (event) => {
  * The calculated age or null if no birth date provided
  */
 function calculateAge(birthDate) {
-  if (!birthDate) return null;
-  const today = new Date();
-  const birth = new Date(birthDate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-
-  if (monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--;
+  console.log("calculateAge input:", birthDate);
+  if (!birthDate) {
+    console.log("No birthDate provided to calculateAge");
+    return 0;
   }
 
-  return age;
+  try {
+    const today = new Date();
+    const birth = new Date(birthDate);
+
+    console.log("Today:", today);
+    console.log("Birth:", birth);
+
+    if (birth.toString() === "Invalid Date") {
+      console.log("Invalid date detected");
+      return 0;
+    }
+
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 &&
+      today.getDate() < birth.getDate())) {
+      age--;
+    }
+
+    console.log("Final calculated age:", age);
+    return age;
+  } catch (error) {
+    console.error("Error in calculateAge:", error);
+    return 0;
+  }
 }
+
+exports.migrateUsersToTypesense =
+functions.https.onRequest(async (req, res) => {
+  try {
+    await createCollection();
+    const firestore = admin.firestore();
+    const usersSnapshot = await firestore.collection("users").get();
+
+    console.log(`Found ${usersSnapshot.size} users to migrate`);
+
+    const batchPromises = usersSnapshot.docs.map(async (doc) => {
+      const userData = doc.data();
+      const userId = doc.id;
+
+      const typesenseObject = {
+        id: userId,
+        subscriptionStatus: userData.subscriptionStatus || "inactive",
+        subscriptionType: userData.subscriptionType || "selfAdvocateFree",
+        username: userData.username || "",
+        profilePicture: userData.profilePicture || "",
+        state: userData.state || "",
+        questionAnswers: userData.questionAnswers ?
+          userData.questionAnswers.map((qa) => ({
+            textAnswer: qa.textAnswer || "",
+            selectedWords: qa.selectedWords || [],
+          })) : [],
+        age: userData.age || 0,
+        _searchableContent: userData.questionAnswers ?
+          userData.questionAnswers.map((qa) =>
+            `${qa.textAnswer || ""} ${(qa.selectedWords || []).join(" ")}`,
+          ).join(" ") : "",
+        matchScore: 1.0,
+      };
+
+      console.log(`Processing user ${userId} with age:`, typesenseObject.age);
+
+      try {
+        await client.collections("users").documents().upsert(typesenseObject);
+        console.log(`Migrated user ${userId}`);
+        return {success: true, userId, age: typesenseObject.age};
+      } catch (error) {
+        console.error(`Failed to migrate user ${userId}:`, error);
+        return {success: false, userId, error: error.message};
+      }
+    });
+
+    const results = await Promise.all(batchPromises);
+
+    const successful = results.filter((r) => r.success).length;
+    const failed = results.filter((r) => !r.success).length;
+
+    res.json({
+      message: "Migration completed",
+      total: usersSnapshot.size,
+      successful,
+      failed,
+      results,
+    });
+  } catch (error) {
+    console.error("Migration failed:", error);
+    res.status(500).json({error: error.message});
+  }
+});
