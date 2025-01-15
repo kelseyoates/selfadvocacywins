@@ -214,7 +214,7 @@ async function createCollection() {
       {name: "state", type: "string"},
       {name: "subscriptionStatus", type: "string"},
       {name: "subscriptionType", type: "string"},
-      {name: "age", type: "int32", optional: true},
+      {name: "age", type: "int32", optional: true, facet: true},
       {
         name: "questionAnswers",
         type: "object[]",
@@ -233,21 +233,39 @@ async function createCollection() {
   };
 
   try {
+    console.log("Attempting to create/verify Typesense collection");
     await client.collections().create(schema);
+    console.log("Successfully created Typesense collection");
   } catch (error) {
     if (error.httpStatus !== 409) {
+      console.error("Error creating collection:", error);
       throw error;
     }
-    // Collection already exists
-    console.log("Collection already exists");
+    // Collection already exists - let's verify the schema
+    console.log("Collection exists, retrieving current schema...");
+    try {
+      const existingCollection = await client.collections("users").retrieve();
+      console.log("Current collection schema:",
+          JSON.stringify(existingCollection, null, 2));
+    } catch (retrieveError) {
+      console.error("Error retrieving collection:", retrieveError);
+    }
   }
 }
 
 exports.onUserUpdateTypesense =
 onDocumentWritten("users/{userId}", async (event) => {
+  console.log("onUserUpdateTypesense triggered");
+  console.log("Event type:", event.type);
+  console.log("Event params:", event.params);
+
   try {
     const userData = event.data.after.data();
     const userId = event.params.userId;
+
+    console.log("Before data:",
+        JSON.stringify(event.data.before.data(), null, 2));
+    console.log("After data:", JSON.stringify(userData, null, 2));
 
     if (!userData) {
       console.log("Document was deleted");
@@ -259,22 +277,19 @@ onDocumentWritten("users/{userId}", async (event) => {
       return null;
     }
 
-    console.log(`Processing Typesense index for user: ${userId}`);
-    console.log("User data:", userData);
-    console.log("Raw birthdate:", userData.birthdate);
-
-    // Ensure collection exists
-    await createCollection();
-
     // Enhanced debugging for birthdate and age calculation
+    console.log(`Processing Typesense index for user: ${userId}`);
     console.log("Raw userData:", JSON.stringify(userData, null, 2));
-    console.log("Birthdate type:",
-    userData.birthdate ? typeof userData.birthdate : "undefined");
+    console.log("Birthdate type:", userData.birthdate ?
+    typeof userData.birthdate : "undefined");
     console.log("Birthdate instanceof Date:",
         userData.birthdate instanceof Date);
     console.log("Birthdate has toDate:",
         userData.birthdate && typeof
         userData.birthdate.toDate === "function");
+
+    // Ensure collection exists
+    await createCollection();
 
     let age = 0;
     if (userData.birthdate) {
@@ -292,15 +307,17 @@ onDocumentWritten("users/{userId}", async (event) => {
       console.log("No birthdate found for user");
     }
 
-    // Prepare user data for Typesense
+    // Prepare user data for Typesense with explicit age field
     const typesenseObject = {
       id: userId,
-      subscriptionStatus: userData.subscriptionStatus || "inactive",
+      subscriptionStatus: userData.subscriptionStatus ||
+      "inactive",
       subscriptionType: userData.subscriptionType || "selfAdvocateFree",
       username: userData.username || "",
       profilePicture: userData.profilePicture || "",
       state: userData.state || "",
-      age: age,
+      age: age || 0,
+      // Ensure age is always set, default to 0 if calculation fails
       questionAnswers: userData.questionAnswers ?
         userData.questionAnswers.map((qa) => ({
           textAnswer: qa.textAnswer || "",
@@ -308,15 +325,19 @@ onDocumentWritten("users/{userId}", async (event) => {
         })) : [],
       _searchableContent: userData.questionAnswers ?
         userData.questionAnswers.map((qa) =>
-          `${qa.textAnswer || ""} ${(qa.selectedWords || []).join(" ")}`,
+          `${qa.textAnswer || ""} 
+        ${(qa.selectedWords || []).join(" ")}`,
         ).join(" ") : "",
       matchScore: 1.0,
     };
 
-    console.log("Final typesense object age:", typesenseObject.age);
+    console.log("Final typesense object:",
+        JSON.stringify(typesenseObject, null, 2));
+    console.log("Final age being sent to Typesense:", typesenseObject.age);
 
     await client.collections("users").documents().upsert(typesenseObject);
-    console.log(`Indexed user ${userId} to Typesense with age: ${age}`);
+    console.log(`Successfully indexed user 
+      ${userId} to Typesense with age: ${age}`);
 
     return null;
   } catch (error) {
@@ -380,6 +401,26 @@ functions.https.onRequest(async (req, res) => {
       const userData = doc.data();
       const userId = doc.id;
 
+      // Add detailed birthdate logging
+      console.log(`\nProcessing user ${userId}:`);
+      console.log("Has birthdate:", !!userData.birthdate);
+      if (userData.birthdate) {
+        console.log("Birthdate type:", typeof userData.birthdate);
+        console.log("Raw birthdate:", userData.birthdate);
+        if (userData.birthdate.toDate) {
+          console.log("Converted birthdate:", userData.birthdate.toDate());
+        }
+      }
+
+      let age = 0;
+      if (userData.birthdate) {
+        const birthDate =
+        userData.birthdate.toDate ?
+        userData.birthdate.toDate() : userData.birthdate;
+        age = calculateAge(birthDate);
+        console.log("Calculated age:", age);
+      }
+
       const typesenseObject = {
         id: userId,
         subscriptionStatus: userData.subscriptionStatus || "inactive",
@@ -387,12 +428,12 @@ functions.https.onRequest(async (req, res) => {
         username: userData.username || "",
         profilePicture: userData.profilePicture || "",
         state: userData.state || "",
+        age: age,
         questionAnswers: userData.questionAnswers ?
           userData.questionAnswers.map((qa) => ({
             textAnswer: qa.textAnswer || "",
             selectedWords: qa.selectedWords || [],
           })) : [],
-        age: userData.age || 0,
         _searchableContent: userData.questionAnswers ?
           userData.questionAnswers.map((qa) =>
             `${qa.textAnswer || ""} ${(qa.selectedWords || []).join(" ")}`,
@@ -400,15 +441,28 @@ functions.https.onRequest(async (req, res) => {
         matchScore: 1.0,
       };
 
-      console.log(`Processing user ${userId} with age:`, typesenseObject.age);
+      console.log(`Final age for user ${userId}:`, age);
 
       try {
         await client.collections("users").documents().upsert(typesenseObject);
-        console.log(`Migrated user ${userId}`);
-        return {success: true, userId, age: typesenseObject.age};
+        return {
+          success: true,
+          userId,
+          age: age,
+          hasBirthdate: !!userData.birthdate,
+          birthdateType:
+          userData.birthdate ? typeof userData.birthdate : "none",
+        };
       } catch (error) {
         console.error(`Failed to migrate user ${userId}:`, error);
-        return {success: false, userId, error: error.message};
+        return {
+          success: false,
+          userId,
+          error: error.message,
+          hasBirthdate: !!userData.birthdate,
+          birthdateType:
+          userData.birthdate ? typeof userData.birthdate : "none",
+        };
       }
     });
 
