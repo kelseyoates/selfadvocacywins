@@ -94,22 +94,42 @@ const FindYourFriendsScreen = ({ navigation }) => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Debug logs
+      console.log("Debug - Current User Info:", {
+        uid: currentUser.uid,
+        uidLowerCase: currentUser.uid.toLowerCase(),
+        uidType: typeof currentUser.uid
+      });
+
+      let filterBy = `age_sort:>=${parseInt(selectedAgeRange.min) || 18} && age_sort:<=${parseInt(selectedAgeRange.max) || 99} && id:!=${currentUser.uid.toLowerCase()}`;
+      
+      // Add state filter if a state is selected
+      if (selectedState && selectedState !== 'Anywhere') {
+        filterBy += ` && state:=${selectedState}`;
+      }
 
       const searchParameters = {
         searches: [{
-          q: textAnswer || '*',
-          query_by: 'username,state,questionAnswers',
+          q: '*',
+          query_by: 'username,state,questionAnswers.textAnswer,questionAnswers.selectedWords,winTopics',
           per_page: 50,
           collection: 'users',
-          filter_by: `age_sort:>=${parseInt(selectedAgeRange.min) || 18} && age_sort:<=${parseInt(selectedAgeRange.max) || 99}`
+          filter_by: filterBy
         }]
       };
 
-      if (selectedState && selectedState !== 'Anywhere') {
-        searchParameters.searches[0].filter_by += ` && state:=${selectedState}`;
+      if (textAnswer && textAnswer.trim()) {
+        searchParameters.searches[0].q = textAnswer.trim();
+        // Change query_by to prioritize winTopics
+        searchParameters.searches[0].query_by = 'winTopics,questionAnswers.textAnswer';
+        // Add weight to prioritize winTopics matches
+        searchParameters.searches[0].query_by_weights = '2,1';
+      } else if (selectedWords && selectedWords.length > 0) {
+        const wordSearchString = selectedWords.join(' ');
+        searchParameters.searches[0].q = wordSearchString;
+        searchParameters.searches[0].query_by = 'questionAnswers.selectedWords';
       }
-
-      searchParameters.searches[0].filter_by += ` && id:!=${currentUser.uid}`;
 
       console.log('Search parameters:', JSON.stringify(searchParameters));
 
@@ -129,9 +149,6 @@ const FindYourFriendsScreen = ({ navigation }) => {
       console.log('Raw Typesense response:', JSON.stringify(results, null, 2));
 
       if (results.results && results.results[0] && results.results[0].hits) {
-        console.log('Number of hits:', results.results[0].hits.length);
-        console.log('First hit:', JSON.stringify(results.results[0].hits[0], null, 2));
-
         if (results.results[0].hits.length === 0) {
           setUsers([]);
           setError('No other users found yet. Be the first to invite your friends!');
@@ -146,7 +163,6 @@ const FindYourFriendsScreen = ({ navigation }) => {
             questionAnswers: hit.document.questionAnswers || []
           }));
 
-          console.log('Transformed results:', JSON.stringify(transformedResults, null, 2));
           setUsers(transformedResults);
           announceToScreenReader(`Found ${transformedResults.length} potential friends`);
         }

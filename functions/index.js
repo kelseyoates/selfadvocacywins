@@ -216,30 +216,22 @@ async function createCollection() {
       {name: "subscriptionType", type: "string"},
       {name: "age_str", type: "string", optional: true},
       {name: "age_sort", type: "float", optional: true, facet: true},
-      {
-        name: "questionAnswers",
-        type: "object[]",
-        facet: true,
-        fields: [
-          {name: "textAnswer", type: "string", facet: true},
-          {name: "selectedWords", type: "string[]", facet: true},
-        ],
-      },
+      {name: "id", type: "string"},
       {name: "profilePicture", type: "string", optional: true},
+      {name: "winTopics", type: "string[]", optional: true},
+      {name: "questionAnswers", type: "object[]", optional: true},
       {name: "_searchableContent", type: "string", optional: true},
-      {name: "matchScore", type: "float"},
     ],
-    default_sorting_field: "matchScore",
     enable_nested_fields: true,
   };
 
   try {
-    // First, try to delete the existing collection
+    // Delete if exists
     try {
       await client.collections("users").delete();
       console.log("Deleted existing collection");
-    } catch (deleteError) {
-      console.log("No existing collection to delete");
+    } catch (err) {
+      console.log("Collection did not exist");
     }
 
     // Create new collection with updated schema
@@ -307,82 +299,98 @@ exports.onUserUpdateTypesense = onDocumentUpdated("users/{userId}",
       }
     });
 
+/**
+ * Creates a searchable content string from user data
+ * Combines question answers and winTopics into a single searchable string
+ * @param {Object} userData - The user data object from Firestore
+ * @param {Array} [userData.questionAnswers] - Array of question answers
+ * @param {Array} [userData.winTopics] - Array of win topics
+ * @return {string} Combined searchable content string
+ */
+function createSearchableContent(userData) {
+  let searchableContent = "";
+
+  // Add question answers to searchable content
+  if (userData.questionAnswers) {
+    userData.questionAnswers.forEach((qa) => {
+      if (qa.textAnswer) searchableContent += qa.textAnswer + " ";
+      if (qa.selectedWords) {
+        searchableContent += qa.selectedWords.join(" ") + " ";
+      }
+    });
+  }
+
+  // Add winTopics to searchable content
+  if (userData.winTopics) {
+    searchableContent += userData.winTopics.join(" ") + " ";
+  }
+
+  return searchableContent.trim();
+}
+
 exports.migrateUsersToTypesense = functions.https.onRequest(
     async (req, res) => {
       try {
-        await createCollection();
-        const firestore = admin.firestore();
-        const usersSnapshot = await firestore.collection("users").get();
+        const usersSnapshot = await admin.firestore()
+            .collection("users")
+            .get();
 
-        console.log(`Found ${usersSnapshot.size} users to migrate`);
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
 
-        const batchPromises = usersSnapshot.docs.map(async (doc) => {
+        for (const doc of usersSnapshot.docs) {
           const userData = doc.data();
-          const userId = doc.id;
-
-          console.log(`\nProcessing user ${userId}:`);
-          console.log("User data:", userData);
-          console.log("Age from Firestore:", userData.age);
-
-          const typesenseObject = {
-            id: userId,
-            subscriptionStatus: userData.subscriptionStatus || "inactive",
-            subscriptionType: userData.subscriptionType || "selfAdvocateFree",
-            username: userData.username || "",
-            profilePicture: userData.profilePicture || "",
-            state: userData.state || "",
-            age: userData.age || 0,
-            questionAnswers: userData.questionAnswers ?
-              userData.questionAnswers.map((qa) => ({
-                textAnswer: qa.textAnswer || "",
-                selectedWords: qa.selectedWords || [],
-              })) : [],
-            _searchableContent: userData.questionAnswers ?
-              userData.questionAnswers.map((qa) => {
-                const textAnswer = qa.textAnswer || "";
-                const words = (qa.selectedWords || []).join(" ");
-                return `${textAnswer} ${words}`;
-              }).join(" ") : "",
-            matchScore: 1.0,
-          };
-
-          console.log("Typesense object:", typesenseObject);
 
           try {
-            await client.collections("users")
-                .documents()
-                .upsert(typesenseObject);
-            return {
-              success: true,
-              userId,
-              age: userData.age,
+          // Prepare the document for Typesense
+            const typesenseDoc = {
+              id: doc.id.toLowerCase(),
+              username: userData.username || "",
+              state: userData.state || "",
+              subscriptionStatus: userData.subscriptionStatus || "inactive",
+              subscriptionType: userData.subscriptionType || "selfAdvocateFree",
+              age_str: userData.age ? userData.age.toString() : "",
+              age_sort: userData.age ? parseFloat(userData.age) : 0,
+              profilePicture: userData.profilePicture || "",
+              winTopics: userData.winTopics || [],
+              questionAnswers: userData.questionAnswers || [],
+              _searchableContent: createSearchableContent(userData),
             };
-          } catch (error) {
-            console.error(`Failed to migrate user ${userId}:`, error);
-            return {
-              success: false,
-              userId,
-              error: error.message,
-            };
-          }
-        });
 
-        const results = await Promise.all(batchPromises);
-        const successful = results.filter((r) => r.success).length;
-        const failed = results.filter((r) => !r.success).length;
+            // Log the document being sent to Typesense
+            console.log(
+                "Sending to Typesense:",
+                JSON.stringify(typesenseDoc, null, 2),
+            );
+
+            // Send to Typesense
+            await client.collections("users").documents().upsert(typesenseDoc);
+            successCount++;
+          } catch (error) {
+            console.error(`Error processing document ${doc.id}:`, error);
+            errorCount++;
+            errors.push({
+              userId: doc.id,
+              error: error.message,
+            });
+          }
+        }
 
         res.json({
           message: "Migration completed",
-          total: usersSnapshot.size,
-          successful,
-          failed,
-          results,
+          stats: {
+            success: successCount,
+            errors: errorCount,
+            errorDetails: errors,
+          },
         });
       } catch (error) {
-        console.error("Migration failed:", error);
+        console.error("Migration error:", error);
         res.status(500).json({error: error.message});
       }
-    });
+    },
+);
 
 // Add this to force recreation of the collection
 exports.recreateTypesenseCollection = functions.https.onRequest(
