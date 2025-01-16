@@ -219,6 +219,8 @@ async function createCollection() {
       {name: "id", type: "string"},
       {name: "profilePicture", type: "string", optional: true},
       {name: "winTopics", type: "string[]", optional: true},
+      {name: "gender", type: "string", optional: true},
+      {name: "lookingFor", type: "string", optional: true},
       {name: "questionAnswers", type: "object[]", optional: true},
       {name: "_searchableContent", type: "string", optional: true},
     ],
@@ -353,7 +355,11 @@ exports.migrateUsersToTypesense = functions.https.onRequest(
               age_str: userData.age ? userData.age.toString() : "",
               age_sort: userData.age ? parseFloat(userData.age) : 0,
               profilePicture: userData.profilePicture || "",
-              winTopics: userData.winTopics || [],
+              winTopics: Array.isArray(userData.winTopics) ?
+              userData.winTopics :
+                         (userData.winTopics ? [userData.winTopics] : []),
+              gender: userData.gender || "",
+              lookingFor: userData.lookingFor || "",
               questionAnswers: userData.questionAnswers || [],
               _searchableContent: createSearchableContent(userData),
             };

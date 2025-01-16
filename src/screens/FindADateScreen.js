@@ -155,69 +155,103 @@ const FindADateScreen = ({ navigation }) => {
       setLoading(true);
       setError(null);
 
-      const minAge = parseInt(selectedAgeRange.min) || 18;
-      const maxAge = parseInt(selectedAgeRange.max) || 99;
-
-      // Start with minimal filters to debug
-      const searchParameters = {
-        q: '*',
-        query_by: 'username,state',
-        per_page: 20,
-        timeout_ms: 5000,
-      };
-
-      // Log all users first
-      const allUsers = await typesenseClient
-        .collections('users')
-        .documents()
-        .search({
-          q: '*',
-          per_page: 100
-        });
+      // Get current user's preferences from Firestore with lowercase UID
+      const lowerCaseUid = currentUser.uid.toLowerCase();
+      const userDocRef = doc(db, 'users', lowerCaseUid);
+      console.log('Fetching user doc for ID:', lowerCaseUid);
       
-      console.log('All users in Typesense:', allUsers.found);
-      console.log('User subscription types:', allUsers.hits.map(hit => ({
-        id: hit.document.id,
-        type: hit.document.subscriptionType,
-        age: hit.document.age
-      })));
+      const userDoc = await getDoc(userDocRef);
+      console.log('User doc exists:', userDoc.exists());
+      
+      const userData = userDoc.data();
+      console.log('Full user data:', userData);
+      
+      const userGender = userData?.gender;
+      const userLookingFor = userData?.lookingFor;
 
-      // Then add filters one by one
-      searchParameters.filter_by = `subscriptionType:=selfAdvocateDating`;
+      console.log('Current user preferences:', { 
+        originalUid: currentUser.uid,
+        lowerCaseUid,
+        userGender, 
+        userLookingFor,
+        rawGender: userData?.gender,
+        rawLookingFor: userData?.lookingFor
+      });
 
-      // Add age filter
-      searchParameters.filter_by += ` && age:>=${minAge} && age:<=${maxAge}`;
-
-      // Add current user filter
-      searchParameters.filter_by += ` && id:!=${currentUser.uid.toLowerCase()}`;
-
-      // Add state filter if selected
-      if (selectedState) {
-        searchParameters.filter_by += ` && state:=${selectedState}`;
+      if (!userGender || !userLookingFor) {
+        setError(`Please set your gender and preferences in your profile first. Current values: Gender: ${userGender}, Looking for: ${userLookingFor}`);
+        announceToScreenReader('Please set your gender and preferences in your profile first');
+        setLoading(false);
+        return;
       }
 
-      console.log('Final search parameters:', searchParameters);
+      let filterBy = `age_sort:>=${parseInt(selectedAgeRange.min) || 18} && age_sort:<=${parseInt(selectedAgeRange.max) || 99} && id:!=${lowerCaseUid} && subscriptionType:=selfAdvocateDating`;
+      
+      // Add gender filters
+      filterBy += ` && gender:=${userLookingFor}`;
 
-      const results = await typesenseClient
-        .collections('users')
-        .documents()
-        .search(searchParameters);
+      if (selectedState && selectedState !== 'Anywhere') {
+        filterBy += ` && state:=${selectedState}`;
+      }
 
-      console.log('Search completed. Found:', results.found);
-      console.log('Matched users:', results.hits.map(hit => ({
-        id: hit.document.id,
-        type: hit.document.subscriptionType,
-        age: hit.document.age
-      })));
+      const searchParameters = {
+        searches: [{
+          q: '*',
+          query_by: 'username,state,questionAnswers.textAnswer,questionAnswers.selectedWords,winTopics',
+          per_page: 50,
+          collection: 'users',
+          filter_by: filterBy
+        }]
+      };
 
-      setUsers(results.hits.map(hit => ({
-        ...hit.document,
-        objectID: hit.document.id
-      })));
+      // Handle text search
+      if (textAnswer && textAnswer.trim()) {
+        searchParameters.searches[0].q = textAnswer.trim();
+        searchParameters.searches[0].query_by = 'winTopics,questionAnswers.textAnswer';
+        searchParameters.searches[0].query_by_weights = '2,1';
+      } else if (selectedWords && selectedWords.length > 0) {
+        const wordSearchString = selectedWords.join(' ');
+        searchParameters.searches[0].q = wordSearchString;
+        searchParameters.searches[0].query_by = 'questionAnswers.selectedWords';
+      }
+
+      console.log('Search parameters:', JSON.stringify(searchParameters));
+
+      const response = await fetch(
+        'https://e6dqryica24hsu75p-1.a1.typesense.net/multi_search',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-TYPESENSE-API-KEY': 'vcXv0c4EKrJ6AHFR1nCKQSXGch2EEzE7'
+          },
+          body: JSON.stringify(searchParameters)
+        }
+      );
+
+      const results = await response.json();
+      console.log('Raw Typesense response:', JSON.stringify(results, null, 2));
+
+      if (results.results && results.results[0] && results.results[0].hits) {
+        if (results.results[0].hits.length === 0) {
+          setUsers([]);
+          setError('No matches found. Try adjusting your search criteria.');
+          announceToScreenReader('No matches found');
+        } else {
+          const transformedResults = results.results[0].hits.map(hit => ({
+            ...hit.document,
+            objectID: hit.document.id
+          }));
+
+          setUsers(transformedResults);
+          announceToScreenReader(`Found ${transformedResults.length} potential dates`);
+        }
+      }
 
     } catch (err) {
-      console.error('Search error details:', err.response?.data || err);
+      console.error('Search error details:', err);
       setError('Failed to search users. Please try again.');
+      announceToScreenReader('Error searching for dates');
     } finally {
       setLoading(false);
     }
@@ -572,7 +606,7 @@ const FindADateScreen = ({ navigation }) => {
                 });
               }}
               accessible={true}
-              accessibilityLabel={`${user.username}, ${user.age} years old, from ${user.state}`}
+              accessibilityLabel={`${user.username}, ${user.age_str} years old, from ${user.state}`}
               accessibilityHint="Double tap to view full profile"
               accessibilityRole="button"
             >
@@ -591,7 +625,7 @@ const FindADateScreen = ({ navigation }) => {
                   importantForAccessibility="no-hide-descendants"
                 >
                   <Text style={styles.username}>{user.username}</Text>
-                  <Text style={styles.infoText}>{user.age} years old</Text>
+                  <Text style={styles.infoText}>{user.age_str} years old</Text>
                   <Text style={styles.infoText}>{user.state}</Text>
                 </View>
               </View>
