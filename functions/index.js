@@ -1,5 +1,5 @@
 const functions = require("firebase-functions");
-const {onDocumentWritten} = require("firebase-functions/v2/firestore");
+const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const stripe = require("stripe")("sk_live_y5iqnq60z1CCYuD98ftQeUPw");
 const Typesense = require("typesense");
@@ -187,14 +187,14 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   }
 });
 
-// Initialize Typesense client
+// Initialize Typesense client with proper credentials
 const client = new Typesense.Client({
   nodes: [{
-    host: "e6dqryica24hsu75p-1.a1.typesense.net",
+    host: "e6dqryica24hsu75p-1.a1.typesense.net", // Use your actual host
     port: "443",
     protocol: "https",
   }],
-  apiKey: "vcXv0c4EKrJ6AHFR1nCKQSXGch2EEzE7",
+  apiKey: "vcXv0c4EKrJ6AHFR1nCKQSXGch2EEzE7", // Use your actual API key
   connectionTimeoutSeconds: 2,
 });
 
@@ -214,7 +214,8 @@ async function createCollection() {
       {name: "state", type: "string"},
       {name: "subscriptionStatus", type: "string"},
       {name: "subscriptionType", type: "string"},
-      {name: "age", type: "int32", optional: true, facet: true},
+      {name: "age_str", type: "string", optional: true},
+      {name: "age_sort", type: "float", optional: true, facet: true},
       {
         name: "questionAnswers",
         type: "object[]",
@@ -233,253 +234,164 @@ async function createCollection() {
   };
 
   try {
-    console.log("Attempting to create/verify Typesense collection");
-    await client.collections().create(schema);
-    console.log("Successfully created Typesense collection");
-  } catch (error) {
-    if (error.httpStatus !== 409) {
-      console.error("Error creating collection:", error);
-      throw error;
-    }
-    // Collection already exists - let's verify the schema
-    console.log("Collection exists, retrieving current schema...");
+    // First, try to delete the existing collection
     try {
-      const existingCollection = await client.collections("users").retrieve();
-      console.log("Current collection schema:",
-          JSON.stringify(existingCollection, null, 2));
-    } catch (retrieveError) {
-      console.error("Error retrieving collection:", retrieveError);
-    }
-  }
-}
-
-exports.onUserUpdateTypesense =
-onDocumentWritten("users/{userId}", async (event) => {
-  console.log("onUserUpdateTypesense triggered");
-  console.log("Event type:", event.type);
-  console.log("Event params:", event.params);
-
-  try {
-    const userData = event.data.after.data();
-    const userId = event.params.userId;
-
-    console.log("Before data:",
-        JSON.stringify(event.data.before.data(), null, 2));
-    console.log("After data:", JSON.stringify(userData, null, 2));
-
-    if (!userData) {
-      console.log("Document was deleted");
-      try {
-        await client.collections("users").documents(userId).delete();
-      } catch (error) {
-        console.log("Document not found in Typesense or already deleted");
-      }
-      return null;
+      await client.collections("users").delete();
+      console.log("Deleted existing collection");
+    } catch (deleteError) {
+      console.log("No existing collection to delete");
     }
 
-    // Enhanced debugging for birthdate and age calculation
-    console.log(`Processing Typesense index for user: ${userId}`);
-    console.log("Raw userData:", JSON.stringify(userData, null, 2));
-    console.log("Birthdate type:", userData.birthdate ?
-    typeof userData.birthdate : "undefined");
-    console.log("Birthdate instanceof Date:",
-        userData.birthdate instanceof Date);
-    console.log("Birthdate has toDate:",
-        userData.birthdate && typeof
-        userData.birthdate.toDate === "function");
-
-    // Ensure collection exists
-    await createCollection();
-
-    let age = 0;
-    if (userData.birthdate) {
-      const birthDate =
-      userData.birthdate.toDate ?
-      userData.birthdate.toDate() : userData.birthdate;
-      console.log("Processed birthDate:", birthDate);
-      console.log("Processed birthDate type:", typeof birthDate);
-      console.log("Processed birthDate value:",
-          birthDate.toString());
-
-      age = calculateAge(birthDate);
-      console.log("Calculated age:", age);
-    } else {
-      console.log("No birthdate found for user");
-    }
-
-    // Prepare user data for Typesense with explicit age field
-    const typesenseObject = {
-      id: userId,
-      subscriptionStatus: userData.subscriptionStatus ||
-      "inactive",
-      subscriptionType: userData.subscriptionType || "selfAdvocateFree",
-      username: userData.username || "",
-      profilePicture: userData.profilePicture || "",
-      state: userData.state || "",
-      age: age || 0,
-      // Ensure age is always set, default to 0 if calculation fails
-      questionAnswers: userData.questionAnswers ?
-        userData.questionAnswers.map((qa) => ({
-          textAnswer: qa.textAnswer || "",
-          selectedWords: qa.selectedWords || [],
-        })) : [],
-      _searchableContent: userData.questionAnswers ?
-        userData.questionAnswers.map((qa) =>
-          `${qa.textAnswer || ""} 
-        ${(qa.selectedWords || []).join(" ")}`,
-        ).join(" ") : "",
-      matchScore: 1.0,
-    };
-
-    console.log("Final typesense object:",
-        JSON.stringify(typesenseObject, null, 2));
-    console.log("Final age being sent to Typesense:", typesenseObject.age);
-
-    await client.collections("users").documents().upsert(typesenseObject);
-    console.log(`Successfully indexed user 
-      ${userId} to Typesense with age: ${age}`);
-
-    return null;
+    // Create new collection with updated schema
+    await client.collections().create(schema);
+    console.log("Created new collection with schema");
+    return true;
   } catch (error) {
-    console.error("Error processing Typesense index:", error);
+    console.error("Error in createCollection:", error);
     throw error;
   }
-});
-
-/**
- * Calculates age from a birth date
- * @param {Date} birthDate -
- * The birth date to calculate age from
- * @return {number|null}
- * The calculated age or null if no birth date provided
- */
-function calculateAge(birthDate) {
-  console.log("calculateAge input:", birthDate);
-  if (!birthDate) {
-    console.log("No birthDate provided to calculateAge");
-    return 0;
-  }
-
-  try {
-    const today = new Date();
-    const birth = new Date(birthDate);
-
-    console.log("Today:", today);
-    console.log("Birth:", birth);
-
-    if (birth.toString() === "Invalid Date") {
-      console.log("Invalid date detected");
-      return 0;
-    }
-
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 &&
-      today.getDate() < birth.getDate())) {
-      age--;
-    }
-
-    console.log("Final calculated age:", age);
-    return age;
-  } catch (error) {
-    console.error("Error in calculateAge:", error);
-    return 0;
-  }
 }
 
-exports.migrateUsersToTypesense =
-functions.https.onRequest(async (req, res) => {
-  try {
-    await createCollection();
-    const firestore = admin.firestore();
-    const usersSnapshot = await firestore.collection("users").get();
-
-    console.log(`Found ${usersSnapshot.size} users to migrate`);
-
-    const batchPromises = usersSnapshot.docs.map(async (doc) => {
-      const userData = doc.data();
-      const userId = doc.id;
-
-      // Add detailed birthdate logging
-      console.log(`\nProcessing user ${userId}:`);
-      console.log("Has birthdate:", !!userData.birthdate);
-      if (userData.birthdate) {
-        console.log("Birthdate type:", typeof userData.birthdate);
-        console.log("Raw birthdate:", userData.birthdate);
-        if (userData.birthdate.toDate) {
-          console.log("Converted birthdate:", userData.birthdate.toDate());
-        }
-      }
-
-      let age = 0;
-      if (userData.birthdate) {
-        const birthDate =
-        userData.birthdate.toDate ?
-        userData.birthdate.toDate() : userData.birthdate;
-        age = calculateAge(birthDate);
-        console.log("Calculated age:", age);
-      }
-
-      const typesenseObject = {
-        id: userId,
-        subscriptionStatus: userData.subscriptionStatus || "inactive",
-        subscriptionType: userData.subscriptionType || "selfAdvocateFree",
-        username: userData.username || "",
-        profilePicture: userData.profilePicture || "",
-        state: userData.state || "",
-        age: age,
-        questionAnswers: userData.questionAnswers ?
-          userData.questionAnswers.map((qa) => ({
-            textAnswer: qa.textAnswer || "",
-            selectedWords: qa.selectedWords || [],
-          })) : [],
-        _searchableContent: userData.questionAnswers ?
-          userData.questionAnswers.map((qa) =>
-            `${qa.textAnswer || ""} ${(qa.selectedWords || []).join(" ")}`,
-          ).join(" ") : "",
-        matchScore: 1.0,
-      };
-
-      console.log(`Final age for user ${userId}:`, age);
-
+exports.onUserUpdateTypesense = onDocumentUpdated("users/{userId}",
+    async (event) => {
       try {
-        await client.collections("users").documents().upsert(typesenseObject);
-        return {
-          success: true,
-          userId,
-          age: age,
-          hasBirthdate: !!userData.birthdate,
-          birthdateType:
-          userData.birthdate ? typeof userData.birthdate : "none",
+        const userId = event.params.userId;
+
+        // Directly fetch the current Firestore document
+        const firestore = admin.firestore();
+        const userDoc = await firestore.collection("users").doc(userId).get();
+        const userData = userDoc.data();
+
+        // Handle age values
+        const ageNumber = parseInt(userData.age || 0, 10);
+        const ageString = ageNumber.toString();
+
+        console.log("Processing age:", {
+          original: userData.age,
+          asNumber: ageNumber,
+          asString: ageString,
+        });
+
+        const typesenseObject = {
+          id: userId,
+          subscriptionStatus: userData.subscriptionStatus || "inactive",
+          subscriptionType: userData.subscriptionType || "selfAdvocateFree",
+          username: userData.username || "",
+          profilePicture: userData.profilePicture || "",
+          state: userData.state || "",
+          age_str: ageString,
+          age_sort: ageNumber,
+          questionAnswers: userData.questionAnswers || [],
+          _searchableContent: userData.questionAnswers ?
+            userData.questionAnswers.map((qa) =>
+              `${qa.textAnswer || ""} ${(qa.selectedWords || []).join(" ")}`,
+            ).join(" ") : "",
+          matchScore: 1.0,
         };
+
+        try {
+          await client.collections("users").documents().upsert(typesenseObject);
+          console.log("Updated Typesense with age values:", {
+            age_str: ageString,
+            age_sort: ageNumber,
+          });
+        } catch (typesenseError) {
+          console.error("Typesense update failed:", typesenseError);
+          throw typesenseError;
+        }
+
+        return null;
       } catch (error) {
-        console.error(`Failed to migrate user ${userId}:`, error);
-        return {
-          success: false,
-          userId,
-          error: error.message,
-          hasBirthdate: !!userData.birthdate,
-          birthdateType:
-          userData.birthdate ? typeof userData.birthdate : "none",
-        };
+        console.error("Error in onUserUpdateTypesense:", error);
+        throw error;
       }
     });
 
-    const results = await Promise.all(batchPromises);
+exports.migrateUsersToTypesense = functions.https.onRequest(
+    async (req, res) => {
+      try {
+        await createCollection();
+        const firestore = admin.firestore();
+        const usersSnapshot = await firestore.collection("users").get();
 
-    const successful = results.filter((r) => r.success).length;
-    const failed = results.filter((r) => !r.success).length;
+        console.log(`Found ${usersSnapshot.size} users to migrate`);
 
-    res.json({
-      message: "Migration completed",
-      total: usersSnapshot.size,
-      successful,
-      failed,
-      results,
+        const batchPromises = usersSnapshot.docs.map(async (doc) => {
+          const userData = doc.data();
+          const userId = doc.id;
+
+          console.log(`\nProcessing user ${userId}:`);
+          console.log("User data:", userData);
+          console.log("Age from Firestore:", userData.age);
+
+          const typesenseObject = {
+            id: userId,
+            subscriptionStatus: userData.subscriptionStatus || "inactive",
+            subscriptionType: userData.subscriptionType || "selfAdvocateFree",
+            username: userData.username || "",
+            profilePicture: userData.profilePicture || "",
+            state: userData.state || "",
+            age: userData.age || 0,
+            questionAnswers: userData.questionAnswers ?
+              userData.questionAnswers.map((qa) => ({
+                textAnswer: qa.textAnswer || "",
+                selectedWords: qa.selectedWords || [],
+              })) : [],
+            _searchableContent: userData.questionAnswers ?
+              userData.questionAnswers.map((qa) => {
+                const textAnswer = qa.textAnswer || "";
+                const words = (qa.selectedWords || []).join(" ");
+                return `${textAnswer} ${words}`;
+              }).join(" ") : "",
+            matchScore: 1.0,
+          };
+
+          console.log("Typesense object:", typesenseObject);
+
+          try {
+            await client.collections("users")
+                .documents()
+                .upsert(typesenseObject);
+            return {
+              success: true,
+              userId,
+              age: userData.age,
+            };
+          } catch (error) {
+            console.error(`Failed to migrate user ${userId}:`, error);
+            return {
+              success: false,
+              userId,
+              error: error.message,
+            };
+          }
+        });
+
+        const results = await Promise.all(batchPromises);
+        const successful = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+
+        res.json({
+          message: "Migration completed",
+          total: usersSnapshot.size,
+          successful,
+          failed,
+          results,
+        });
+      } catch (error) {
+        console.error("Migration failed:", error);
+        res.status(500).json({error: error.message});
+      }
     });
-  } catch (error) {
-    console.error("Migration failed:", error);
-    res.status(500).json({error: error.message});
-  }
-});
+
+// Add this to force recreation of the collection
+exports.recreateTypesenseCollection = functions.https.onRequest(
+    async (req, res) => {
+      try {
+        await createCollection();
+        res.json({message: "Collection recreated successfully"});
+      } catch (error) {
+        console.error("Error recreating collection:", error);
+        res.status(500).json({error: error.message});
+      }
+    });

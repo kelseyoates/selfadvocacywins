@@ -29,6 +29,7 @@ import { CometChat } from '@cometchat-pro/react-native-chat';
 import { checkCometChatState, cleanupCometChat } from '../services/cometChat';
 import StateDropdown from '../components/StateDropdown';
 import { useAccessibility } from '../context/AccessibilityContext';
+import { Timestamp } from 'firebase/firestore';
 
 
 
@@ -144,11 +145,27 @@ const [lookingFor, setLookingFor] = useState('');
             setStateToSave(data.state);
           }
           if (data.birthdate) {
-            const [year, month, day] = data.birthdate.split('-');
-            const monthName = months[parseInt(month) - 1];
-            setSelectedDay(day);
-            setSelectedMonth(monthName);
-            setSelectedYear(year);
+            // Handle the new birthdate object format
+            if (typeof data.birthdate === 'object' && 'month' in data.birthdate) {
+              const monthName = months[data.birthdate.month];
+              setSelectedMonth(monthName);
+              setSelectedDay(data.birthdate.day.toString());
+              setSelectedYear(data.birthdate.year.toString());
+            } else {
+              // Handle legacy Timestamp format if it exists
+              try {
+                const birthDate = data.birthdate.toDate ? 
+                  data.birthdate.toDate() : 
+                  new Date(data.birthdate);
+                
+                const monthName = months[birthDate.getMonth()];
+                setSelectedMonth(monthName);
+                setSelectedDay(birthDate.getDate().toString());
+                setSelectedYear(birthDate.getFullYear().toString());
+              } catch (error) {
+                console.error('Error parsing legacy birthdate:', error);
+              }
+            }
           }
         } else {
           console.log('No user document found for ID:', lowercaseUid);
@@ -163,6 +180,65 @@ const [lookingFor, setLookingFor] = useState('');
     }
   }, [targetUserId]);
 
+  // Update the formatBirthday function to handle the new format
+  const formatBirthday = (birthdate) => {
+    if (!birthdate) return '';
+    
+    try {
+      // Handle the new object format
+      if (typeof birthdate === 'object' && 'month' in birthdate) {
+        const date = new Date(birthdate.year, birthdate.month, birthdate.day);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+      
+      // Handle legacy formats (if any)
+      if (typeof birthdate === 'string') {
+        return new Date(birthdate).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+      
+      // Handle Firestore Timestamp (if any)
+      if (birthdate.toDate) {
+        return birthdate.toDate().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+
+      return '';
+    } catch (error) {
+      console.error('Error formatting birthday:', error);
+      return '';
+    }
+  };
+
+  // Add this helper function to calculate age
+  const calculateAge = (birthdate) => {
+    const today = new Date();
+    const birthYear = birthdate.year;
+    const birthMonth = birthdate.month; // 0-11
+    const birthDay = birthdate.day;
+
+    let age = today.getFullYear() - birthYear;
+
+    // Adjust age if birthday hasn't occurred this year
+    if (today.getMonth() < birthMonth || 
+        (today.getMonth() === birthMonth && today.getDate() < birthDay)) {
+      age--;
+    }
+
+    return age;
+  };
+
+  // Update the updateBirthdateWithValues function
   const updateBirthdateWithValues = async (day, month, year) => {
     if (!month || !day || !year) {
       console.log('Missing required date information');
@@ -170,21 +246,36 @@ const [lookingFor, setLookingFor] = useState('');
     }
 
     try {
-      const paddedDay = day.toString().padStart(2, '0');
-      const monthIndex = months.indexOf(month);
-      const paddedMonth = (monthIndex + 1).toString().padStart(2, '0');
-      const birthdate = `${year}-${paddedMonth}-${paddedDay}`;
+      const birthdateObj = {
+        day: parseInt(day),
+        month: months.indexOf(month),
+        year: parseInt(year)
+      };
+
+      console.log('Saving birthdate:', birthdateObj);
+
+      const age = calculateAge(birthdateObj);
+      console.log('Calculated age:', age);
+
+      // Add validation for age
+      if (typeof age !== 'number' || isNaN(age)) {
+        console.error('Invalid age calculated:', age);
+        return;
+      }
 
       const userRef = doc(db, 'users', targetUserId);
       await updateDoc(userRef, {
-        birthdate: birthdate
+        birthdate: birthdateObj,
+        age // Add age to Firestore document
       });
       
       setUserData(prev => ({
         ...prev,
-        birthdate
+        birthdate: birthdateObj,
+        age
       }));
       
+      console.log('Birthday and age updated successfully:', { birthdate: birthdateObj, age });
       Alert.alert('Success', 'Birthday updated successfully');
     } catch (error) {
       console.error('Error updating birthdate:', error);
@@ -192,23 +283,30 @@ const [lookingFor, setLookingFor] = useState('');
     }
   };
 
-  // Update the handlers to directly call updateBirthdateWithValues
+  // Update the handleMonthSelect to fix the month issue
   const handleMonthSelect = (month) => {
+    console.log('Selected month:', month, 'Index:', months.indexOf(month));
     setSelectedMonth(month);
     setShowMonthPicker(false);
-    updateBirthdateWithValues(selectedDay, month, selectedYear);
+    if (selectedDay && selectedYear) {
+      updateBirthdateWithValues(selectedDay, month, selectedYear);
+    }
   };
 
   const handleDaySelect = (day) => {
     setSelectedDay(day);
     setShowDayPicker(false);
-    updateBirthdateWithValues(day, selectedMonth, selectedYear);
+    if (selectedMonth && selectedYear) {
+      updateBirthdateWithValues(day, selectedMonth, selectedYear);
+    }
   };
 
   const handleYearSelect = (year) => {
     setSelectedYear(year);
     setShowYearPicker(false);
-    updateBirthdateWithValues(selectedDay, selectedMonth, year);
+    if (selectedDay && selectedMonth) {
+      updateBirthdateWithValues(selectedDay, selectedMonth, year);
+    }
   };
 
   useEffect(() => {
@@ -805,22 +903,6 @@ const [lookingFor, setLookingFor] = useState('');
   const handleDayPress = async (day) => {
     console.log('Day pressed:', day);
     await fetchWinsForDate(day.dateString);
-  };
-
-  const formatBirthday = (dateString) => {
-    if (!dateString) return '';
-    
-    // Parse the date string (which is already in YYYY-MM-DD format)
-    const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
-    
-    // Create a new date (months are 0-based in JavaScript)
-    const date = new Date(year, month - 1, day);
-    
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   // Add this function to calculate total cheers and comments

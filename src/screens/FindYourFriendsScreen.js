@@ -101,7 +101,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
           query_by: 'username,state,questionAnswers',
           per_page: 50,
           collection: 'users',
-          filter_by: `age:>=${parseInt(selectedAgeRange.min) || 18} && age:<=${parseInt(selectedAgeRange.max) || 99}`
+          filter_by: `age_sort:>=${parseInt(selectedAgeRange.min) || 18} && age_sort:<=${parseInt(selectedAgeRange.max) || 99}`
         }]
       };
 
@@ -126,8 +126,12 @@ const FindYourFriendsScreen = ({ navigation }) => {
       );
 
       const results = await response.json();
+      console.log('Raw Typesense response:', JSON.stringify(results, null, 2));
 
       if (results.results && results.results[0] && results.results[0].hits) {
+        console.log('Number of hits:', results.results[0].hits.length);
+        console.log('First hit:', JSON.stringify(results.results[0].hits[0], null, 2));
+
         if (results.results[0].hits.length === 0) {
           setUsers([]);
           setError('No other users found yet. Be the first to invite your friends!');
@@ -142,13 +146,14 @@ const FindYourFriendsScreen = ({ navigation }) => {
             questionAnswers: hit.document.questionAnswers || []
           }));
 
+          console.log('Transformed results:', JSON.stringify(transformedResults, null, 2));
           setUsers(transformedResults);
           announceToScreenReader(`Found ${transformedResults.length} potential friends`);
         }
       }
 
     } catch (err) {
-      console.error('Search error details:', err.message);
+      console.error('Search error details:', err);
       setError('Failed to search users. Please try again.');
       announceToScreenReader('Error searching for friends');
     } finally {
@@ -511,7 +516,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
                 });
               }}
               accessible={true}
-              accessibilityLabel={`${user.username}, ${user.age} years old, from ${user.state}`}
+              accessibilityLabel={`${user.username}, ${user.age_str} years old, from ${user.state}`}
               accessibilityHint="Double tap to view full profile"
               accessibilityRole="button"
             >
@@ -530,7 +535,7 @@ const FindYourFriendsScreen = ({ navigation }) => {
                   importantForAccessibility="no-hide-descendants"
                 >
                   <Text style={styles.username}>{user.username}</Text>
-                  <Text style={styles.infoText}>{user.age} years old</Text>
+                  <Text style={styles.infoText}>{user.age_str} years old</Text>
                   <Text style={styles.infoText}>{user.state}</Text>
                 </View>
               </View>
