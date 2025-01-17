@@ -64,17 +64,50 @@ const AddSupporterScreen = ({ navigation }) => {
       const querySnapshot = await getDocs(q);
 
       const results = [];
-      querySnapshot.forEach((doc) => {
-        const userData = doc.data();
+      
+      // Process each user found
+      for (const userDoc of querySnapshot.docs) {
+        const userData = userDoc.data();
         // Don't include current user in results
-        if (doc.id !== auth.currentUser.uid.toLowerCase()) {
-          console.log('Found user:', userData);
+        if (userDoc.id !== auth.currentUser.uid.toLowerCase()) {
+          // Check supporter limits
+          const supporterTier = userData.subscriptionType;
+          const maxSupported = {
+            'supporter1': 1,
+            'supporter3': 3,
+            'supporter5': 5,
+            'supporter10': 10,
+            'supporter25': 25,
+            null: 0,
+            undefined: 0
+          };
+
+          const supporterLimit = supporterTier?.startsWith('supporter') 
+            ? (maxSupported[supporterTier] || 1)
+            : 0;
+
+          // Count current supported users
+          const allUsersSnapshot = await getDocs(usersRef);
+          let currentSupportCount = 0;
+          allUsersSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.supporters?.some(supporter => 
+              supporter.id.toLowerCase() === userDoc.id.toLowerCase()
+            )) {
+              currentSupportCount++;
+            }
+          });
+
+          // Add availability info to the user data
           results.push({
-            id: doc.id,
-            ...userData
+            id: userDoc.id,
+            ...userData,
+            currentSupportCount,
+            supporterLimit,
+            isAvailable: currentSupportCount < supporterLimit
           });
         }
-      });
+      }
 
       setSearchResults(results);
       if (results.length === 0) {
@@ -93,7 +126,7 @@ const AddSupporterScreen = ({ navigation }) => {
 
   const handleAddSupporter = async (userToSupport) => {
     try {
-      // Check if the supporter has reached their limit
+      // Check if the supporter has reached their limit BEFORE adding them
       const supporterDoc = await getDoc(doc(db, 'users', userToSupport.id.toLowerCase()));
       const supporterData = supporterDoc.data();
       const supporterTier = supporterData.subscriptionType;
@@ -131,21 +164,16 @@ const AddSupporterScreen = ({ navigation }) => {
       console.log('Current support count:', currentSupportCount);
       console.log('Supporter limit:', supporterLimit);
 
+      // Check if they've reached their limit
       if (currentSupportCount >= supporterLimit) {
         Alert.alert(
           'Supporter Limit Reached',
-          `This supporter has reached their limit of ${supporterLimit} ${supporterLimit === 1 ? 'person' : 'people'}. Please ask them to upgrade their subscription to support more users.`,
-          [
-            {
-              text: 'OK',
-              style: 'default'
-            }
-          ]
+          `This supporter has reached their limit of ${supporterLimit} ${supporterLimit === 1 ? 'person' : 'people'}. Please ask them to upgrade their subscription to support more users.`
         );
-        return;
+        return; // Exit the function here if limit is reached
       }
 
-      // If within limits, add the supporter
+      // If we get here, it means they haven't reached their limit, so proceed with adding them
       const userRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
       await updateDoc(userRef, {
         supporters: arrayUnion({
@@ -155,7 +183,6 @@ const AddSupporterScreen = ({ navigation }) => {
         })
       });
 
-      // Show success message
       Alert.alert(
         'Success',
         'Supporter added successfully!',
@@ -221,12 +248,17 @@ const AddSupporterScreen = ({ navigation }) => {
         accessibilityLabel="Search Results"
         renderItem={({ item }) => (
           <TouchableOpacity 
-            style={styles.resultItem}
-            onPress={() => handleAddSupporter(item)}
+            style={[
+              styles.resultItem,
+              !item.isAvailable && styles.resultItemDisabled
+            ]}
+            onPress={() => item.isAvailable ? handleAddSupporter(item) : null}
+            disabled={!item.isAvailable}
             accessible={true}
-            accessibilityLabel={`Add ${item.username || 'Unknown Username'} as supporter`}
-            accessibilityHint="Double tap to add this user as your supporter"
+            accessibilityLabel={`${item.username || 'Unknown Username'}${!item.isAvailable ? ' - Not available, reached support limit' : ''}`}
+            accessibilityHint={item.isAvailable ? "Double tap to add this user as your supporter" : "This supporter has reached their support limit"}
             accessibilityRole="button"
+            accessibilityState={{ disabled: !item.isAvailable }}
           >
             <View>
               <Text style={styles.userName}>{item.username || 'Unknown Username'}</Text>
@@ -236,6 +268,11 @@ const AddSupporterScreen = ({ navigation }) => {
                   accessibilityLabel={`Name: ${item.name}`}
                 >
                   {item.name}
+                </Text>
+              )}
+              {!item.isAvailable && (
+                <Text style={styles.limitReachedText}>
+                  Support limit reached ({item.currentSupportCount}/{item.supporterLimit})
                 </Text>
               )}
             </View>
@@ -306,7 +343,16 @@ const styles = StyleSheet.create({
   },
   searchButtonDisabled: {
     opacity: 0.7,
-  }
+  },
+  resultItemDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#f5f5f5',
+  },
+  limitReachedText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: 4,
+  },
 });
 
 export default AddSupporterScreen; 

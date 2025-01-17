@@ -23,77 +23,70 @@ const SupporterDashboardScreen = ({ navigation }) => {
   const { showHelpers } = useAccessibility();
 
   useEffect(() => {
-    const loadData = async () => {
-      await fetchUserSubscription();
-      await fetchUserData();
-    };
-    
     loadData();
   }, []);
 
-  const fetchUserSubscription = async () => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid.toLowerCase()));
-      if (userDoc.exists()) {
-        const subscription = userDoc.data().subscriptionTier;
-        console.log('Current subscription:', subscription); // Debug log
-        setUserSubscription(subscription);
-      }
-    } catch (error) {
-      console.error('Error fetching subscription:', error);
-    }
-  };
-
-  const fetchUserData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
+      
+      // First, fetch the user's subscription
+      const userDoc = await getDoc(doc(db, 'users', user.uid.toLowerCase()));
+      if (!userDoc.exists()) {
+        console.error('User document not found');
+        return;
+      }
+      
+      const userData = userDoc.data();
+      const subscription = userData.subscriptionType;
+      console.log('Fetched subscription type:', subscription);
+      setUserSubscription(subscription);
+
+      // Then fetch supported users
       const usersRef = collection(db, 'users');
       const allUsersSnapshot = await getDocs(usersRef);
       
       let supportedUsersData = [];
       allUsersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        if (userData.supporters?.some(supporter => 
+        const data = doc.data();
+        if (data.supporters?.some(supporter => 
           supporter.id.toLowerCase() === user.uid.toLowerCase()
         )) {
           supportedUsersData.push({
             id: doc.id,
-            username: userData.username || 'Anonymous',
-            profilePicture: userData.profilePicture || null,
-            unreadMessages: userData.unreadMessages || 0,
+            username: data.username || 'Anonymous',
+            profilePicture: data.profilePicture || null,
+            unreadMessages: data.unreadMessages || 0,
           });
         }
       });
 
-      // Debug logs
-      console.log('Current subscription tier:', userSubscription);
-      console.log('Current supported users:', supportedUsersData.length);
-
-      // Check subscription limits
       const maxSupported = {
         'supporter1': 1,
         'supporter3': 3,
         'supporter5': 5,
         'supporter10': 10,
         'supporter25': 25,
-        null: 0, // Default case
-        undefined: 0 // Default case
+        null: 0,
+        undefined: 0
       };
 
-      const limit = maxSupported[userSubscription] || 1; // Default to 1 if supporter1
+      const limit = maxSupported[subscription] || 0;
+      console.log('Subscription:', subscription);
+      console.log('Supported users count:', supportedUsersData.length);
+      console.log('Limit for subscription:', limit);
 
-      // If over limit, only keep the first N users based on subscription
       if (supportedUsersData.length > limit) {
-        supportedUsersData = supportedUsersData.slice(0, limit);
         Alert.alert(
           'Subscription Limit Reached',
-          `Your current subscription allows you to support up to ${limit} ${limit === 1 ? 'person' : 'people'}. Please upgrade your subscription to support more users.`
+          `Your current subscription (${subscription}) allows you to support up to ${limit} ${limit === 1 ? 'person' : 'people'}. Please upgrade your subscription to support more users.`
         );
       }
 
       setSupportedUsers(supportedUsersData);
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error loading data:', error);
+      Alert.alert('Error', 'Failed to load supporter data');
     } finally {
       setLoading(false);
     }

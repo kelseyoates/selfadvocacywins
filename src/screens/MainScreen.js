@@ -338,10 +338,26 @@ const MainScreen = ({ navigation }) => {
 
         </View>     
 
+
+        <View style={styles.headerWide}>
+         <View style={styles.headerRow}>
+         <Text style={styles.headerText}>Top Navigation:</Text>
+        <Text style={styles.bodyText}>If you look at the top right corner of the screen, you will see a menu icon. Tap it to go to the menu screen.</Text>
+
+        </View>  
+          <Image
+            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
+            style={styles.bodyImage}
+            accessible={true}
+            accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
+          />
+
+        </View>
+
          <View style={styles.headerWide}>
          <View style={styles.headerRow}>
-         <Text style={styles.headerText}>Navigation:</Text>
-        <Text style={styles.bodyText}>If you look at the bottom of the screen, you will see five buttons: Home, Chat, New Win, Find, and Menu.</Text>
+         <Text style={styles.headerText}>Bottom Navigation:</Text>
+        <Text style={styles.bodyText}>If you look at the bottom of the screen, you will see five buttons: Home, Chat, New Win, Find, and Profile.</Text>
 
         </View>  
           <Image
@@ -354,10 +370,12 @@ const MainScreen = ({ navigation }) => {
 
         </View>
 
+       
+
         <View style={styles.headerWide}>
          <View style={styles.headerRow}>
          <Text style={styles.headerText}>Your Profile:</Text>
-        <Text style={styles.bodyText}>In the top right corner of the screen, you will see a profile icon. Tap it to go to your profile page. You can answer questions about yourself, and upload a profile picture.</Text>
+        <Text style={styles.bodyText}>In the bottom right corner of the screen, you will see a profile icon. Tap it to go to your profile page. You can answer questions about yourself, and upload a profile picture.</Text>
 
         </View>  
           <Image

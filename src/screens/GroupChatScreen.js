@@ -676,6 +676,48 @@ const GroupChatScreen = ({ route, navigation }) => {
     );
   };
 
+  const transferOwnership = async (newOwnerUid) => {
+    Alert.alert(
+      'Transfer Ownership',
+      'Are you sure you want to transfer group ownership? You will become a regular member.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Transfer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await CometChat.transferGroupOwnership(uid, newOwnerUid);
+              
+              // Update local group info
+              setGroupInfo(prevInfo => ({
+                ...prevInfo,
+                owner: newOwnerUid
+              }));
+              
+              // Update members list to reflect new roles
+              setMembers(prevMembers => 
+                prevMembers.map(member => ({
+                  ...member,
+                  scope: member.uid === newOwnerUid ? 'owner' : 
+                         member.uid === currentUser?.uid ? 'member' : 
+                         member.scope
+                }))
+              );
+              
+              Alert.alert('Success', 'Group ownership transferred successfully');
+              announceToScreenReader('Group ownership transferred successfully');
+            } catch (error) {
+              console.error('Error transferring ownership:', error);
+              Alert.alert('Error', 'Failed to transfer group ownership');
+              announceToScreenReader('Failed to transfer group ownership');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
@@ -857,12 +899,39 @@ const GroupChatScreen = ({ route, navigation }) => {
                 <TouchableOpacity 
                   style={styles.memberItem}
                   onPress={() => {
-                    announceToScreenReader(`Opening profile for ${memberProfiles[item.uid]?.username || item.name}`);
-                    setIsModalVisible(false);
-                    navigation.navigate('OtherUserProfile', {
-                      profileUserId: item.uid.toLowerCase(),
-                      isCurrentUser: item.uid === currentUser?.uid
-                    });
+                    if (groupInfo?.owner === currentUser?.uid && item.uid !== currentUser?.uid) {
+                      // Show transfer ownership option for other members when current user is owner
+                      Alert.alert(
+                        'Member Options',
+                        `What would you like to do with ${memberProfiles[item.uid]?.username || item.name}?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'View Profile',
+                            onPress: () => {
+                              setIsModalVisible(false);
+                              navigation.navigate('OtherUserProfile', {
+                                profileUserId: item.uid.toLowerCase(),
+                                isCurrentUser: false
+                              });
+                            }
+                          },
+                          {
+                            text: 'Transfer Ownership',
+                            style: 'destructive',
+                            onPress: () => transferOwnership(item.uid)
+                          }
+                        ]
+                      );
+                    } else {
+                      // Regular profile view for non-owners or viewing own profile
+                      announceToScreenReader(`Opening profile for ${memberProfiles[item.uid]?.username || item.name}`);
+                      setIsModalVisible(false);
+                      navigation.navigate('OtherUserProfile', {
+                        profileUserId: item.uid.toLowerCase(),
+                        isCurrentUser: item.uid === currentUser?.uid
+                      });
+                    }
                   }}
                   accessible={true}
                   accessibilityLabel={`${memberProfiles[item.uid]?.username || item.name}, ${
@@ -871,8 +940,10 @@ const GroupChatScreen = ({ route, navigation }) => {
                       : item.scope === 'admin' 
                         ? 'Admin' 
                         : 'Member'
-                  }`}
-                  accessibilityHint="Double tap to view member profile"
+                  }${groupInfo?.owner === currentUser?.uid && item.uid !== currentUser?.uid ? '. Double tap for options' : ''}`}
+                  accessibilityHint={groupInfo?.owner === currentUser?.uid && item.uid !== currentUser?.uid 
+                    ? "Double tap to view options including transfer ownership" 
+                    : "Double tap to view member profile"}
                   accessibilityRole="button"
                 >
                   <View style={styles.memberContent}>
