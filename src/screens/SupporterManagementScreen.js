@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image, FlatList } from 'react-native';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -182,40 +182,45 @@ const SupporterManagementScreen = () => {
   }
 
   return (
-    <ScrollView 
+    <FlatList
       style={styles.container}
-      accessible={true}
-      accessibilityLabel="Supporter Management Screen"
-    >
-      <View style={styles.content}>
-        <Text 
-          style={styles.title}
-          accessible={true}
-          accessibilityRole="text"
-        >
-          Manage Your Supporters
-        </Text>
+      contentContainerStyle={styles.listContainer}
+      ListHeaderComponent={() => (
+        <View style={styles.content}>
+          <Text 
+            style={styles.title}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            Manage Your Supporters
+          </Text>
 
-        <Text 
-          style={styles.body}
-          accessible={true}
-          accessibilityRole="text"
-        >
-          Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. You can remove a supporter at any time.
-        </Text>
+          <Text 
+            style={styles.body}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. You can remove a supporter at any time.
+          </Text>
+          <Text 
+            style={styles.body}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            Supporters can be anyone on a paid plan.
+          </Text>
 
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => navigation.navigate('AddSupporter')}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Add new supporter"
-          accessibilityHint="Opens screen to add a new supporter"
-        >
-          <Text style={styles.addButtonText}>Add New Supporter +</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AddSupporter')}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Add new supporter"
+            accessibilityHint="Opens screen to add a new supporter"
+          >
+            <Text style={styles.addButtonText}>Add New Supporter +</Text>
+          </TouchableOpacity>
 
-        <View style={styles.supportersList}>
           <Text 
             style={styles.sectionTitle}
             accessible={true}
@@ -223,75 +228,75 @@ const SupporterManagementScreen = () => {
           >
             Your Current Supporters
           </Text>
-          {userData?.supporters?.length > 0 ? (
-            userData.supporters.map((supporter, index) => (
-              <View 
-                key={index} 
-                style={styles.supporterCard}
-                accessible={true}
-                accessibilityRole="text"
-                accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. ${supporter.state ? `From ${supporter.state}.` : ''} Email: ${supporter.email}`}
-              >
-                <View style={styles.supporterInfo}>
-                  <Image 
-                    source={
-                      supporter.profilePicture 
-                        ? { uri: supporter.profilePicture }
-                        : require('../../assets/default-avatar.png')
-                    }
-                    style={styles.profilePicture}
-                    accessibilityRole="image"
-                    accessibilityLabel={`${supporter.username || supporter.name || 'Unknown'}'s profile picture`}
-                  />
-                  <View style={styles.textContainer}>
-                    <Text style={styles.supporterName}>
-                      {supporter.username || supporter.name || 'Unknown'}
-                    </Text>
-                    {supporter.state && (
-                      <Text style={styles.supporterLocation}>
-                        📍 {supporter.state}
-                      </Text>
-                    )}
-                    <Text style={styles.supporterEmail}>{supporter.email}</Text>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.removeButton}
-                    onPress={() => {
-                      Alert.alert(
-                        'Remove Supporter',
-                        `Are you sure you want to remove ${supporter.username || supporter.name}?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { 
-                            text: 'Remove',
-                            style: 'destructive',
-                            onPress: () => handleRemoveSupporter(supporter)
-                          }
-                        ]
-                      );
-                    }}
-                    accessible={true}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${supporter.username || supporter.name || 'Unknown'}`}
-                    accessibilityHint="Double tap to remove this supporter"
-                  >
-                    <Text style={styles.removeButtonText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          ) : (
-            <Text 
-              style={styles.noSupportersText}
-              accessible={true}
-              accessibilityRole="text"
-            >
-              You haven't added any supporters yet.
-            </Text>
-          )}
         </View>
-      </View>
-    </ScrollView>
+      )}
+      data={userData?.supporters || []}
+      renderItem={({ item: supporter }) => (
+        <View 
+          style={styles.supporterCard}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. ${supporter.state ? `From ${supporter.state}.` : ''} Email: ${supporter.email}`}
+        >
+          <View style={styles.supporterInfo}>
+            <Image 
+              source={
+                supporter.profilePicture 
+                  ? { uri: supporter.profilePicture }
+                  : require('../../assets/default-avatar.png')
+              }
+              style={styles.profilePicture}
+              accessibilityRole="image"
+              accessibilityLabel={`${supporter.username || supporter.name || 'Unknown'}'s profile picture`}
+            />
+            <View style={styles.textContainer}>
+              <Text style={styles.supporterName}>
+                {supporter.username || supporter.name || 'Unknown'}
+              </Text>
+              {supporter.state && (
+                <Text style={styles.supporterLocation}>
+                  📍 {supporter.state}
+                </Text>
+              )}
+              <Text style={styles.supporterEmail}>{supporter.email}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.removeButton}
+              onPress={() => {
+                Alert.alert(
+                  'Remove Supporter',
+                  `Are you sure you want to remove ${supporter.username || supporter.name}?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Remove',
+                      style: 'destructive',
+                      onPress: () => handleRemoveSupporter(supporter)
+                    }
+                  ]
+                );
+              }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${supporter.username || supporter.name || 'Unknown'}`}
+              accessibilityHint="Double tap to remove this supporter"
+            >
+              <Text style={styles.removeButtonText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      ListEmptyComponent={
+        <Text 
+          style={styles.noSupportersText}
+          accessible={true}
+          accessibilityRole="text"
+        >
+          You haven't added any supporters yet.
+        </Text>
+      }
+      keyExtractor={(item, index) => item.id || index.toString()}
+    />
   );
 };
 
@@ -423,6 +428,10 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 20,
     fontSize: 16,
+    padding: 16,
+  },
+  listContainer: {
+    paddingHorizontal: 16,
   },
 });
 

@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
-  Alert
+  Alert,
+  FlatList
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
@@ -215,52 +216,69 @@ const SupporterDashboardScreen = ({ navigation }) => {
         You are supporting:
       </Text>
       
-      {supportedUsers.map(supportedUser => (
-        <View key={supportedUser.id} style={styles.userCard}>
-          <View style={styles.mainRow}>
-            <Image 
-              source={supportedUser.profilePicture 
-                ? { uri: supportedUser.profilePicture }
-                : require('../../assets/default-avatar.png')}
-              style={styles.userAvatar}
-              accessibilityRole="image"
-              accessibilityLabel={`${supportedUser.username}'s profile picture`}
-            />
-            <View style={styles.userInfo}>
-              <Text style={styles.username}>{supportedUser.username}</Text>
-              <TouchableOpacity 
-                style={styles.viewChatsContainer}
-                onPress={() => handleSupportedUserPress(supportedUser)}
-                accessible={true}
-                accessibilityLabel={`View chats with ${supportedUser.username}`}
-                accessibilityHint="Double tap to view chat history"
-              >
-                <Text style={styles.viewChatsText}>View Chats</Text>
-                <MaterialCommunityIcons 
-                  name="arrow-right" 
-                  size={20} 
-                  color="#24269B" 
-                />
-              </TouchableOpacity>
+      <FlatList
+        data={supportedUsers}
+        keyExtractor={(item) => item.id}
+        accessible={true}
+        accessibilityLabel="Search Results"
+        renderItem={({ item }) => (
+          <View key={item.id} style={styles.userCard}>
+            <View style={styles.mainRow}>
+              <Image 
+                source={item.profilePicture 
+                  ? { uri: item.profilePicture }
+                  : require('../../assets/default-avatar.png')}
+                style={styles.userAvatar}
+                accessibilityRole="image"
+                accessibilityLabel={`${item.username}'s profile picture`}
+              />
+              <View style={styles.userInfo}>
+                <Text style={styles.username}>{item.username}</Text>
+                <TouchableOpacity 
+                  style={styles.viewChatsContainer}
+                  onPress={() => handleSupportedUserPress(item)}
+                  accessible={true}
+                  accessibilityLabel={`View chats with ${item.username}`}
+                  accessibilityHint="Double tap to view chat history"
+                >
+                  <Text style={styles.viewChatsText}>View Chats</Text>
+                  <MaterialCommunityIcons 
+                    name="arrow-right" 
+                    size={20} 
+                    color="#24269B" 
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
+            
+            <TouchableOpacity
+              style={styles.removeContainer}
+              onPress={() => handleRemoveSupported(item)}
+              accessible={true}
+              accessibilityLabel={`Stop being a supporter for ${item.username}`}
+              accessibilityHint="Double tap to remove this user from your supported list"
+            >
+              <MaterialCommunityIcons 
+                name="close-circle" 
+                size={20} 
+                color="#ff4444" 
+              />
+              <Text style={styles.removeText}>Stop being their supporter</Text>
+            </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity
-            style={styles.removeContainer}
-            onPress={() => handleRemoveSupported(supportedUser)}
-            accessible={true}
-            accessibilityLabel={`Stop being a supporter for ${supportedUser.username}`}
-            accessibilityHint="Double tap to remove this user from your supported list"
-          >
-            <MaterialCommunityIcons 
-              name="close-circle" 
-              size={20} 
-              color="#ff4444" 
-            />
-            <Text style={styles.removeText}>Stop being their supporter</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyStateContainer}>
+            <Text 
+              style={styles.emptyStateText}
+              accessible={true}
+              accessibilityLabel="You are not supporting anyone yet. They can add you in their app."
+            >
+              You are not supporting anyone yet. They can add you in their app.
+            </Text>
+          </View>
+        }
+      />
     </ScrollView>
   );
 };
@@ -399,6 +417,17 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '500',
+  },
+  emptyStateContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
 
