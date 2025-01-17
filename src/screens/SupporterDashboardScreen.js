@@ -10,7 +10,7 @@ import {
   Alert
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAccessibility } from '../context/AccessibilityContext';
@@ -103,6 +103,51 @@ const SupporterDashboardScreen = ({ navigation }) => {
     });
   };
 
+  const handleRemoveSupported = async (supportedUser) => {
+    Alert.alert(
+      'Remove Supported User',
+      `Are you sure you want to stop supporting ${supportedUser.username}? They can add you back as a supporter later if needed.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const userRef = doc(db, 'users', supportedUser.id.toLowerCase());
+              const userDoc = await getDoc(userRef);
+              
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const updatedSupporters = userData.supporters.filter(
+                  supporter => supporter.id.toLowerCase() !== user.uid.toLowerCase()
+                );
+                
+                await updateDoc(userRef, {
+                  supporters: updatedSupporters
+                });
+                
+                // Refresh the supported users list
+                loadData();
+                
+                Alert.alert(
+                  'Success',
+                  'You are no longer supporting this user.'
+                );
+              }
+            } catch (error) {
+              console.error('Error removing supported user:', error);
+              Alert.alert('Error', 'Failed to remove supported user');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View 
@@ -171,39 +216,50 @@ const SupporterDashboardScreen = ({ navigation }) => {
       </Text>
       
       {supportedUsers.map(supportedUser => (
-        <TouchableOpacity 
-          key={supportedUser.id}
-          style={styles.userCard}
-          onPress={() => handleSupportedUserPress(supportedUser)}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`View chats with ${supportedUser.username}`}
-          accessibilityHint="Double tap to view chat history"
-        >
-          <Image 
-            source={supportedUser.profilePicture 
-              ? { uri: supportedUser.profilePicture }
-              : require('../../assets/default-avatar.png')}
-            style={styles.userAvatar}
-            accessibilityRole="image"
-            accessibilityLabel={`${supportedUser.username}'s profile picture`}
-          />
-          <View style={styles.userInfo}>
-            <Text style={styles.username}>{supportedUser.username}</Text>
-            <View 
-              style={styles.viewChatsContainer}
-              accessible={true}
-              accessibilityRole="text"
-            >
-              <Text style={styles.viewChatsText}>View Chats</Text>
-              <MaterialCommunityIcons 
-                name="arrow-right" 
-                size={20} 
-                color="#24269B" 
-              />
+        <View key={supportedUser.id} style={styles.userCard}>
+          <View style={styles.mainRow}>
+            <Image 
+              source={supportedUser.profilePicture 
+                ? { uri: supportedUser.profilePicture }
+                : require('../../assets/default-avatar.png')}
+              style={styles.userAvatar}
+              accessibilityRole="image"
+              accessibilityLabel={`${supportedUser.username}'s profile picture`}
+            />
+            <View style={styles.userInfo}>
+              <Text style={styles.username}>{supportedUser.username}</Text>
+              <TouchableOpacity 
+                style={styles.viewChatsContainer}
+                onPress={() => handleSupportedUserPress(supportedUser)}
+                accessible={true}
+                accessibilityLabel={`View chats with ${supportedUser.username}`}
+                accessibilityHint="Double tap to view chat history"
+              >
+                <Text style={styles.viewChatsText}>View Chats</Text>
+                <MaterialCommunityIcons 
+                  name="arrow-right" 
+                  size={20} 
+                  color="#24269B" 
+                />
+              </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.removeContainer}
+            onPress={() => handleRemoveSupported(supportedUser)}
+            accessible={true}
+            accessibilityLabel={`Stop being a supporter for ${supportedUser.username}`}
+            accessibilityHint="Double tap to remove this user from your supported list"
+          >
+            <MaterialCommunityIcons 
+              name="close-circle" 
+              size={20} 
+              color="#ff4444" 
+            />
+            <Text style={styles.removeText}>Stop being their supporter</Text>
+          </TouchableOpacity>
+        </View>
       ))}
     </ScrollView>
   );
@@ -226,13 +282,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   userCard: {
-    flexDirection: 'row',
-    padding: 15,
     backgroundColor: '#fff',
     marginHorizontal: 20,
     marginVertical: 5,
     borderRadius: 10,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -241,6 +294,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  mainRow: {
+    flexDirection: 'row',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
   },
   userAvatar: {
     width: 50,
@@ -321,6 +381,23 @@ const styles = StyleSheet.create({
     color: '#24269B',
     marginBottom: 8,
     lineHeight: 22,
+    fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  removeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    justifyContent: 'center',
+  },
+  removeText: {
+    color: '#ff4444',
+    marginLeft: 8,
+    fontSize: 14,
     fontWeight: '500',
   },
 });

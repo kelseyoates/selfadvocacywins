@@ -7,7 +7,8 @@ import {
   StyleSheet, 
   FlatList, 
   Alert,
-  AccessibilityInfo 
+  AccessibilityInfo,
+  Image
 } from 'react-native';
 import { collection, query, where, getDocs, doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { auth, db} from '../config/firebase';
@@ -249,32 +250,40 @@ const AddSupporterScreen = ({ navigation }) => {
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={[
-              styles.resultItem,
-              !item.isAvailable && styles.resultItemDisabled
+              styles.resultCard,
+              !item.isAvailable && styles.resultCardDisabled
             ]}
             onPress={() => item.isAvailable ? handleAddSupporter(item) : null}
             disabled={!item.isAvailable}
             accessible={true}
-            accessibilityLabel={`${item.username || 'Unknown Username'}${!item.isAvailable ? ' - Not available, reached support limit' : ''}`}
+            accessibilityLabel={`${item.username || 'Unknown Username'} from ${item.state || 'Unknown location'}${!item.isAvailable ? ' - Not available, reached support limit' : ''}`}
             accessibilityHint={item.isAvailable ? "Double tap to add this user as your supporter" : "This supporter has reached their support limit"}
             accessibilityRole="button"
             accessibilityState={{ disabled: !item.isAvailable }}
           >
-            <View>
-              <Text style={styles.userName}>{item.username || 'Unknown Username'}</Text>
-              {item.name && (
-                <Text 
-                  style={styles.userEmail}
-                  accessibilityLabel={`Name: ${item.name}`}
-                >
-                  {item.name}
+            <View style={styles.cardContent}>
+              <Image 
+                source={item.profilePicture 
+                  ? { uri: item.profilePicture }
+                  : require('../../assets/default-avatar.png')}
+                style={styles.profileImage}
+                accessibilityLabel={`${item.username}'s profile picture`}
+              />
+              <View style={styles.userDetails}>
+                <Text style={styles.userName}>
+                  {item.username || 'Unknown Username'}
                 </Text>
-              )}
-              {!item.isAvailable && (
-                <Text style={styles.limitReachedText}>
-                  Support limit reached ({item.currentSupportCount}/{item.supporterLimit})
-                </Text>
-              )}
+                {item.state && (
+                  <Text style={styles.userLocation}>
+                    📍 {item.state}
+                  </Text>
+                )}
+                {!item.isAvailable && (
+                  <Text style={styles.limitReachedText}>
+                    Support limit reached ({item.currentSupportCount}/{item.supporterLimit})
+                  </Text>
+                )}
+              </View>
             </View>
           </TouchableOpacity>
         )}
@@ -322,36 +331,69 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  resultItem: {
+  resultCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  resultCardDisabled: {
+    opacity: 0.7,
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: '#24269B',
+  },
+  userDetails: {
+    flex: 1,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    color: '#24269B',
     marginBottom: 4,
   },
-  userEmail: {
+  userLocation: {
     fontSize: 14,
     color: '#666',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    marginTop: 20,
-  },
-  searchButtonDisabled: {
-    opacity: 0.7,
-  },
-  resultItemDisabled: {
-    opacity: 0.5,
-    backgroundColor: '#f5f5f5',
+    marginBottom: 4,
   },
   limitReachedText: {
     color: '#ff4444',
     fontSize: 12,
     marginTop: 4,
+    fontWeight: '500',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+    fontSize: 16,
+    padding: 20,
+  },
+  searchButtonDisabled: {
+    opacity: 0.7,
   },
 });
 

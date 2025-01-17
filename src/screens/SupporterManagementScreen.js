@@ -24,6 +24,33 @@ const SupporterManagementScreen = () => {
       
       if (userDoc.exists()) {
         const data = userDoc.data();
+        
+        // Fetch current info for each supporter
+        if (data.supporters && data.supporters.length > 0) {
+          const updatedSupporters = await Promise.all(
+            data.supporters.map(async (supporter) => {
+              try {
+                const supporterDoc = await getDoc(doc(db, 'users', supporter.id.toLowerCase()));
+                if (supporterDoc.exists()) {
+                  const supporterData = supporterDoc.data();
+                  return {
+                    ...supporter,
+                    profilePicture: supporterData.profilePicture,
+                    username: supporterData.username || supporter.username,
+                    state: supporterData.state,
+                  };
+                }
+                return supporter;
+              } catch (error) {
+                console.error('Error fetching supporter data:', error);
+                return supporter;
+              }
+            })
+          );
+          
+          data.supporters = updatedSupporters;
+        }
+        
         console.log('User data fetched:', data);
         setUserData(data);
       } else {
@@ -74,10 +101,27 @@ const SupporterManagementScreen = () => {
         throw new Error('User document not found');
       }
 
+      // Get the supporter's current profile picture
+      const supporterDoc = await getDoc(doc(db, 'users', supporter.id.toLowerCase()));
+      let updatedSupporters = userData.supporters;
+      
+      if (supporterDoc.exists()) {
+        const supporterData = supporterDoc.data();
+        // Update the supporter's info with their current data
+        updatedSupporters = userData.supporters.map(s => {
+          if (s.id === supporter.id) {
+            return {
+              ...s,
+              profilePicture: supporterData.profilePicture,
+              username: supporterData.username || s.username,
+            };
+          }
+          return s;
+        });
+      }
+
       // Filter out the removed supporter
-      const updatedSupporters = userData.supporters.filter(
-        s => s.id !== supporter.id
-      );
+      updatedSupporters = updatedSupporters.filter(s => s.id !== supporter.id);
 
       // Update Firestore
       await updateDoc(userRef, {
@@ -186,7 +230,7 @@ const SupporterManagementScreen = () => {
                 style={styles.supporterCard}
                 accessible={true}
                 accessibilityRole="text"
-                accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. Email: ${supporter.email}`}
+                accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. ${supporter.state ? `From ${supporter.state}.` : ''} Email: ${supporter.email}`}
               >
                 <View style={styles.supporterInfo}>
                   <Image 
@@ -203,32 +247,37 @@ const SupporterManagementScreen = () => {
                     <Text style={styles.supporterName}>
                       {supporter.username || supporter.name || 'Unknown'}
                     </Text>
+                    {supporter.state && (
+                      <Text style={styles.supporterLocation}>
+                        📍 {supporter.state}
+                      </Text>
+                    )}
                     <Text style={styles.supporterEmail}>{supporter.email}</Text>
                   </View>
+                  <TouchableOpacity 
+                    style={styles.removeButton}
+                    onPress={() => {
+                      Alert.alert(
+                        'Remove Supporter',
+                        `Are you sure you want to remove ${supporter.username || supporter.name}?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { 
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: () => handleRemoveSupporter(supporter)
+                          }
+                        ]
+                      );
+                    }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${supporter.username || supporter.name || 'Unknown'}`}
+                    accessibilityHint="Double tap to remove this supporter"
+                  >
+                    <Text style={styles.removeButtonText}>Remove</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
-                  style={styles.removeButton}
-                  onPress={() => {
-                    Alert.alert(
-                      'Remove Supporter',
-                      `Are you sure you want to remove ${supporter.name}?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { 
-                          text: 'Remove',
-                          style: 'destructive',
-                          onPress: () => handleRemoveSupporter(supporter)
-                        }
-                      ]
-                    );
-                  }}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${supporter.username || supporter.name || 'Unknown'}`}
-                  accessibilityHint="Double tap to remove this supporter"
-                >
-                  <Text style={styles.removeButtonText}>Remove</Text>
-                </TouchableOpacity>
               </View>
             ))
           ) : (
@@ -316,7 +365,7 @@ const styles = StyleSheet.create({
   },
   supporterCard: {
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -333,7 +382,6 @@ const styles = StyleSheet.create({
   supporterInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   profilePicture: {
     width: 50,
@@ -347,7 +395,12 @@ const styles = StyleSheet.create({
   supporterName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  supporterLocation: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
   },
   supporterEmail: {
     fontSize: 14,
@@ -355,9 +408,10 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     backgroundColor: '#ff4444',
-    padding: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 6,
-    alignSelf: 'flex-end',
+    marginLeft: 8,
   },
   removeButtonText: {
     color: '#fff',
