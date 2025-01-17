@@ -18,53 +18,6 @@ const FindScreen = ({ navigation }) => {
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const { showHelpers } = useAccessibility();
 
-  // Fetch user profile data
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        if (auth.currentUser) {
-          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
-          const userDocSnap = await getDoc(userDocRef);
-          
-          if (userDocSnap.exists()) {
-            const data = userDocSnap.data();
-            setUserData(data);
-            console.log('Fetched profile picture:', data.profilePicture);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
-
-  // Set up header with profile button
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => navigation.navigate('Profile')}
-          accessible={true}
-          accessibilityLabel="Go to profile"
-          accessibilityHint="Navigate to your profile page"
-        >
-          <Image
-            source={
-              userData?.profilePicture 
-                ? { uri: userData.profilePicture } 
-                : require('../../assets/default-profile.png')
-            }
-            style={styles.profileImage}
-          />
-          <Text style={styles.profileText}>Profile</Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, userData]);
-
   // Add screen reader detection
   useEffect(() => {
     const checkScreenReader = async () => {
@@ -88,6 +41,27 @@ const FindScreen = ({ navigation }) => {
       AccessibilityInfo.announceForAccessibility(message);
     }
   };
+
+  // Set up header with profile button
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => navigation.navigate('Settings')}
+          accessible={true}
+          accessibilityLabel="Open menu"
+          accessibilityHint="Navigate to settings and additional options"
+        >
+          <Image
+            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
+            style={styles.menuIcon}
+          />
+          <Text style={styles.menuText}>Menu</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   return (
     <ScrollView 
@@ -305,21 +279,22 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
 
-  profileButton: {
+  menuButton: {
     alignItems: 'center',
     marginRight: 15,
+    maxWidth: 80,
   },
-  profileImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    borderWidth: 2,
-    borderColor: '#24269B',
+  menuIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
   },
-  profileText: {
+  menuText: {
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
   helperSection: {
     width: '100%',

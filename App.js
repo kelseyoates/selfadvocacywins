@@ -142,7 +142,7 @@ export default function App() {
               <Stack.Screen
                 name="Profile"
                 component={ProfileScreen}
-                options={{ title: 'Profile' }}
+                options={{ title: 'Your Profile' }}
               />
               <Stack.Screen
                 name="OtherUserProfile"

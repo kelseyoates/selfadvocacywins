@@ -173,25 +173,21 @@ const ChatMainScreen = ({ navigation }) => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => navigation.navigate('Profile')}
+          style={styles.menuButton}
+          onPress={() => navigation.navigate('Settings')}
           accessible={true}
-          accessibilityLabel="Go to profile"
-          accessibilityHint="Navigate to your profile page"
+          accessibilityLabel="Open menu"
+          accessibilityHint="Navigate to settings and additional options"
         >
           <Image
-            source={
-              userData?.profilePicture 
-                ? { uri: userData.profilePicture } 
-                : require('../../assets/default-profile.png')
-            }
-            style={styles.profileImage}
+            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
+            style={styles.menuIcon}
           />
-          <Text style={styles.profileText}>Profile</Text>
+          <Text style={styles.menuText}>Menu</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, userData]);
+  }, [navigation]);
 
   const announceToScreenReader = (message) => {
     if (isScreenReaderEnabled) {
@@ -651,19 +647,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
 
-  profileButton: {
+  menuButton: {
     alignItems: 'center',
     marginRight: 15,
     maxWidth: 80,
   },
-  profileImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    borderWidth: 2,
-    borderColor: '#24269B',
+  menuIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
   },
-  profileText: {
+  menuText: {
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,

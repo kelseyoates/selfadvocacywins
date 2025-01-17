@@ -1582,6 +1582,27 @@ const [lookingFor, setLookingFor] = useState('');
     }
   };
 
+  // Add the header setup useEffect
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => navigation.navigate('Settings')}
+          accessible={true}
+          accessibilityLabel="Open menu"
+          accessibilityHint="Navigate to settings and additional options"
+        >
+          <Image
+            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
+            style={styles.menuIcon}
+          />
+          <Text style={styles.menuText}>Menu</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+
   if (!user && !profileUserId) {
     return (
       <View style={styles.container}>
@@ -2574,6 +2595,25 @@ datingLabel: {
   fontSize: 16,
   color: '#666',
   marginLeft: 5,
+},
+
+// Add menu styles
+menuButton: {
+  alignItems: 'center',
+  marginRight: 15,
+  maxWidth: 80,
+},
+menuIcon: {
+  width: 24,
+  height: 24,
+  resizeMode: 'contain',
+},
+menuText: {
+  fontSize: 12,
+  color: '#24269B',
+  marginTop: 2,
+  flexWrap: 'wrap',
+  textAlign: 'center',
 },
 });
 

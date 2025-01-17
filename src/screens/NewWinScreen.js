@@ -75,7 +75,6 @@ const NewWinScreen = ({ navigation }) => {
   const [media, setMedia] = useState([]);
   const [isGeneratingAltText, setIsGeneratingAltText] = useState(false);
   const screenWidth = Dimensions.get('window').width - 40;
-  const [userData, setUserData] = useState(null);
   const { showHelpers } = useAccessibility();
 
   const clearForm = () => {
@@ -306,49 +305,24 @@ const NewWinScreen = ({ navigation }) => {
   }, [image]);
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        if (auth.currentUser) {
-          const userDocRef = doc(db, 'users', auth.currentUser.uid.toLowerCase());
-          const userDocSnap = await getDoc(userDocRef);
-          
-          if (userDocSnap.exists()) {
-            const data = userDocSnap.data();
-            setUserData(data);
-            console.log('Fetched profile picture:', data.profilePicture);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
-
-  useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => navigation.navigate('Profile')}
+          style={styles.menuButton}
+          onPress={() => navigation.navigate('Settings')}
           accessible={true}
-          accessibilityLabel="Go to profile"
-          accessibilityHint="Navigate to your profile page"
+          accessibilityLabel="Open menu"
+          accessibilityHint="Navigate to settings and additional options"
         >
           <Image
-            source={
-              userData?.profilePicture 
-                ? { uri: userData.profilePicture } 
-                : require('../../assets/default-profile.png')
-            }
-            style={styles.profileImage}
+            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
+            style={styles.menuIcon}
           />
-          <Text style={styles.profileText}>Profile</Text>
+          <Text style={styles.menuText}>Menu</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, userData]);
+  }, [navigation]);
 
   return (
     <ScrollView 
@@ -654,21 +628,22 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     backgroundColor: '#cccccc',
   },
-  profileButton: {
+  menuButton: {
     alignItems: 'center',
     marginRight: 15,
+    maxWidth: 80,
   },
-  profileImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    borderWidth: 2,
-    borderColor: '#24269B',
+  menuIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
   },
-  profileText: {
+  menuText: {
     fontSize: 12,
     color: '#24269B',
     marginTop: 2,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
   helperSection: {
     marginBottom: 20,

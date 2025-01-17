@@ -130,31 +130,6 @@ const SettingsScreen = () => {
     fetchUserProfile();
   }, []);
 
-  // Add this effect to set up the header
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => navigation.navigate('Profile')}
-          accessible={true}
-          accessibilityLabel="Go to profile"
-          accessibilityHint="Navigate to your profile page"
-        >
-          <Image
-            source={
-              userData?.profilePicture 
-                ? { uri: userData.profilePicture } 
-                : require('../../assets/default-profile.png')
-            }
-            style={styles.profileImage}
-          />
-          <Text style={styles.profileText}>Profile</Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, userData]);
-
   return (
     <View 
       style={styles.container}
@@ -461,22 +436,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  profileButton: {
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  profileImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    borderWidth: 2,
-    borderColor: '#24269B',
-  },
-  profileText: {
-    fontSize: 12,
-    color: '#24269B',
-    marginTop: 2,
   },
 });
 

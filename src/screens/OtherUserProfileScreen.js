@@ -25,6 +25,36 @@ import { Video } from 'expo-av';
 
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/100';
 
+const formatBirthday = (birthdateObj) => {
+  // Early return if birthdateObj is not valid
+  if (!birthdateObj || typeof birthdateObj !== 'object') {
+    return 'Not specified';
+  }
+  
+  try {
+    const { month, day, year } = birthdateObj;
+    
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    // Validate month (note: month is 0-based in the data)
+    if (month < 0 || month >= 12) {
+      return 'Not specified';
+    }
+    
+    // Validate day and year
+    if (!day || day < 1 || day > 31 || !year) {
+      return 'Not specified';
+    }
+    
+    return `${months[month]} ${day}, ${year}`;
+  } catch (error) {
+    return 'Not specified';
+  }
+};
+
 const OtherUserProfileScreen = ({ route, navigation }) => {
   console.log('Route params:', route.params);
   
@@ -199,23 +229,6 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
       return '';
     }
   };
-
-  const formatBirthday = (dateString) => {
-    if (!dateString) return '';
-    
-    // Parse the date string (which is already in YYYY-MM-DD format)
-    const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
-    
-    // Create a new date (months are 0-based in JavaScript)
-    const date = new Date(year, month - 1, day);
-    
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
 
   const fetchCommentUserData = async (comments) => {
     try {
@@ -543,9 +556,9 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
         </Text>
         <Text 
           style={styles.bio}
-          accessibilityLabel={`Birthday: ${formatBirthday(profileData?.birthdate || '')}`}
+          accessibilityLabel={`Birthday: ${formatBirthday(profileData?.birthdate)}`}
         >
-          🎂 {formatBirthday(profileData?.birthdate || '')}
+          🎂 {formatBirthday(profileData?.birthdate)}
         </Text>
         <Text 
           style={styles.location}

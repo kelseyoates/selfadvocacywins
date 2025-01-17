@@ -158,28 +158,44 @@ const TabNavigator = ({ navigation }) => {
           tabBarAccessibilityHint: "Search and discover new content",
         }}
       />
-
-
-<Tab.Screen
-        name="Menu"
-        component={SettingsScreen}
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Image
-              source={focused ? require('../../assets/bottom-nav-images/menu-active.png')
-                            : require('../../assets/bottom-nav-images/menu-inactive.png')}
-              style={{ width: 24, height: 24 }}
-              resizeMode="contain"
-              accessible={true}
-              accessibilityRole="image"
-              accessibilityLabel="menu tab"
-            />
+            profilePicture ? (
+              <Image
+                source={{ uri: profilePicture }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  borderWidth: focused ? 2 : 0,
+                  borderColor: '#24269B'
+                }}
+                resizeMode="cover"
+                accessible={true}
+                accessibilityRole="image"
+                accessibilityLabel="Your profile picture"
+              />
+            ) : (
+              <Image
+                source={focused ? 
+                  require('../../assets/bottom-nav-images/profile-active.png') :
+                  require('../../assets/bottom-nav-images/profile-inactive.png')
+                }
+                style={{ width: 24, height: 24 }}
+                resizeMode="contain"
+                accessible={true}
+                accessibilityRole="image"
+                accessibilityLabel="Profile tab"
+              />
+            )
           ),
-          tabBarAccessibilityLabel: "Menu",
-          tabBarAccessibilityHint: "See additional options",
+          tabBarAccessibilityLabel: "Profile",
+          tabBarAccessibilityHint: "View and edit your profile",
         }}
       />
-
     </Tab.Navigator>
   );
 };
