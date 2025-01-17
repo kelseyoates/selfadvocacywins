@@ -163,64 +163,64 @@ const SupporterDashboardScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView 
-      style={styles.container}
-      accessibilityRole="scrollview"
-      accessibilityLabel="Supported Users List"
-    >
-      {showHelpers && (
-        <View style={styles.helperSection}>
-          <View style={styles.helperHeader}>
-            <MaterialCommunityIcons 
-              name="information" 
-              size={24} 
-              color="#24269B"
-              style={styles.infoIcon}
-              accessible={true}
-              accessibilityLabel="Helper information"
-            />
-          </View>
-          <View style={styles.helperContent}>
-            <Image 
-              source={require('../../assets/read-only-chats.png')}
-              style={styles.helperImage}
-              accessible={true}
-              accessibilityLabel="Ezra explaining supporter features"
-            />
-            <Text style={styles.helperTitle}>Being a Supporter!</Text>
-            <View style={styles.helperTextContainer}>
-            <Text style={styles.helperText}>
-                • A user must add you as a supporter before you can view their chats.
-              </Text>
-              <Text style={styles.helperText}>
-                • Once you are a supporter, you can view that user's chats
-              </Text>
-              <Text style={styles.helperText}>
-                • These chats are read-only and you will not be able to send, edit, or delete messages.
-              </Text>
-              <Text style={styles.helperText}>
-                • If you see concerning behavior, have the user block and report
-              </Text>
-              <Text style={styles.helperText}>
-                • Email safety concerns to:
-              </Text>
-              <Text style={styles.helperEmail}>
-                kelsey.oates@selfadvocacywins.com
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      <Text style={styles.title} accessibilityRole="header">
-        You are supporting:
-      </Text>
-      
+    <View style={styles.container}>
       <FlatList
         data={supportedUsers}
         keyExtractor={(item) => item.id}
         accessible={true}
         accessibilityLabel="Search Results"
+        contentContainerStyle={styles.flatListContent}
+        scrollEnabled={true}
+        ListHeaderComponent={
+          <>
+            {showHelpers && (
+              <View style={styles.helperSection}>
+                <View style={styles.helperHeader}>
+                  <MaterialCommunityIcons 
+                    name="information" 
+                    size={24} 
+                    color="#24269B"
+                    style={styles.infoIcon}
+                    accessible={true}
+                    accessibilityLabel="Helper information"
+                  />
+                </View>
+                <View style={styles.helperContent}>
+                  <Image 
+                    source={require('../../assets/read-only-chats.png')}
+                    style={styles.helperImage}
+                    accessible={true}
+                    accessibilityLabel="Ezra explaining supporter features"
+                  />
+                  <Text style={styles.helperTitle}>Being a Supporter!</Text>
+                  <View style={styles.helperTextContainer}>
+                    <Text style={styles.helperText}>
+                      • A user must add you as a supporter before you can view their chats.
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • Once you are a supporter, you can view that user's chats
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • These chats are read-only and you will not be able to send, edit, or delete messages.
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • If you see concerning behavior, have the user block and report
+                    </Text>
+                    <Text style={styles.helperText}>
+                      • Email safety concerns to:
+                    </Text>
+                    <Text style={styles.helperEmail}>
+                      kelsey.oates@selfadvocacywins.com
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+            <Text style={styles.title} accessibilityRole="header">
+              You are supporting:
+            </Text>
+          </>
+        }
         renderItem={({ item }) => (
           <View key={item.id} style={styles.userCard}>
             <View style={styles.mainRow}>
@@ -279,7 +279,7 @@ const SupporterDashboardScreen = ({ navigation }) => {
           </View>
         }
       />
-    </ScrollView>
+    </View>
   );
 };
 
@@ -428,6 +428,9 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  flatListContent: {
+    paddingBottom: 20,
   },
 });
 

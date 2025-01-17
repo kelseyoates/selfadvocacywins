@@ -59,33 +59,32 @@ const AddSupporterScreen = ({ navigation }) => {
       const lowercaseQuery = searchQuery.toLowerCase();
       console.log('Searching for username:', lowercaseQuery);
 
-      // Search by username (case insensitive)
       const q = query(usersRef, where('username', '>=', lowercaseQuery), 
-                               where('username', '<=', lowercaseQuery + '\uf8ff'));
+                             where('username', '<=', lowercaseQuery + '\uf8ff'));
       const querySnapshot = await getDocs(q);
 
       const results = [];
       
-      // Process each user found
       for (const userDoc of querySnapshot.docs) {
         const userData = userDoc.data();
-        // Don't include current user in results
         if (userDoc.id !== auth.currentUser.uid.toLowerCase()) {
-          // Check supporter limits
-          const supporterTier = userData.subscriptionType;
+          // Check supporter limits based on subscription type
+          const subscriptionType = userData.subscriptionType;
           const maxSupported = {
             'supporter1': 1,
             'supporter3': 3,
             'supporter5': 5,
             'supporter10': 10,
             'supporter25': 25,
+            'selfAdvocatePlus': 1,
+            'selfAdvocateDating': 1,
             null: 0,
             undefined: 0
           };
 
-          const supporterLimit = supporterTier?.startsWith('supporter') 
-            ? (maxSupported[supporterTier] || 1)
-            : 0;
+          const supporterLimit = maxSupported[subscriptionType] || 0;
+          console.log('User subscription:', subscriptionType);
+          console.log('Support limit:', supporterLimit);
 
           // Count current supported users
           const allUsersSnapshot = await getDocs(usersRef);
@@ -99,6 +98,8 @@ const AddSupporterScreen = ({ navigation }) => {
             }
           });
 
+          console.log('Current support count:', currentSupportCount);
+
           // Add availability info to the user data
           results.push({
             id: userDoc.id,
@@ -111,12 +112,8 @@ const AddSupporterScreen = ({ navigation }) => {
       }
 
       setSearchResults(results);
-      if (results.length === 0) {
-        announceToScreenReader('No users found. Try searching with a different username');
-        Alert.alert('No users found', 'Try searching with a different username');
-      } else {
-        announceToScreenReader(`Found ${results.length} users`);
-      }
+      console.log('Search results:', results);
+      announceToScreenReader(`Found ${results.length} users`);
     } catch (error) {
       console.error('Search error:', error);
       announceToScreenReader('Error searching for users');
@@ -127,12 +124,11 @@ const AddSupporterScreen = ({ navigation }) => {
 
   const handleAddSupporter = async (userToSupport) => {
     try {
-      // Check if the supporter has reached their limit BEFORE adding them
       const supporterDoc = await getDoc(doc(db, 'users', userToSupport.id.toLowerCase()));
       const supporterData = supporterDoc.data();
-      const supporterTier = supporterData.subscriptionType;
+      const subscriptionType = supporterData.subscriptionType;
 
-      console.log('Supporter tier:', supporterTier);
+      console.log('Supporter subscription:', subscriptionType);
 
       const maxSupported = {
         'supporter1': 1,
@@ -140,13 +136,13 @@ const AddSupporterScreen = ({ navigation }) => {
         'supporter5': 5,
         'supporter10': 10,
         'supporter25': 25,
+        'selfAdvocatePlus': 1,
+        'selfAdvocateDating': 1,
         null: 0,
         undefined: 0
       };
 
-      const supporterLimit = supporterTier?.startsWith('supporter') 
-        ? (maxSupported[supporterTier] || 1)
-        : 0;
+      const supporterLimit = maxSupported[subscriptionType] || 0;
 
       // Get all users this supporter is currently supporting
       const usersRef = collection(db, 'users');
@@ -165,13 +161,12 @@ const AddSupporterScreen = ({ navigation }) => {
       console.log('Current support count:', currentSupportCount);
       console.log('Supporter limit:', supporterLimit);
 
-      // Check if they've reached their limit
       if (currentSupportCount >= supporterLimit) {
         Alert.alert(
           'Supporter Limit Reached',
-          `This supporter has reached their limit of ${supporterLimit} ${supporterLimit === 1 ? 'person' : 'people'}. Please ask them to upgrade their subscription to support more users.`
+          `This user has reached their limit of ${supporterLimit} ${supporterLimit === 1 ? 'person' : 'people'} they can support.`
         );
-        return; // Exit the function here if limit is reached
+        return;
       }
 
       // If we get here, it means they haven't reached their limit, so proceed with adding them
