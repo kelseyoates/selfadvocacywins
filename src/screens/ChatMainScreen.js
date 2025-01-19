@@ -377,23 +377,34 @@ const ChatMainScreen = ({ navigation }) => {
         ListHeaderComponent={() => (
           <>
             {showHelpers && (
-              <View style={styles.helperSection}>
+              <View 
+                style={styles.helperSection}
+                accessible={true}
+                accessibilityRole="header"
+                accessibilityLabel={`Chat Helper Information. Start Chatting! Here's what you can do: 
+                  Tap the dark blue New Chat button in the bottom right corner to start a conversation. 
+                  Chat with one person or create a group chat. 
+                  Your chats will appear in this list. 
+                  There are lots of built in safety features. If someone is bothering you, press and hold on their message and select Report. 
+                  To delete your own message, press and hold on it and select Delete. 
+                  To delete a conversation, press and hold on it and select Delete Conversation. 
+                  To leave a group, tap the group info button and select Leave Group. 
+                  Have fun chatting!`}
+              >
                 <View style={styles.helperHeader}>
                   <MaterialCommunityIcons 
                     name="information" 
                     size={24} 
                     color="#24269B"
                     style={styles.infoIcon}
-                    accessible={true}
-                    accessibilityLabel="Helper information"
+                    importantForAccessibility="no"
                   />
                 </View>
                 <View style={styles.helperContent}>
                   <Image 
                     source={require('../../assets/liam-messages.png')}
                     style={styles.helperImage}
-                    accessible={true}
-                    accessibilityLabel="Liam showing chat features"
+                    importantForAccessibility="no"
                   />
                   <Text style={styles.helperTitle}>Start Chatting!</Text>
                   <View style={styles.helperTextContainer}>

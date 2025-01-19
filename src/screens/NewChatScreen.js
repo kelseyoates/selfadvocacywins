@@ -233,23 +233,29 @@ const NewChatScreen = ({ navigation }) => {
     >
       <View style={styles.container}>
         {showHelpers && (
-          <View style={styles.helperSection}>
+          <View 
+            style={styles.helperSection}
+            accessible={true}
+            accessibilityRole="header"
+            accessibilityLabel={`Chat Helper Information. Start a New Chat! Here's what you can do: 
+              Search for users by typing their name. 
+              Tap Individual Chat on the lower left to chat with one person. 
+              Tap Group Chat on the lower right to chat with multiple people.`}
+          >
             <View style={styles.helperHeader}>
               <MaterialCommunityIcons 
                 name="information" 
                 size={24} 
                 color="#24269B"
                 style={styles.infoIcon}
-                accessible={true}
-                accessibilityLabel="Helper information"
+                importantForAccessibility="no"
               />
             </View>
             <View style={styles.helperContent}>
               <Image 
                 source={require('../../assets/search-users.png')}
                 style={styles.helperImage}
-                accessible={true}
-                accessibilityLabel="Ezra showing how to start new chats"
+                importantForAccessibility="no"
               />
               <Text style={styles.helperTitle}>Start a New Chat!</Text>
               <View style={styles.helperTextContainer}>
