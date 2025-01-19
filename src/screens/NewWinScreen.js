@@ -333,7 +333,15 @@ const NewWinScreen = ({ navigation }) => {
       accessibilityHint="Screen for sharing your win with text and media"
     >
       {showHelpers && (
-        <View style={styles.helperSection}>
+        <View 
+          style={styles.helperSection}
+          accessible={true}
+          accessibilityRole="header"
+          accessibilityLabel={`How to Share Your Win. 
+            Step 1: Tap the box belowto write something about your win. You can skip this if you just want to share a photo or video. If you add a photo, you will tap the "crop" button in the top right to use the photo.
+            Step 2: Tap to add a photo or video if you'd like. 
+            Step 3: Tap Post Win to share with everyone!`}
+        >
           <View style={styles.helperCard}>
             <View style={styles.helperHeader}>
               <MaterialCommunityIcons 
@@ -341,22 +349,19 @@ const NewWinScreen = ({ navigation }) => {
                 size={24} 
                 color="#24269B"
                 style={styles.infoIcon}
-                accessible={true}
-                accessibilityLabel="Helper information"
+                importantForAccessibility="no"
               />
             </View>
             <Image 
               source={require('../../assets/new-win-demo.png')} 
               style={styles.helperImage}
-              accessible={true}
-              accessibilityLabel="Illustration showing how to create a win"
+              importantForAccessibility="no"
             />
             <Text style={styles.helperTitle}>How to Share Your Win</Text>
             <View style={styles.helperInstructions}>
               <Text style={styles.helperText}>1. Tap the box to write something about your win. You can skip this if you just want to share a photo or video.</Text>
               <Text style={styles.helperText}>2. Tap to add a photo or video if you'd like</Text>
               <Text style={styles.helperText}>3. Tap "Post Win" to share with everyone!</Text>
-             
             </View>
           </View>
         </View>
