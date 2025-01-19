@@ -476,8 +476,25 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, onDeleteWin, lazyLoad = 
     <View 
       style={styles.card}
       accessible={true}
-      accessibilityRole="text"
-      accessibilityLabel={`Win posted by ${win.username}`}
+      accessibilityRole="button"
+      accessibilityLabel={`Win posted by ${win.username} ${formatTimestamp(win.localTimestamp)}. ${
+        win.text ? win.text + '. ' : ''
+      }${
+        win.mediaType === 'photo' ? 
+          (win.altText ? win.altText : 'Photo attached. ') :
+        win.mediaType === 'video' ? 
+          'Video attached. ' : 
+          ''
+      }${cheerCount} cheers. ${
+        comments.length > 0 ? 
+          `${comments.length} comments. Most recent comments: ${
+            comments.slice(0, 3).map(comment => 
+              `${comment.text}`
+            ).join('. ')
+          }` : 
+          'No comments yet.'
+      }`}
+      accessibilityHint="Double tap to interact with this win"
     >
       <View 
         style={styles.userInfo}
