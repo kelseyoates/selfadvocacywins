@@ -212,7 +212,7 @@ const SupporterDashboardScreen = ({ navigation }) => {
                     <Text style={styles.helperEmail}>
                       kelsey.oates@selfadvocacywins.com
                     </Text>
-                  </View>
+                  </View> 
                 </View>
               </View>
             )}

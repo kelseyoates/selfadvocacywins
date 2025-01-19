@@ -196,15 +196,20 @@ const MainScreen = ({ navigation }) => {
     };
   }, []);
 
+  useEffect(() => {
+    console.log('Loading state:', loading);
+  }, [loading]);
+
   if (loading) {
     return (
       <View 
         style={styles.loadingContainer}
         accessible={true}
-        accessibilityLabel="Loading wins"
-        accessibilityRole="progressbar"
+        accessibilityRole="alert"
+        accessibilityLabel="Loading your wins feed. Please wait."
       >
         <ActivityIndicator size="large" color="#24269B" />
+        <Text style={styles.loadingText} accessibilityRole="text">Loading...</Text>
       </View>
     );
   }
@@ -253,7 +258,11 @@ const MainScreen = ({ navigation }) => {
 
   const ListHeader = () => (
     <>
-     
+      <View 
+        accessible={true}
+        accessibilityRole="header"
+        accessibilityLabel="Welcome to Self-Advocacy Wins"
+      >
         <View style={styles.headerContent}>
           <Image
             source={require('../../assets/wins.png')}
@@ -261,27 +270,41 @@ const MainScreen = ({ navigation }) => {
             accessible={true}
             accessibilityLabel="Three self-advocates holding a trophy, a flag, and a medal"
           />
-
-        <Text style={styles.headerText}>Welcome to Self-Advocacy Wins!</Text>
-        <Text style={styles.bodyText}>You are now on the Home feed. This is where you can see what your friends have posted.</Text>
+          <Text style={styles.headerText} accessibilityRole="header">Welcome to Self-Advocacy Wins!</Text>
+          <Text style={styles.bodyText}>You are now on the Home feed. This is where you can see what your friends have posted.</Text>
         </View>
+      </View>
 
-        <View style={styles.headerWide}>
-      
+      <View 
+        style={styles.headerWide}
+        accessible={true}
+        accessibilityRole="header"
+        accessibilityLabel="About the Home Feed"
+      >
         <Text style={styles.headerText}>About the Home Feed:</Text>
-          <Text style={styles.bodyText}>This is a win card. You can see who posted the win, when they posted it, and what they posted.</Text>
-          <Image
-            source={require('../../assets/win-example.png')}
-            style={styles.headerImage}
-            accessible={true}
-            accessibilityLabel="An example of a win card. The user's name and profile picture are on the top left of the card, and the win is displayed in the middle. The cheers emoji, new comment icon, and share icon at in a row at the bottom of the card."
-          />
-        </View>
+        <Text style={styles.bodyText}>This is a win card. You can see who posted the win, when they posted it, and what they posted.</Text>
+        <Image
+          source={require('../../assets/win-example.png')}
+          style={styles.headerImage}
+          accessible={true}
+          accessibilityLabel="An example of a win card. The user's name and profile picture are on the top left of the card, and the win is displayed in the middle. The cheers emoji, new comment icon, and share icon at in a row at the bottom of the card."
+        />
+      </View>
 
+      <View style={styles.headerWide}>
+        <Text style={styles.headerText}>About the Home Feed:</Text>
+        <Text style={styles.bodyText}>This is a win card. You can see who posted the win, when they posted it, and what they posted.</Text>
+        <Image
+          source={require('../../assets/win-example.png')}
+          style={styles.headerImage}
+          accessible={true}
+          accessibilityLabel="An example of a win card. The user's name and profile picture are on the top left of the card, and the win is displayed in the middle. The cheers emoji, new comment icon, and share icon at in a row at the bottom of the card."
+        />
+      </View>
 
-        <View style={styles.headerWide}>
+      <View style={styles.headerWide}>
         <Text style={styles.bodyTextBold}>Cheer, Comment, and Share:</Text>
-          <View style={styles.headerIconContainer}>
+        <View style={styles.headerIconContainer}>
           <TouchableWithoutFeedback onPress={animatePress}>
             <Animated.Image 
               source={require('../../assets/cheers.png')} 
@@ -295,11 +318,10 @@ const MainScreen = ({ navigation }) => {
               accessibilityLabel="the clapping hands emoji"
             />
           </TouchableWithoutFeedback>
-          </View>
-          <Text style={styles.bodyText}>tap the clapping emoji to cheer people on</Text>
-      
+        </View>
+        <Text style={styles.bodyText}>tap the clapping emoji to cheer people on</Text>
 
-          <View style={styles.headerIconContainer}>
+        <View style={styles.headerIconContainer}>
           <TouchableWithoutFeedback onPress={animatePress}>
             <Animated.Image 
               source={require('../../assets/new-comment.png')} 
@@ -336,59 +358,49 @@ const MainScreen = ({ navigation }) => {
           <Text style={styles.bodyText}>tap the share icon to share a win</Text>
         </View> 
 
-        </View>     
+      </View>     
 
-
-        <View style={styles.headerWide}>
-         <View style={styles.headerRow}>
-         <Text style={styles.headerText}>Top Navigation:</Text>
-        <Text style={styles.bodyText}>If you look at the top right corner of the screen, you will see a menu icon. Tap it to go to the menu screen.</Text>
-
-        </View>  
-          <Image
-            source={require('../../assets/bottom-nav-images/menu-inactive.png')}
-            style={styles.bodyImage}
-            accessible={true}
-            accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
-          />
-
-        </View>
-
-         <View style={styles.headerWide}>
-         <View style={styles.headerRow}>
-         <Text style={styles.headerText}>Bottom Navigation:</Text>
-        <Text style={styles.bodyText}>If you look at the bottom of the screen, you will see five buttons: Home, Chat, New Win, Find, and Profile.</Text>
-
-        </View>  
-          <Image
-            source={require('../../assets/tab-navigator-example.png')}
-            style={styles.bodyImage}
-            accessible={true}
-            accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
-          />
-          <Text style={styles.bodyText}>Tap each button to go to a different screen.</Text>
-
-        </View>
-
-       
-
-        <View style={styles.headerWide}>
-         <View style={styles.headerRow}>
-         <Text style={styles.headerText}>Your Profile:</Text>
-        <Text style={styles.bodyText}>In the bottom right corner of the screen, you will see a profile icon. Tap it to go to your profile page. You can answer questions about yourself, and upload a profile picture.</Text>
-
-        </View>  
-          <Image
-            source={require('../../assets/profile-example.png')}
-            style={styles.bodyImage}
-            accessible={true}
-            accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
-          />
-         
-        </View>
-      
-    
       <View style={styles.headerWide}>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerText}>Top Navigation:</Text>
+          <Text style={styles.bodyText}>If you look at the top right corner of the screen, you will see a menu icon. Tap it to go to the menu screen.</Text>
+        </View>  
+        <Image
+          source={require('../../assets/bottom-nav-images/menu-inactive.png')}
+          style={styles.bodyImage}
+          accessible={true}
+          accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
+        />
+      </View>
+
+      <View style={styles.headerWide}>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerText}>Bottom Navigation:</Text>
+          <Text style={styles.bodyText}>If you look at the bottom of the screen, you will see five buttons: Home, Chat, New Win, Find, and Profile.</Text>
+        </View>  
+        <Image
+          source={require('../../assets/tab-navigator-example.png')}
+          style={styles.bodyImage}
+          accessible={true}
+          accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
+        />
+        <Text style={styles.bodyText}>Tap each button to go to a different screen.</Text>
+      </View>
+
+      <View style={styles.headerWide}>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerText}>Your Profile:</Text>
+          <Text style={styles.bodyText}>In the bottom right corner of the screen, you will see a profile icon. Tap it to go to your profile page. You can answer questions about yourself, and upload a profile picture.</Text>
+        </View>  
+        <Image
+          source={require('../../assets/profile-example.png')}
+          style={styles.bodyImage}
+          accessible={true}
+          accessibilityLabel="the image in the tab navigator, a house, a chat box, a plus sign, a magnifying glass, and a menu icon"
+        />
+      </View>
+    
+    <View style={styles.headerWide}>
       <Text style={styles.headerText}>Are you ready to start exploring?</Text>
       <Text style={styles.bodyText}> When you see this icon <MaterialCommunityIcons 
                 name="information" 
@@ -399,65 +411,149 @@ const MainScreen = ({ navigation }) => {
                 accessibilityLabel="Helper information"
               /> you'll know that you're looking at helper text. You can turn off the helper text by going to the accessibility screen in the menu.</Text>
          
-          <Text style={styles.bodyText}>Scroll down to see your friends' wins and have some fun!</Text>
+      <Text style={styles.bodyText}>Scroll down to see your friends' wins and have some fun!</Text>
 
-          <ArrowAnimation />
-        </View>
+      <ArrowAnimation />
+    </View>
+
+    
     </>
   );
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        ListHeaderComponent={() => (
-          <>
-            {showHelpers && (
-              <View style={styles.headerRow}>
-                <View style={styles.helperHeader}>
-                  <MaterialCommunityIcons 
-                    name="information" 
-                    size={24} 
-                    color="#24269B"
-                    style={styles.infoIcon}
-                    accessible={true}
-                    accessibilityLabel="Helper information"
+    <FlatList
+      style={styles.container}
+      accessible={false}
+      ListHeaderComponent={() => (
+        <View>
+          {showHelpers && (
+            <>
+              <TouchableOpacity 
+                accessible={true}
+                accessibilityRole="header"
+                accessibilityLabel="Welcome to Self-Advocacy Wins"
+              >
+                <View style={styles.headerContent}>
+                  <Image
+                    source={require('../../assets/wins.png')}
+                    style={styles.headerImage}
+                    importantForAccessibility="no"
                   />
+                  <Text style={styles.headerText}>Welcome to Self-Advocacy Wins!</Text>
+                  <Text style={styles.bodyText}>You are now on the Home feed. This is where you can see what your friends have posted.</Text>
                 </View>
-                <View style={styles.headerSmallContent}>
-                  {ListHeader()}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.headerWide}
+                accessible={true}
+                accessibilityRole="header"
+                accessibilityLabel="About the Home Feed"
+              >
+                <Text style={styles.headerText}>About the Home Feed:</Text>
+                <Text style={styles.bodyText}>This is a win card. You can see who posted the win, when they posted it, and what they posted.</Text>
+                <Image
+                  source={require('../../assets/win-example.png')}
+                  style={styles.headerImage}
+                  importantForAccessibility="no"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.headerWide}
+                accessible={true}
+                accessibilityRole="header"
+                accessibilityLabel="Cheer, Comment, and Share features"
+              >
+                <Text style={styles.bodyTextBold}>Cheer, Comment, and Share:</Text>
+                <View style={styles.headerIconContainer}>
+                  <Image 
+                    source={require('../../assets/cheers.png')} 
+                    style={styles.headerIcon}
+                    importantForAccessibility="no"
+                  />
+                  <Text style={styles.bodyText}>tap the clapping emoji to cheer people on</Text>
                 </View>
-              </View>
-            )}
-          </>
-        )}
-        data={wins}
-        renderItem={({ item }) => (
-          <View
-            accessible={true}
-            accessibilityLabel={`Win by ${item.userName || 'Unknown user'}`}
-            accessibilityHint="Double tap to view details"
-          >
-            <WinCard win={item} />
-          </View>
-        )}
-        keyExtractor={item => item.id}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#24269B']}
-            accessible={true}
-            accessibilityLabel={refreshing ? 'Refreshing wins' : 'Pull to refresh'}
-            accessibilityHint="Pull down to refresh the list of wins"
-            accessibilityRole="adjustable"
-          />
-        }
-        contentContainerStyle={styles.listContent}
-        accessible={true}
-        accessibilityLabel={`List of ${wins.length} wins`}
-        accessibilityHint="Scroll to view more wins"
-      />
-    </View>
+
+                <View style={styles.headerIconContainer}>
+                  <Image 
+                    source={require('../../assets/new-comment.png')} 
+                    style={styles.headerIcon}
+                    importantForAccessibility="no"
+                  />
+                  <Text style={styles.bodyText}>tap the comment icon to leave a positive comment</Text>
+                </View>
+
+                <View style={styles.headerIconContainer}>
+                  <Image 
+                    source={require('../../assets/arrow-share.png')} 
+                    style={styles.headerIcon}
+                    importantForAccessibility="no"
+                  />
+                  <Text style={styles.bodyText}>tap the share icon to share a win</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.headerWide}
+                accessible={true}
+                accessibilityRole="header"
+                accessibilityLabel="Navigation instructions"
+              >
+                <Text style={styles.headerText}>Navigation:</Text>
+                <Text style={styles.bodyText}>Look at the bottom of the screen to find five buttons: Home, Chat, New Win, Find, and Profile.</Text>
+                <Image
+                  source={require('../../assets/tab-navigator-example.png')}
+                  style={styles.bodyImage}
+                  importantForAccessibility="no"
+                />
+                <Text style={styles.bodyText}>Tap each button to go to a different screen.</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.headerWide}
+                accessible={true}
+                accessibilityRole="header"
+                accessibilityLabel="Ready to explore"
+              >
+                <Text style={styles.headerText}>Are you ready to start exploring?</Text>
+                <Text style={styles.bodyText}>
+                  When you see the information icon, you'll know that you're looking at helper text. 
+                  You can turn off the helper text by going to the accessibility screen in the menu.
+                </Text>
+                <Text style={styles.bodyText}>Scroll down to see your friends' wins and have some fun!</Text>
+                <ArrowAnimation />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
+      data={wins}
+      renderItem={({ item }) => (
+        <TouchableOpacity 
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Win posted by ${item.userName || 'Unknown user'}. ${item.content || ''}`}
+          accessibilityHint="Double tap to view win details"
+          onPress={() => {/* handle press */}}
+        >
+          <WinCard win={item} />
+        </TouchableOpacity>
+      )}
+      keyExtractor={item => item.id}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#24269B']}
+          accessible={true}
+          accessibilityLabel={refreshing ? 'Refreshing wins' : 'Pull to refresh'}
+          accessibilityHint="Pull down to refresh the list of wins"
+          accessibilityRole="adjustable"
+        />
+      }
+      contentContainerStyle={styles.listContent}
+    />
   );
 };
 
@@ -667,6 +763,12 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     flexWrap: 'wrap',
     paddingHorizontal: 5,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#24269B',
+    textAlign: 'center',
   },
 });
 
