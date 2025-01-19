@@ -73,23 +73,28 @@ const FindScreen = ({ navigation }) => {
     >
       <View style={styles.container}>
         {showHelpers && (
-          <View style={styles.helperSection}>
+          <View 
+            style={styles.helperSection}
+            accessible={true}
+            accessibilityRole="header"
+            accessibilityLabel={`Welcome to Find! Here's what you can do: 
+              Find a Friend is free! Connect with other self-advocates by tapping the Find a Friend button. 
+              Find a Date requires an upgrade to access dating features. Use this feature by tapping the Find a Date button, which is below the Find a Friend button.`}
+          >
             <View style={styles.helperHeader}>
               <MaterialCommunityIcons 
                 name="information" 
                 size={24} 
                 color="#24269B"
                 style={styles.infoIcon}
-                accessible={true}
-                accessibilityLabel="Helper information"
+                importantForAccessibility="no"
               />
             </View>
             <View style={styles.helperContent}>
               <Image 
                 source={require('../../assets/ezra-usercards.png')}
                 style={styles.helperImage}
-                accessible={true}
-                accessibilityLabel="Ezra showing example user cards"
+                importantForAccessibility="no"
               />
               <Text style={styles.helperTitle}>Welcome to Find!</Text>
               <View style={styles.helperTextContainer}>
