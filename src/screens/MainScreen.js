@@ -428,27 +428,26 @@ const MainScreen = ({ navigation }) => {
         <View>
           {showHelpers && (
             <>
-              <TouchableOpacity 
+              <View 
+                style={styles.headerContent}
                 accessible={true}
                 accessibilityRole="header"
-                accessibilityLabel="Welcome to Self-Advocacy Wins"
+                accessibilityLabel={`Welcome to Self-Advocacy Wins. You are now on the Home feed. This is where you can see what your friends have posted. The image shows three self-advocates holding a trophy, a flag, and a medal.`}
               >
-                <View style={styles.headerContent}>
-                  <Image
-                    source={require('../../assets/wins.png')}
-                    style={styles.headerImage}
-                    importantForAccessibility="no"
-                  />
-                  <Text style={styles.headerText}>Welcome to Self-Advocacy Wins!</Text>
-                  <Text style={styles.bodyText}>You are now on the Home feed. This is where you can see what your friends have posted.</Text>
-                </View>
-              </TouchableOpacity>
+                <Image
+                  source={require('../../assets/wins.png')}
+                  style={styles.headerImage}
+                  importantForAccessibility="no"
+                />
+                <Text style={styles.headerText}>Welcome to Self-Advocacy Wins!</Text>
+                <Text style={styles.bodyText}>You are now on the Home feed. This is where you can see what your friends have posted.</Text>
+              </View>
 
-              <TouchableOpacity 
+              <View 
                 style={styles.headerWide}
                 accessible={true}
                 accessibilityRole="header"
-                accessibilityLabel="About the Home Feed"
+                accessibilityLabel={`About the Home Feed. This is a win card. You can see who posted the win, when they posted it, and what they posted. The image shows an example of a win card with the user's name and profile picture on the top left, the win content in the middle, and interaction buttons at the bottom.`}
               >
                 <Text style={styles.headerText}>About the Home Feed:</Text>
                 <Text style={styles.bodyText}>This is a win card. You can see who posted the win, when they posted it, and what they posted.</Text>
@@ -457,13 +456,13 @@ const MainScreen = ({ navigation }) => {
                   style={styles.headerImage}
                   importantForAccessibility="no"
                 />
-              </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity 
+              <View 
                 style={styles.headerWide}
                 accessible={true}
                 accessibilityRole="header"
-                accessibilityLabel="Cheer, Comment, and Share features"
+                accessibilityLabel={`Cheer, Comment, and Share features. Tap the clapping emoji to cheer people on. Tap the comment icon to leave a positive comment. Tap the share icon to share a win.`}
               >
                 <Text style={styles.bodyTextBold}>Cheer, Comment, and Share:</Text>
                 <View style={styles.headerIconContainer}>
@@ -492,13 +491,13 @@ const MainScreen = ({ navigation }) => {
                   />
                   <Text style={styles.bodyText}>tap the share icon to share a win</Text>
                 </View>
-              </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity 
+              <View 
                 style={styles.headerWide}
                 accessible={true}
                 accessibilityRole="header"
-                accessibilityLabel="Navigation instructions"
+                accessibilityLabel={`Navigation instructions. Look at the bottom of the screen to find five buttons: Home, Chat, New Win, Find, and Profile. Tap each button to go to a different screen.`}
               >
                 <Text style={styles.headerText}>Navigation:</Text>
                 <Text style={styles.bodyText}>Look at the bottom of the screen to find five buttons: Home, Chat, New Win, Find, and Profile.</Text>
@@ -508,13 +507,13 @@ const MainScreen = ({ navigation }) => {
                   importantForAccessibility="no"
                 />
                 <Text style={styles.bodyText}>Tap each button to go to a different screen.</Text>
-              </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity 
+              <View 
                 style={styles.headerWide}
                 accessible={true}
                 accessibilityRole="header"
-                accessibilityLabel="Ready to explore"
+                accessibilityLabel={`Ready to explore. When you see the information icon, you'll know that you're looking at helper text. You can turn off the helper text by going to the accessibility screen in the menu. Scroll down to see your friends' wins and have some fun!`}
               >
                 <Text style={styles.headerText}>Are you ready to start exploring?</Text>
                 <Text style={styles.bodyText}>
@@ -523,22 +522,21 @@ const MainScreen = ({ navigation }) => {
                 </Text>
                 <Text style={styles.bodyText}>Scroll down to see your friends' wins and have some fun!</Text>
                 <ArrowAnimation />
-              </TouchableOpacity>
+              </View>
             </>
           )}
         </View>
       )}
       data={wins}
       renderItem={({ item }) => (
-        <TouchableOpacity 
+        <View 
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel={`Win posted by ${item.userName || 'Unknown user'}. ${item.content || ''}`}
           accessibilityHint="Double tap to view win details"
-          onPress={() => {/* handle press */}}
         >
           <WinCard win={item} />
-        </TouchableOpacity>
+        </View>
       )}
       keyExtractor={item => item.id}
       refreshControl={
