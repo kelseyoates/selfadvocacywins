@@ -1288,11 +1288,11 @@ const [lookingFor, setLookingFor] = useState('');
               onPress={() => setShowGenderModal(true)}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel={`Select gender. Current selection: ${userData?.gender || 'None selected'}`}
-              accessibilityHint="Double tap to open gender selection"
+              accessibilityLabel={`Select your own gender. Current selection: ${userData?.gender || 'None selected'}`}
+              accessibilityHint="Double tap to open your own gender selection"
             >
               <Text style={styles.stateSelectButtonText}>
-                {userData?.gender || 'Select Gender'}
+                {userData?.gender || 'Select Your Own Gender'}
               </Text>
               <MaterialCommunityIcons 
                 name="chevron-down" 
@@ -1310,7 +1310,7 @@ const [lookingFor, setLookingFor] = useState('');
               onPress={() => setShowLookingForModal(true)}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel={`Select preference. Current selection: ${userData?.lookingFor || 'None selected'}`}
+              accessibilityLabel={`Select which gender you would like to date. Current selection: ${userData?.lookingFor || 'None selected'}`}
               accessibilityHint="Double tap to open preference selection"
             >
               <Text style={styles.stateSelectButtonText}>
@@ -1914,26 +1914,28 @@ const [lookingFor, setLookingFor] = useState('');
       )}
 
 
-      {showHelpers && (
-        <View style={styles.helperSection}>
-          <View style={styles.helperHeader}>
-            <MaterialCommunityIcons 
-              name="information" 
-              size={24} 
-              color="#24269B"
-              style={styles.infoIcon}
-              accessible={true}
-              accessibilityLabel="Helper information"
-            />
-          </View>
-          <Text style={styles.helperTextBold}>
-            Your Win History
-          </Text>
-          <Text style={styles.helperText}>
-            View all of your previous wins here.
-          </Text>
+      <View 
+        style={styles.helperSection}
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel="Helper Information: Your Win History. View all of your previous wins here. You can delete a win by tapping the red trash icon in the top right corner of the win card."
+      >
+        <View style={styles.helperHeader}>
+          <MaterialCommunityIcons 
+            name="information" 
+            size={24} 
+            color="#24269B"
+            style={styles.infoIcon}
+            importantForAccessibility="no"
+          />
         </View>
-      )}
+        <Text style={styles.helperTextBold} importantForAccessibility="no">
+          Your Win History
+        </Text>
+        <Text style={styles.helperText} importantForAccessibility="no">
+          View all of your previous wins here. You can delete a win by tapping the red trash icon in the top right corner of the win card.
+        </Text>
+      </View>
 
       <View style={styles.winsContainer}>
         <Text style={styles.sectionTitle}>My Win History</Text>

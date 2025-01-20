@@ -648,13 +648,20 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
 
       {/* Show preview after upload */}
       {questionData.mediaUrl && questionData.mediaType === 'video' && (
-        <View style={styles.previewContainer}>
+        <View 
+          style={styles.previewContainer}
+          accessible={false}
+        >
           <Video
             source={{ uri: questionData.mediaUrl }}
             style={styles.videoPreview}
             useNativeControls
             resizeMode="contain"
             shouldPlay={false}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Your video answer. Double tap to play."
+            accessibilityHint="Use video controls to play, pause, or seek through the video"
           />
         </View>
       )}
