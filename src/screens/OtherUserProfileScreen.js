@@ -22,6 +22,7 @@ import WinCard from '../components/WinCard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth } from '../config/firebase';
 import { Video } from 'expo-av';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/100';
 
@@ -74,6 +75,7 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const [currentUserSubscription, setCurrentUserSubscription] = useState(null);
+  const { showHelpers } = useAccessibility();
 
   console.log('Current user data:', userData);
   console.log('Current profile data:', profileData);
@@ -532,6 +534,68 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
       accessible={true}
       accessibilityLabel={`Profile of ${profileData?.username || 'User'}`}
     >
+      {showHelpers && (
+        <View 
+          style={styles.helperSection}
+          accessible={true}
+          accessibilityRole="header"
+          accessibilityLabel={`Profile Helper Information. 
+            View someone's profile to learn more about them! 
+            At the top, you can see their profile picture and name. 
+            Below that are their stats: how many wins they've shared, cheers they've received, and comments on their posts. 
+            You can follow them to see their wins in your feed. 
+            Tap Chat to start a conversation. 
+            Scroll down to see their answers to fun questions and all their wins! Each question has three buttons. The first button shows you their text answer. The second button shows you which words they've selected. The third button shows you their video anwswer. If you are both on the dating plan, you can see their dating profile information below the questions.`}
+        >
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              importantForAccessibility="no"
+            />
+          </View>
+          <View style={styles.helperContent}>
+            <Image 
+              source={require('../../assets/profile-example.png')}
+              style={styles.helperImage}
+              importantForAccessibility="no"
+            />
+            <Text style={styles.helperTitle}>View Someone's Profile!</Text>
+            <View style={styles.helperTextContainer}>
+              <Text style={styles.helperText}>
+                • At the top, you can see their profile picture and name
+              </Text>
+              <Text style={styles.helperText}>
+                • See their stats: wins shared, cheers received, and comments
+              </Text>
+              <Text style={styles.helperText}>
+                • Follow them to see their wins in your feed
+              </Text>
+              <Text style={styles.helperText}>
+                • Tap Chat to start a conversation
+              </Text>
+              <Text style={styles.helperText}>
+                • Scroll down to see their answers to fun questions and all their wins! 
+              </Text>
+              <Text style={styles.helperText}>
+              •  Each question has three buttons. The first button shows you their text answer. 
+              </Text>
+              <Text style={styles.helperText}>
+              • The second button shows you which words they've selected. 
+              </Text>
+                <Text style={styles.helperText}>
+                • The third button shows you their video answer. 
+                </Text>
+                <Text style={styles.helperText}>
+                • If you are both on the dating plan, you can see their dating profile information below the questions.
+                </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <View 
         style={styles.profileHeader}
         accessible={true}
@@ -570,27 +634,33 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
 
       <View 
         style={styles.statsContainer}
-        accessible={true}
-        accessibilityLabel="User statistics"
+        accessible={false}
       >
         <View 
           style={styles.statItem}
           accessible={true}
+          accessibilityRole="button"
           accessibilityLabel={`${wins.length} Wins`}
         >
           <Image 
             source={require('../../assets/wins-stats.png')} 
             style={styles.statIcon}
-            accessibilityRole="image"
+            importantForAccessibility="no"
           />
           <Text style={styles.statNumber}>{wins.length}</Text>
           <Text style={styles.statLabel}>Wins</Text>
         </View>
 
-        <View style={styles.statItem}>
+        <View 
+          style={styles.statItem}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${calculateStats(wins).totalCheers} Cheers received`}
+        >
           <Image 
             source={require('../../assets/cheers.png')} 
             style={styles.statIcon}
+            importantForAccessibility="no"
           />
           <Text style={styles.statNumber}>
             {calculateStats(wins).totalCheers}
@@ -598,10 +668,16 @@ const OtherUserProfileScreen = ({ route, navigation }) => {
           <Text style={styles.statLabel}>Cheers</Text>
         </View>
 
-        <View style={styles.statItem}>
+        <View 
+          style={styles.statItem}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${calculateStats(wins).totalComments} Comments received`}
+        >
           <Image 
             source={require('../../assets/comments.png')} 
             style={styles.statIcon}
+            importantForAccessibility="no"
           />
           <Text style={styles.statNumber}>
             {calculateStats(wins).totalComments}
@@ -1102,6 +1178,51 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     borderWidth: 1,
     borderColor: '#000000',
+  },
+  helperSection: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    marginVertical: 10,
+    marginHorizontal: 10,
+    padding: 10,
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
+  },
+  helperContent: {
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  helperImage: {
+    width: 200,
+    height: 150,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  helperTextContainer: {
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  helperText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
   },
 });
 
