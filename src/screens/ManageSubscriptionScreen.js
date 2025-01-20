@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useAccessibility } from '../context/AccessibilityContext';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const ManageSubscriptionScreen = () => {
   const navigation = useNavigation();
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { showHelpers } = useAccessibility();
 
   useEffect(() => {
     fetchUserSubscription();
@@ -63,16 +66,58 @@ const ManageSubscriptionScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.container} accessible={true} accessibilityRole="progressbar">
-        <Text style={styles.loadingText} accessibilityLabel="Loading your subscription information">
-          Loading subscription info...
-        </Text>
-      </View>
+      <ScrollView 
+        style={styles.container}
+        accessible={false}
+      >
+        <View style={styles.container} accessible={true} accessibilityRole="progressbar">
+          <Text style={styles.loadingText} accessibilityLabel="Loading your subscription information">
+            Loading subscription info...
+          </Text>
+        </View>
+      </ScrollView>
     );
   }
 
   return (
-    <View style={styles.container} accessible={true}>
+    <ScrollView 
+      style={styles.container}
+      accessible={false}
+    >
+      {showHelpers && (
+        <View 
+          style={styles.helperSection}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Helper Information: Manage Your Subscription. You can view your current plan and switch to a different plan if you'd like. To subscribe to a paid plan, you will need a credit or debit card. After making changes, you may need to restart the app to see your new features."
+        >
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              importantForAccessibility="no"
+            />
+          </View>
+          <Text style={styles.helperTitle}>Manage Your Subscription</Text>
+          <View style={styles.helperTextContainer}>
+            <Text style={styles.helperText}>
+              • View your current plan and its features
+            </Text>
+            <Text style={styles.helperText}>
+              • Switch to a different plan at any time
+            </Text>
+            <Text style={styles.helperText}>
+              • Credit or debit card required for paid plans
+            </Text>
+            <Text style={styles.helperText}>
+              • Restart app after changes to see new features
+            </Text>
+          </View>
+        </View>
+      )}
+
       <Text 
         style={styles.title} 
         accessible={true}
@@ -86,23 +131,69 @@ const ManageSubscriptionScreen = () => {
         accessible={true} 
         accessibilityRole="text"
         accessibilityLabel={`Current plan: ${
-          currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus, ten dollars per month' :
-          currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating, twenty dollars per month' :
-          currentSubscription === 'supporter1' ? 'Supporter 1, ten dollars per month' :
-          currentSubscription === 'supporter5' ? 'Supporter 5, fifty dollars per month' :
-          currentSubscription === 'supporter10' ? 'Supporter 10, one hundred dollars per month' :
-          'Self Advocate, Free plan'
+          currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus, ten dollars per month. Features include: Post wins, chat with others, and add supporters.' :
+          currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating, twenty dollars per month. Features include: All Plus features and access to dating features.' :
+          currentSubscription === 'supporter1' ? 'Supporter 1, ten dollars per month. Features include: Support one self-advocate.' :
+          currentSubscription === 'supporter5' ? 'Supporter 5, fifty dollars per month. Features include: Support up to five self-advocates.' :
+          currentSubscription === 'supporter10' ? 'Supporter 10, one hundred dollars per month. Features include: Support up to ten self-advocates.' :
+          'Self Advocate, Free plan. Features include: Basic access to post wins and chat.'
         }`}
       >
         <Text style={styles.currentPlanTitle}>Current Plan:</Text>
         <Text style={styles.currentPlanName}>
           {currentSubscription === 'selfAdvocatePlus' ? 'Self Advocate Plus - $10/month' :
-           currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating - $15/month' :
+           currentSubscription === 'selfAdvocateDating' ? 'Self Advocate Dating - $20/month' :
            currentSubscription === 'supporter1' ? 'Supporter 1 - $10/month' :
            currentSubscription === 'supporter5' ? 'Supporter 5 - $50/month' :
            currentSubscription === 'supporter10' ? 'Supporter 10 - $100/month' :
            'Self Advocate - Free'}
         </Text>
+        
+        <Text style={styles.featuresTitle}>Your Current Features:</Text>
+        <View style={styles.featuresList}>
+          {currentSubscription === 'selfAdvocatePlus' && (
+            <>
+              <Text style={styles.featureItem}>• Post wins and share your successes</Text>
+              <Text style={styles.featureItem}>• Chat with other members</Text>
+              <Text style={styles.featureItem}>• Add supporters to your network</Text>
+            </>
+          )}
+          {currentSubscription === 'selfAdvocateDating' && (
+            <>
+              <Text style={styles.featureItem}>• All Plus features</Text>
+              <Text style={styles.featureItem}>• Access to dating features</Text>
+              <Text style={styles.featureItem}>• Dating profile customization</Text>
+            </>
+          )}
+          {currentSubscription === 'supporter1' && (
+            <>
+              <Text style={styles.featureItem}>• Support one self-advocate</Text>
+              <Text style={styles.featureItem}>• Chat with your supported member</Text>
+              <Text style={styles.featureItem}>• View and cheer their wins</Text>
+            </>
+          )}
+          {currentSubscription === 'supporter5' && (
+            <>
+              <Text style={styles.featureItem}>• Support up to five self-advocates</Text>
+              <Text style={styles.featureItem}>• Chat with your supported members</Text>
+              <Text style={styles.featureItem}>• View and cheer their wins</Text>
+            </>
+          )}
+          {currentSubscription === 'supporter10' && (
+            <>
+              <Text style={styles.featureItem}>• Support up to ten self-advocates</Text>
+              <Text style={styles.featureItem}>• Chat with your supported members</Text>
+              <Text style={styles.featureItem}>• View and cheer their wins</Text>
+            </>
+          )}
+          {(!currentSubscription || currentSubscription === 'selfAdvocateFree') && (
+            <>
+              <Text style={styles.featureItem}>• Post wins and share your successes</Text>
+              <Text style={styles.featureItem}>• Basic chat features</Text>
+              <Text style={styles.featureItem}>• View other members' wins</Text>
+            </>
+          )}
+        </View>
       </View>
 
       <Text 
@@ -225,7 +316,7 @@ const ManageSubscriptionScreen = () => {
           <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </ScrollView>
   );
 };
 
@@ -246,6 +337,9 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     marginBottom: 30,
+    backgroundColor: '#f8f8f8',
+    borderWidth: 1,
+    borderColor: '#24269B',
   },
   currentPlanTitle: {
     fontSize: 16,
@@ -311,6 +405,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  helperSection: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    marginVertical: 10,
+    marginHorizontal: 10,
+    padding: 10,
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  helperTextContainer: {
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  helperText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  featuresTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  featuresList: {
+    paddingLeft: 10,
+  },
+  featureItem: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 20,
   },
 });
 

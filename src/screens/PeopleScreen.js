@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 const PeopleScreen = () => {
   const [activeTab, setActiveTab] = useState('followers');
@@ -31,6 +32,7 @@ const PeopleScreen = () => {
   const [loading, setLoading] = useState(true);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const { user } = useAuth();
+  const { showHelpers } = useAccessibility();
 
   // Add screen reader detection
   useEffect(() => {
@@ -221,6 +223,40 @@ const renderUser = ({ item }) => (
       accessible={true}
       accessibilityLabel="People Screen"
     >
+      {showHelpers && (
+        <View 
+          style={styles.helperSection}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Helper Information: Following and Followers. You can see who you're following and who follows you. Switch between tabs to view different lists. In the future, you'll be able to choose if you only want to see wins from people you follow. For now, you'll see everyone's wins in your feed."
+        >
+          <View style={styles.helperHeader}>
+            <MaterialCommunityIcons 
+              name="information" 
+              size={24} 
+              color="#24269B"
+              style={styles.infoIcon}
+              importantForAccessibility="no"
+            />
+          </View>
+          <Text style={styles.helperTitle}>Following and Followers</Text>
+          <View style={styles.helperTextContainer}>
+            <Text style={styles.helperText}>
+              • Switch between tabs to see who you're following and who follows you
+            </Text>
+            <Text style={styles.helperText}>
+              • Tap Follow or Unfollow to update your connections
+            </Text>
+            <Text style={styles.helperText}>
+              • Coming soon: Choose to see wins only from people you follow
+            </Text>
+            <Text style={styles.helperText}>
+              • For now, you'll see everyone's wins in your feed
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View 
         style={styles.tabContainer}
         accessible={true}
@@ -374,6 +410,41 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 30,
     fontSize: 16,
+  },
+  helperSection: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#24269B',
+    marginVertical: 10,
+    marginHorizontal: 10,
+    padding: 10,
+  },
+  helperHeader: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginBottom: -20,
+    zIndex: 1,
+  },
+  infoIcon: {
+    padding: 5,
+  },
+  helperTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#24269B',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  helperTextContainer: {
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  helperText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
   },
 });
 
