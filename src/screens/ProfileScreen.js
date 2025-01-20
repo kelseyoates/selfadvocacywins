@@ -1622,33 +1622,49 @@ const [lookingFor, setLookingFor] = useState('');
   return (
     <ScrollView 
       style={styles.container}
-      accessible={true}
-      accessibilityLabel="Profile screen"
+      accessible={false}
     >
-
-
-{showHelpers && (
-        <View style={styles.helperSection}>
+      {showHelpers && (
+        <View 
+          style={styles.helperSection}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={`Profile Helper Information. 
+            This is your profile page where you can share information about yourself. 
+            You can add a profile picture, set your location, birthday, and answer fun questions about yourself. 
+            If you have a dating subscription, you can also set your dating preferences.`}
+        >
           <View style={styles.helperHeader}>
             <MaterialCommunityIcons 
               name="information" 
               size={24} 
               color="#24269B"
               style={styles.infoIcon}
-              accessible={true}
-              accessibilityLabel="Helper information"
+              importantForAccessibility="no"
             />
           </View>
-          <Text style={styles.helperTextBold}>
-            Your Profile Picture
-          </Text>
-          <Text style={styles.helperText}>
-            This image is your profile picture. Tap the circle to upload or change your profile picture.
-          </Text>
+          <View style={styles.helperContent}>
+            <Text style={styles.helperTitle}>Welcome to Your Profile!</Text>
+            <View style={styles.helperTextContainer}>
+              <Text style={styles.helperText}>• Add or change your profile picture</Text>
+              <Text style={styles.helperText}>• Set your location and birthday</Text>
+              <Text style={styles.helperText}>• Answer questions about yourself</Text>
+              <Text style={styles.helperText}>• Set dating preferences if subscribed</Text>
+            </View>
+          </View>
         </View>
       )}
 
-      <View style={styles.profileHeader}>
+      <View 
+        style={styles.profileHeader}
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel={`Profile for ${userData?.username || 'User'}. ${
+          userData?.state ? `Located in ${userData.state}.` : ''
+        } ${
+          userData?.birthdate ? `Birthday: ${formatBirthday(userData.birthdate)}` : ''
+        }`}
+      >
         <TouchableOpacity 
           ref={profileImageRef}
           onPress={handleProfilePictureUpdate}
@@ -1703,75 +1719,106 @@ const [lookingFor, setLookingFor] = useState('');
      
 
       {showHelpers && (
-        <View style={styles.helperSection}>
+        <View 
+          style={styles.helperSection}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Helper Information: Your Stats. Your stats show your total number of wins, how many cheers you've received, and how many comments people have left on your wins. They will automatically update."
+        >
           <View style={styles.helperHeader}>
             <MaterialCommunityIcons 
               name="information" 
               size={24} 
               color="#24269B"
               style={styles.infoIcon}
-              accessible={true}
-              accessibilityLabel="Helper information"
+              importantForAccessibility="no"
             />
           </View>
-          <Text style={styles.helperTextBold}>
+          <Text style={styles.helperTextBold} importantForAccessibility="no">
             Your Stats
           </Text>
-          <Text style={styles.helperText}>
+          <Text style={styles.helperText} importantForAccessibility="no">
             Your stats show your total number of wins, how many cheers you've received, and how many comments people have left on your wins. They will automatically update.
           </Text>
         </View>
       )}
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Image 
-            source={require('../../assets/wins-stats.png')} 
-            style={styles.statIcon}
-          />
-          <Text style={styles.statNumber}>{wins.length}</Text>
-          <Text style={styles.statLabel}>Wins</Text>
-        </View>
+      <View 
+        style={styles.statsSection}
+        accessible={false}
+      >
+        <View style={styles.statsRow}>
+          <View 
+            style={styles.statItem}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={`${wins.length} Wins`}
+          >
+            <Image 
+              source={require('../../assets/wins-stats.png')} 
+              style={styles.statIcon}
+              importantForAccessibility="no"
+            />
+            <Text style={styles.statNumber}>{wins.length}</Text>
+            <Text style={styles.statLabel}>Wins</Text>
+          </View>
 
-        <View style={styles.statItem}>
-          <Image 
-            source={require('../../assets/cheers.png')} 
-            style={styles.statIcon}
-          />
-          <Text style={styles.statNumber}>
-            {calculateStats(wins).totalCheers}
-          </Text>
-          <Text style={styles.statLabel}>Cheers</Text>
-        </View>
+          <View 
+            style={styles.statItem}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={`${calculateStats(wins).totalCheers} Cheers received`}
+          >
+            <Image 
+              source={require('../../assets/cheers.png')} 
+              style={styles.statIcon}
+              importantForAccessibility="no"
+            />
+            <Text style={styles.statNumber}>
+              {calculateStats(wins).totalCheers}
+            </Text>
+            <Text style={styles.statLabel}>Cheers</Text>
+          </View>
 
-        <View style={styles.statItem}>
-          <Image 
-            source={require('../../assets/comments.png')} 
-            style={styles.statIcon}
-          />
-          <Text style={styles.statNumber}>
-            {calculateStats(wins).totalComments}
-          </Text>
-          <Text style={styles.statLabel}>Comments</Text>
+          <View 
+            style={styles.statItem}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={`${calculateStats(wins).totalComments} Comments received`}
+          >
+            <Image 
+              source={require('../../assets/comments.png')} 
+              style={styles.statIcon}
+              importantForAccessibility="no"
+            />
+            <Text style={styles.statNumber}>
+              {calculateStats(wins).totalComments}
+            </Text>
+            <Text style={styles.statLabel}>Comments</Text>
+          </View>
         </View>
       </View>
 
       {showHelpers && !profileUserId && (
-        <View style={styles.helperSection}>
+        <View 
+          style={styles.helperSection}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Helper Information: Your State. Select your state to help other people find you better in the Find a Friend feature."
+        >
           <View style={styles.helperHeader}>
             <MaterialCommunityIcons 
               name="information" 
               size={24} 
               color="#24269B"
               style={styles.infoIcon}
-              accessible={true}
-              accessibilityLabel="Helper information"
+              importantForAccessibility="no"
             />
           </View>
-          <Text style={styles.helperTextBold}>
+          <Text style={styles.helperTextBold} importantForAccessibility="no">
             Your State
           </Text>
-          <Text style={styles.helperText}>
+          <Text style={styles.helperText} importantForAccessibility="no">
             Select your state to help other people find you better in the Find a Friend feature.
           </Text>
         </View>
@@ -1782,58 +1829,62 @@ const [lookingFor, setLookingFor] = useState('');
         <>
           <StateSelector />
 
-{showHelpers && !profileUserId && (
-        <View style={styles.helperSection}>
-          <View style={styles.helperHeader}>
-            <MaterialCommunityIcons 
-              name="information" 
-              size={24} 
-              color="#24269B"
-              style={styles.infoIcon}
-              accessible={true}
-              accessibilityLabel="Helper information"
-            />
+          <View 
+            style={styles.helperSection}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel="Helper Information: Your Birthday. Tap to select your birthday. This helps people find you better in the Find a Friend feature."
+          >
+            <View style={styles.helperHeader}>
+              <MaterialCommunityIcons 
+                name="information" 
+                size={24} 
+                color="#24269B"
+                style={styles.infoIcon}
+                importantForAccessibility="no"
+              />
+            </View>
+            <Text style={styles.helperTextBold} importantForAccessibility="no">
+              Your Birthday
+            </Text>
+            <Text style={styles.helperText} importantForAccessibility="no">
+              Tap to select your birthday. This helps people find you better in the Find a Friend feature.
+            </Text>
           </View>
-          <Text style={styles.helperTextBold}>
-            Your Birthday
-          </Text>
-          <Text style={styles.helperText}>
-            Tap to select your birthday. This helps people find you better in the Find a Friend feature.
-          </Text>
-        </View>
-      )}
 
           {renderPersonalInfo()}
         </>
       ) : null}
 
 
-{showHelpers && (
-        <View style={styles.helperSection}>
-          <View style={styles.helperHeader}>
-            <MaterialCommunityIcons 
-              name="information" 
-              size={24} 
-              color="#24269B"
-              style={styles.infoIcon}
-              accessible={true}
-              accessibilityLabel="Helper information"
-            />
-          </View>
-          <Text style={styles.helperTextBold}>
-            Your Profile Questions
-          </Text>
-          <Text style={styles.helperText}>
-            Answer these questions to tell people about yourself. You can:
-          </Text>
-          <View style={styles.helperList}>
-            <Text style={styles.helperListItem}>• Tap the pencil icon to write your own answer.</Text>
-            <Text style={styles.helperListItem}>• Tap the list icon to pick from suggested words.</Text>
-            <Text style={styles.helperListItem}>• Tap the video icon to record a video answer.</Text>
-            <Text style={styles.helperListItem}>If you subscribe to the Dating plan, you will see questions about dating here as well.</Text>
-          </View>
-        </View>
-      )}
+<View 
+  style={styles.helperSection}
+  accessible={true}
+  accessibilityRole="text"
+  accessibilityLabel="Helper Information: Your Profile Questions. Answer these questions to tell people about yourself. You can: Tap the pencil icon to write your own answer. Tap the list icon to pick from suggested words. Tap the video icon to record a video answer. If you subscribe to the Dating plan, you will see questions about dating here as well."
+>
+  <View style={styles.helperHeader}>
+    <MaterialCommunityIcons 
+      name="information" 
+      size={24} 
+      color="#24269B"
+      style={styles.infoIcon}
+      importantForAccessibility="no"
+    />
+  </View>
+  <Text style={styles.helperTextBold} importantForAccessibility="no">
+    Your Profile Questions
+  </Text>
+  <Text style={styles.helperText} importantForAccessibility="no">
+    Answer these questions to tell people about yourself. You can:
+  </Text>
+  <View style={styles.helperList} importantForAccessibility="no">
+    <Text style={styles.helperListItem}>• Tap the pencil icon to write your own answer.</Text>
+    <Text style={styles.helperListItem}>• Tap the list icon to pick from suggested words.</Text>
+    <Text style={styles.helperListItem}>• Tap the video icon to record a video answer.</Text>
+    <Text style={styles.helperListItem}>If you subscribe to the Dating plan, you will see questions about dating here as well.</Text>
+  </View>
+</View>
 
       <View style={styles.questionSection}>
         <Text style={styles.sectionTitle}>My Profile</Text>
@@ -1851,7 +1902,16 @@ const [lookingFor, setLookingFor] = useState('');
         ))}
       </View>
 
-      {renderDatingInfo()}
+      {userData?.subscriptionType === 'selfAdvocateDating' && (
+        <View 
+          style={styles.datingSection}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Dating preferences section"
+        >
+          {renderDatingInfo()}
+        </View>
+      )}
 
 
       {showHelpers && (
@@ -2614,6 +2674,16 @@ menuText: {
   marginTop: 2,
   flexWrap: 'wrap',
   textAlign: 'center',
+},
+statsSection: {
+  padding: 15,
+  backgroundColor: '#fff',
+  marginVertical: 10,
+},
+statsRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  alignItems: 'center',
 },
 });
 
