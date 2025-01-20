@@ -200,7 +200,14 @@ const SupporterManagementScreen = () => {
             accessible={true}
             accessibilityRole="text"
           >
-            Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. You can remove a supporter at any time.
+            Your supporters will be able to view your chats. They will not be able to write, edit, or delete your messages. 
+          </Text>
+          <Text 
+            style={styles.body}
+            accessible={true}
+            accessibilityRole="text"
+          >
+           You can remove a supporter at any time by tapping on the red remove button on the right side of the supporter card.
           </Text>
           <Text 
             style={styles.body}
@@ -236,7 +243,7 @@ const SupporterManagementScreen = () => {
           style={styles.supporterCard}
           accessible={true}
           accessibilityRole="text"
-          accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. ${supporter.state ? `From ${supporter.state}.` : ''} Email: ${supporter.email}`}
+          accessibilityLabel={`Supporter: ${supporter.username || supporter.name || 'Unknown'}. ${supporter.state ? `From ${supporter.state}.` : ''} `}
         >
           <View style={styles.supporterInfo}>
             <Image 

@@ -151,13 +151,19 @@ const SupporterDashboardScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View 
-        style={styles.loadingContainer}
-        accessible={true}
-        accessibilityRole="progressbar"
-        accessibilityLabel="Loading supported users"
-      >
-        <ActivityIndicator size="large" color="#24269B" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator 
+          size="large" 
+          color="#24269B" 
+          accessibilityLabel="Loading"
+        />
+        <Text 
+          style={styles.loadingText}
+          accessible={true}
+          accessibilityRole="text"
+        >
+          Loading supported users...
+        </Text>
       </View>
     );
   }
@@ -167,33 +173,35 @@ const SupporterDashboardScreen = ({ navigation }) => {
       <FlatList
         data={supportedUsers}
         keyExtractor={(item) => item.id}
-        accessible={true}
-        accessibilityLabel="Search Results"
         contentContainerStyle={styles.flatListContent}
         scrollEnabled={true}
+        accessible={false}
         ListHeaderComponent={
           <>
             {showHelpers && (
-              <View style={styles.helperSection}>
+              <View 
+                style={styles.helperSection}
+                accessible={true}
+                accessibilityRole="text"
+                accessibilityLabel="Helper Information: Being a Supporter. A user must add you as a supporter before you can view their chats. Once you are a supporter, you can view that user's chats. These chats are read-only and you will not be able to send, edit, or delete messages. If you see concerning behavior, have the user block and report. Email safety concerns to kelsey.oates@selfadvocacywins.com"
+              >
                 <View style={styles.helperHeader}>
                   <MaterialCommunityIcons 
                     name="information" 
                     size={24} 
                     color="#24269B"
                     style={styles.infoIcon}
-                    accessible={true}
-                    accessibilityLabel="Helper information"
+                    importantForAccessibility="no"
                   />
                 </View>
                 <View style={styles.helperContent}>
                   <Image 
                     source={require('../../assets/read-only-chats.png')}
                     style={styles.helperImage}
-                    accessible={true}
-                    accessibilityLabel="Ezra explaining supporter features"
+                    importantForAccessibility="no"
                   />
-                  <Text style={styles.helperTitle}>Being a Supporter!</Text>
-                  <View style={styles.helperTextContainer}>
+                  <Text style={styles.helperTitle} importantForAccessibility="no">Being a Supporter!</Text>
+                  <View style={styles.helperTextContainer} importantForAccessibility="no">
                     <Text style={styles.helperText}>
                       • A user must add you as a supporter before you can view their chats.
                     </Text>
@@ -216,28 +224,38 @@ const SupporterDashboardScreen = ({ navigation }) => {
                 </View>
               </View>
             )}
-            <Text style={styles.title} accessibilityRole="header">
+            <Text 
+              style={styles.title} 
+              accessible={true}
+              accessibilityRole="header"
+            >
               You are supporting:
             </Text>
           </>
         }
         renderItem={({ item }) => (
-          <View key={item.id} style={styles.userCard}>
+          <View 
+            key={item.id} 
+            style={styles.userCard}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.username}. Double tap to view options.`}
+          >
             <View style={styles.mainRow}>
               <Image 
                 source={item.profilePicture 
                   ? { uri: item.profilePicture }
                   : require('../../assets/default-avatar.png')}
                 style={styles.userAvatar}
-                accessibilityRole="image"
-                accessibilityLabel={`${item.username}'s profile picture`}
+                importantForAccessibility="no"
               />
               <View style={styles.userInfo}>
-                <Text style={styles.username}>{item.username}</Text>
+                <Text style={styles.username} importantForAccessibility="no">{item.username}</Text>
                 <TouchableOpacity 
                   style={styles.viewChatsContainer}
                   onPress={() => handleSupportedUserPress(item)}
                   accessible={true}
+                  accessibilityRole="button"
                   accessibilityLabel={`View chats with ${item.username}`}
                   accessibilityHint="Double tap to view chat history"
                 >
@@ -245,7 +263,8 @@ const SupporterDashboardScreen = ({ navigation }) => {
                   <MaterialCommunityIcons 
                     name="arrow-right" 
                     size={20} 
-                    color="#24269B" 
+                    color="#24269B"
+                    importantForAccessibility="no"
                   />
                 </TouchableOpacity>
               </View>
@@ -255,25 +274,27 @@ const SupporterDashboardScreen = ({ navigation }) => {
               style={styles.removeContainer}
               onPress={() => handleRemoveSupported(item)}
               accessible={true}
+              accessibilityRole="button"
               accessibilityLabel={`Stop being a supporter for ${item.username}`}
               accessibilityHint="Double tap to remove this user from your supported list"
             >
               <MaterialCommunityIcons 
                 name="close-circle" 
                 size={20} 
-                color="#ff4444" 
+                color="#ff4444"
+                importantForAccessibility="no"
               />
               <Text style={styles.removeText}>Stop being their supporter</Text>
             </TouchableOpacity>
           </View>
         )}
         ListEmptyComponent={
-          <View style={styles.emptyStateContainer}>
-            <Text 
-              style={styles.emptyStateText}
-              accessible={true}
-              accessibilityLabel="You are not supporting anyone yet. They can add you in their app."
-            >
+          <View 
+            style={styles.emptyStateContainer}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            <Text style={styles.emptyStateText}>
               You are not supporting anyone yet. They can add you in their app.
             </Text>
           </View>
@@ -292,6 +313,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#24269B',
+    marginTop: 10,
   },
   title: {
     fontSize: 24,
