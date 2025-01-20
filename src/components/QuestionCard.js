@@ -11,13 +11,13 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db, storage } from '../config/firebase';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 import * as FileSystem from 'expo-file-system';
 import { Video } from 'expo-av';
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // Increase to 50MB limit
-const MAX_DURATION = 120; // Increase to 120 seconds (2 minutes)
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
+const MAX_DURATION = 60; // 60 seconds (1 minute)
 const MAX_CHARACTERS = 400;
 
 const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQuestion = false }) => {
@@ -118,14 +118,20 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
       console.log(`Video size: ${fileSizeMB.toFixed(2)} MB`);
 
       if (fileInfo.size > MAX_FILE_SIZE) {
-        alert(`Video is too large (${fileSizeMB.toFixed(2)} MB). Please choose a video smaller than 50MB.`);
+        Alert.alert(
+          'Video Too Large', 
+          `Video is too large (${fileSizeMB.toFixed(2)} MB). Please choose a video smaller than 50MB.`
+        );
         setUploading(false);
         return;
       }
 
       const durationSeconds = result.assets[0].duration / 1000;
       if (durationSeconds > MAX_DURATION) {
-        alert(`Video is too long (${Math.round(durationSeconds)} seconds). Please choose a video shorter than ${MAX_DURATION} seconds.`);
+        Alert.alert(
+          'Video Too Long',
+          `Video must be ${MAX_DURATION} seconds or less. Your video is ${Math.round(durationSeconds)} seconds.`
+        );
         setUploading(false);
         return;
       }
@@ -136,7 +142,7 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
 
     } catch (error) {
       console.error('Error in pickVideo:', error);
-      alert('Error selecting video. Please try again.');
+      Alert.alert('Error', 'Error selecting video. Please try again.');
       setUploading(false);
     }
   };
@@ -263,12 +269,6 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
             resizeMode="contain"
             isLooping
           />
-          <TouchableOpacity 
-            style={styles.newVideoButton}
-            onPress={pickVideo}
-          >
-            <Text style={styles.buttonText}>Choose New Video</Text>
-          </TouchableOpacity>
         </View>
       );
     }
@@ -287,25 +287,27 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
           style={[styles.uploadButton, uploading && styles.uploadingButton]}
           onPress={pickVideo}
           disabled={uploading}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={uploading ? `Uploading: ${uploadProgress}%` : "Add video"}
+          accessibilityState={{ disabled: uploading }}
+          accessibilityHint="Double tap to select a video to upload"
         >
           {uploading ? (
-            <View style={styles.uploadingContainer}>
+            <View 
+              style={styles.uploadingContainer}
+              accessibilityRole="progressbar"
+              accessibilityValue={{ now: uploadProgress, min: 0, max: 100 }}
+            >
               <Text style={styles.uploadingText}>
                 Uploading: {uploadProgress}%
               </Text>
               <View style={styles.progressBarContainer}>
-                <View 
-                  style={[
-                    styles.progressBar, 
-                    { width: `${uploadProgress}%` }
-                  ]} 
-                />
+                <View style={[styles.progressBar, { width: `${uploadProgress}%` }]} />
               </View>
             </View>
           ) : (
-            <Text style={styles.buttonText}>
-              {questionData?.mediaUrl ? 'Change Video' : 'Add Video'}
-            </Text>
+            <Text style={styles.buttonText}>Add Video</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -537,16 +539,6 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
                 accessibilityLabel="Your recorded video answer"
                 accessibilityHint="Use video controls to play, pause, or seek"
               />
-              <TouchableOpacity 
-                style={styles.newVideoButton}
-                onPress={pickVideo}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel="Choose new video"
-                accessibilityHint="Double tap to select a different video"
-              >
-                <Text style={styles.buttonText}>Choose New Video</Text>
-              </TouchableOpacity>
             </>
           ) : (
             <>
@@ -580,9 +572,7 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
                     </View>
                   </View>
                 ) : (
-                  <Text style={styles.buttonText}>
-                    {questionData?.mediaUrl ? 'Change Video' : 'Add Video'}
-                  </Text>
+                  <Text style={styles.buttonText}>Add Video</Text>
                 )}
               </TouchableOpacity>
             </>
@@ -592,10 +582,7 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
 
       {/* Show preview after upload */}
       {questionData.mediaUrl && questionData.mediaType === 'video' && (
-        <View 
-          style={styles.previewContainer}
-          accessible={false}
-        >
+        <View style={styles.previewContainer}>
           <Video
             source={{ uri: questionData.mediaUrl }}
             style={styles.videoPreview}
@@ -607,6 +594,62 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
             accessibilityLabel="Your video answer. Double tap to play."
             accessibilityHint="Use video controls to play, pause, or seek through the video"
           />
+          <View style={styles.videoButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.uploadButton, styles.videoActionButton]}
+              onPress={pickVideo}
+              accessible={true}
+              accessibilityLabel="Change video"
+              accessibilityHint="Double tap to select a different video"
+            >
+              <Text style={styles.buttonText}>Change Video</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.uploadButton, styles.deleteButton]}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Video',
+                  'Are you sure you want to delete this video?',
+                  [
+                    {
+                      text: 'Cancel',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await updateFirestore({
+                            mediaUrl: null,
+                            mediaType: null
+                          });
+                          
+                          setQuestionData(prev => ({
+                            ...prev,
+                            mediaUrl: null,
+                            mediaType: null
+                          }));
+                          
+                          Alert.alert('Success', 'Video deleted successfully');
+                        } catch (error) {
+                          console.error('Error deleting video:', error);
+                          Alert.alert('Error', 'Failed to delete video');
+                        }
+                      },
+                    },
+                  ],
+                  { cancelable: true }
+                );
+              }}
+              accessible={true}
+              accessibilityLabel="Delete video"
+              accessibilityHint="Double tap to delete this video"
+            >
+              <Text style={styles.buttonText}>Delete Video</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -778,28 +821,28 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     marginTop: 10,
-    height: 200,
     borderRadius: 8,
     overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
   },
   videoPreview: {
     width: '100%',
-    height: '100%',
+    height: 200,
   },
-  videoButton: {
+  videoButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginTop: 10,
-    padding: 8,
+    gap: 10,
+    padding: 10,
+  },
+  videoActionButton: {
+    flex: 1,
     backgroundColor: '#24269B',
-    borderRadius: 8,
-    alignItems: 'center',
   },
-  videoButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  uploadingButton: {
-    backgroundColor: '#1a1b6e',
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#dc3545', // Red color for delete button
   },
   videoToggleButton: {
     backgroundColor: '#24269B',

@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 
 
@@ -154,6 +154,23 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, onDeleteWin, lazyLoad = 
 
     fetchUserData();
   }, [win.userId]);
+
+  // Add useEffect for real-time cheers updates
+  useEffect(() => {
+    if (!win.id) return;
+
+    // Set up real-time listener for this win's cheers
+    const winRef = doc(db, 'wins', win.id);
+    const unsubscribe = onSnapshot(winRef, (doc) => {
+      if (doc.exists()) {
+        const winData = doc.data();
+        setCheerCount(winData.cheers || 0);
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [win.id]);
 
   const togglePlayback = async () => {
     if (!videoRef.current) return;
@@ -303,8 +320,6 @@ const WinCard = ({ win, onCheersPress, onCommentsPress, onDeleteWin, lazyLoad = 
         cheers: newCheerCount
       });
       
-      setCheerCount(newCheerCount);
-      // animateCheer();
     } catch (error) {
       console.error('Error updating cheers:', error);
     } finally {
