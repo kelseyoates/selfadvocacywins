@@ -189,17 +189,17 @@ const NotificationSettingsScreen = () => {
           style={styles.settingItem}
           accessible={true}
           accessibilityRole="switch"
-          accessibilityLabel={`Private Chat Messages. ${settings.privateChats ? 'Enabled' : 'Disabled'}`}
+          accessibilityLabel={`Get notified when you receive a new private chat message. ${settings.privateChats ? 'Enabled' : 'Disabled'}`}
           accessibilityHint="Double tap to toggle private chat notifications"
         >
           <View style={styles.settingLabelContainer}>
-            <Text style={styles.settingLabel}>New Chat Messages</Text>
+            <Text style={styles.settingLabel}>New Private Chat Messages</Text>
             <Text 
               style={styles.settingDescription}
               accessibilityElementsHidden={true}
               importantForAccessibility="no"
             >
-              Receive notifications for direct messages
+              Receive notifications for private messages
             </Text>
           </View>
           <Switch
@@ -219,8 +219,8 @@ const NotificationSettingsScreen = () => {
           style={styles.settingItem}
           accessible={true}
           accessibilityRole="switch"
-          accessibilityLabel={`Public Chat Messages. ${settings.publicChats ? 'Enabled' : 'Disabled'}`}
-          accessibilityHint="Double tap to toggle public chat notifications"
+          accessibilityLabel={`Get notified when you receive a new community message. ${settings.publicChats ? 'Enabled' : 'Disabled'}`}
+          accessibilityHint="Double tap to toggle community chat notifications"
         >
           <View style={styles.settingLabelContainer}>
             <Text style={styles.settingLabel}>New Community Messages</Text>
@@ -229,7 +229,7 @@ const NotificationSettingsScreen = () => {
               accessibilityElementsHidden={true}
               importantForAccessibility="no"
             >
-              Receive notifications for group messages
+              Receive notifications for community messages
             </Text>
           </View>
           <Switch

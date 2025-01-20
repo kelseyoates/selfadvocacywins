@@ -211,34 +211,40 @@ const CommunityScreen = ({ navigation }) => {
       <FlatList
         ListHeaderComponent={() => (
           showHelpers && (
-            <View style={styles.helperSection}>
+            <View 
+              style={styles.helperSection}
+              accessible={true}
+              accessibilityRole="text"
+              accessibilityLabel="Helper Information: Join Communities. Image shows three self-advocates hanging out and having fun. Browse and join public communities. Chat with people who share your interests. Create your own public community with the dark blue Create Community button. Communities are public groups, so everyone can see what you write or upload."
+            >
               <View style={styles.helperHeader}>
                 <MaterialCommunityIcons 
                   name="information" 
                   size={24} 
                   color="#24269B"
                   style={styles.infoIcon}
-                  accessible={true}
-                  accessibilityLabel="Helper information"
+                  importantForAccessibility="no"
                 />
               </View>
               <View style={styles.helperContent}>
                 <Image 
                   source={require('../../assets/community.png')}
                   style={styles.helperImage}
-                  accessible={true}
-                  accessibilityLabel="Ezra showing community features"
+                  importantForAccessibility="no"
                 />
-                <Text style={styles.helperTitle}>Join Communities!</Text>
-                <View style={styles.helperTextContainer}>
-                  <Text style={styles.helperText}>
+                <Text style={styles.helperTitle} importantForAccessibility="no">Join Communities!</Text>
+                <View style={styles.helperTextContainer} importantForAccessibility="no">
+                  <Text style={styles.helperText} importantForAccessibility="no">
                     • Browse and join public communities
                   </Text>
-                  <Text style={styles.helperText}>
+                  <Text style={styles.helperText} importantForAccessibility="no">
                     • Chat with people who share your interests
                   </Text>
-                  <Text style={styles.helperText}>
+                  <Text style={styles.helperText} importantForAccessibility="no">
                     • Create your own public community with the dark blue Create Community button
+                  </Text>
+                  <Text style={styles.helperText} importantForAccessibility="no">
+                    • Communities are public groups, so everyone can see what you write or upload
                   </Text>
                 </View>
               </View>
