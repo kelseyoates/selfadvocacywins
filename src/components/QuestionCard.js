@@ -18,6 +18,7 @@ import { Video } from 'expo-av';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // Increase to 50MB limit
 const MAX_DURATION = 120; // Increase to 120 seconds (2 minutes)
+const MAX_CHARACTERS = 400;
 
 const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQuestion = false }) => {
   console.log('Question data received:', question);
@@ -187,69 +188,58 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
     }
   };
 
-  const handleMediaUpload = async (url, type) => {
+  const updateFirestore = async (newData) => {
     try {
-      // Get the correct lowercase user ID
-      const userId = auth.currentUser.uid.toLowerCase();
-      console.log('Using user ID:', userId);
-      
-      // Reference to the user's document with correct case
-      const userRef = doc(db, 'users', userId);
-      
-      // Get the current user document
-      const userDoc = await getDoc(userRef);
-      
-      if (!userDoc.exists()) {
-        console.log('Creating new user document');
-        // Create the user document if it doesn't exist
-        await setDoc(userRef, {
-          questionAnswers: []
-        });
-      }
-      
-      // Initialize questionAnswers array
-      let currentAnswers = userDoc.exists() ? (userDoc.data().questionAnswers || []) : [];
-      
-      // Prepare the new answer data
-      const answerData = {
-        question: "A little bit about me 😀:", // Using the known question text
-        selectedWords: existingAnswer?.selectedWords || [],
-        textAnswer: existingAnswer?.textAnswer || '',
-        mediaUrl: url,
-        mediaType: type,
-        timestamp: new Date().toISOString()
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('No user logged in');
+
+      // Prepare the complete answer data
+      const updatedAnswer = {
+        question,
+        timestamp: new Date().toISOString(),
+        selectedWords: selectedWords,
+        textAnswer: textAnswer,
+        ...newData
       };
 
-      console.log('Answer data being prepared:', answerData);
-
-      // Find the index of the existing answer
-      const answerIndex = currentAnswers.findIndex(
-        answer => answer.question === answerData.question
-      );
+      // Only call onSave from the parent component
+      onSave(updatedAnswer);
       
-      let updatedAnswers = [...currentAnswers];
-      
-      if (answerIndex >= 0) {
-        // Update existing answer
-        updatedAnswers[answerIndex] = {
-          ...updatedAnswers[answerIndex],
-          ...answerData
-        };
-      } else {
-        // Add new answer
-        updatedAnswers.push(answerData);
-      }
+    } catch (error) {
+      console.error('Error saving:', error);
+      Alert.alert('Error', 'Failed to save answer');
+    }
+  };
 
-      console.log('Final answers array:', updatedAnswers);
+  const handlePresetSelect = async (word) => {
+    let newSelectedWords;
+    if (selectedWords.includes(word)) {
+      newSelectedWords = selectedWords.filter(w => w !== word);
+    } else {
+      newSelectedWords = [...selectedWords, word];
+    }
+    setSelectedWords(newSelectedWords);
+    await updateFirestore({ selectedWords: newSelectedWords });
+  };
 
-      // Update the user document
-      await updateDoc(userRef, {
-        questionAnswers: updatedAnswers
+  const handleTextSave = async () => {
+    try {
+      await updateFirestore({ textAnswer });
+      Alert.alert('Success', 'Answer saved successfully');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving text answer:', error);
+      Alert.alert('Error', 'Failed to save answer');
+    }
+  };
+
+  const handleMediaUpload = async (url, type) => {
+    try {
+      await updateFirestore({
+        mediaUrl: url,
+        mediaType: type
       });
-
-      console.log('Answer saved with video URL in user document');
       
-      // Update local state
       setQuestionData(prev => ({
         ...prev,
         mediaUrl: url,
@@ -258,9 +248,7 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
 
     } catch (error) {
       console.error('Error saving answer:', error);
-      console.error('Error details:', error.message);
-      console.error('Current question object:', question);
-      alert('Error saving video. Please try again.');
+      Alert.alert('Error', 'Failed to save video. Please try again.');
     }
   };
 
@@ -325,63 +313,10 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
   };
 
   const handleAnswerChange = (text) => {
-    setTextAnswer(text);
-    setIsEditing(true);
-  };
-
-  const handlePresetSelect = async (word) => {
-    let newSelectedWords;
-    if (selectedWords.includes(word)) {
-      newSelectedWords = selectedWords.filter(w => w !== word);
-    } else {
-      newSelectedWords = [...selectedWords, word];
-    }
-    setSelectedWords(newSelectedWords);
-    await updateFirestore({ selectedWords: newSelectedWords });
-  };
-
-  const updateFirestore = async (newData) => {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('No user logged in');
-
-      const userRef = doc(db, 'users', currentUser.uid.toLowerCase());
-      const userDoc = await getDoc(userRef);
-      
-      if (!userDoc.exists()) {
-        throw new Error('User document not found');
-      }
-
-      const currentAnswers = userDoc.data().questionAnswers || [];
-      const otherAnswers = currentAnswers.filter(a => a.question !== question);
-      
-      const existingAnswer = currentAnswers.find(a => a.question === question) || {};
-      const updatedAnswer = {
-        question,
-        timestamp: new Date().toISOString(),
-        ...existingAnswer,
-        ...newData
-      };
-
-      await updateDoc(userRef, {
-        questionAnswers: [...otherAnswers, updatedAnswer]
-      });
-
-      onSave(updatedAnswer);
-    } catch (error) {
-      console.error('Error saving:', error);
-      Alert.alert('Error', 'Failed to save answer');
-    }
-  };
-
-  const handleTextSave = async () => {
-    try {
-      await updateFirestore({ textAnswer });
-      Alert.alert('Success', 'Answer saved successfully');
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error saving text answer:', error);
-      Alert.alert('Error', 'Failed to save answer');
+    // Limit text to MAX_CHARACTERS
+    if (text.length <= MAX_CHARACTERS) {
+      setTextAnswer(text);
+      setIsEditing(true);
     }
   };
 
@@ -525,22 +460,31 @@ const QuestionCard = ({ question, presetWords, onSave, existingAnswer, isDatingQ
             placeholder="Type your answer..."
             multiline
             numberOfLines={4}
+            maxLength={MAX_CHARACTERS}
             accessible={true}
             accessibilityLabel="Answer text input"
-            accessibilityHint="Enter your answer here"
+            accessibilityHint={`Enter your answer here. Maximum ${MAX_CHARACTERS} characters`}
           />
+          <Text style={styles.characterCount}>
+            {textAnswer.length}/{MAX_CHARACTERS} characters
+          </Text>
           <TouchableOpacity 
-            style={[styles.saveButton, !textAnswer && styles.disabledButton]}
+            style={[
+              styles.saveButton, 
+              (!textAnswer || textAnswer.length > MAX_CHARACTERS) && styles.disabledButton
+            ]}
             onPress={handleTextSave}
-            disabled={!textAnswer}
+            disabled={!textAnswer || textAnswer.length > MAX_CHARACTERS}
             accessible={true}
             accessibilityRole="button"
-            accessibilityLabel={isEditing ? "Save answer" : "Edit answer"}
-            accessibilityState={{ disabled: !textAnswer }}
-            accessibilityHint={`Double tap to ${isEditing ? 'save' : 'edit'} your answer`}
+            accessibilityLabel={isEditing ? "Save answer" : "Type to edit answer"}
+            accessibilityState={{ 
+              disabled: !textAnswer || textAnswer.length > MAX_CHARACTERS 
+            }}
+            accessibilityHint={`Double tap to ${isEditing ? 'save' : 'start editing'} your answer`}
           >
             <Text style={styles.saveButtonText}>
-              {isEditing ? 'Save' : 'Edit'}
+              {isEditing ? 'Save' : 'Type to Edit'}
             </Text>
           </TouchableOpacity>
         </>
@@ -884,6 +828,13 @@ const styles = StyleSheet.create({
   selectedModeLabel: {
     color: '#24269B',
     fontWeight: 'bold',
+  },
+  characterCount: {
+    textAlign: 'right',
+    color: '#666',
+    fontSize: 12,
+    marginTop: 5,
+    marginRight: 5,
   },
 });
 

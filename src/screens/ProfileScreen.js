@@ -809,6 +809,8 @@ const [lookingFor, setLookingFor] = useState('');
         return;
       }
 
+      console.log('Starting save operation for question:', newAnswer.question);
+
       // Add timestamp to the answer
       const answerWithTimestamp = {
         ...newAnswer,
@@ -824,11 +826,30 @@ const [lookingFor, setLookingFor] = useState('');
         return;
       }
 
-      // Get existing answers or initialize empty array
+      // Get existing answers and log them
       const currentAnswers = userDoc.data().questionAnswers || [];
+      console.log('Current answers before update:', currentAnswers);
 
-      // Add new answer to the array
-      const updatedAnswers = [...currentAnswers, answerWithTimestamp];
+      // Check if we already have this exact answer to prevent duplicates
+      const isDuplicate = currentAnswers.some(answer => 
+        answer.question === newAnswer.question && 
+        answer.textAnswer === newAnswer.textAnswer &&
+        Math.abs(new Date(answer.timestamp) - new Date(answerWithTimestamp.timestamp)) < 1000 // Within 1 second
+      );
+
+      if (isDuplicate) {
+        console.log('Preventing duplicate answer submission');
+        return;
+      }
+
+      // Filter out any existing answers for this question
+      const filteredAnswers = currentAnswers.filter(
+        answer => answer.question !== newAnswer.question
+      );
+
+      // Add the new answer
+      const updatedAnswers = [...filteredAnswers, answerWithTimestamp];
+      console.log('Updated answers array:', updatedAnswers);
 
       // Update Firestore
       await updateDoc(userRef, {
@@ -837,6 +858,11 @@ const [lookingFor, setLookingFor] = useState('');
 
       // Update local state
       setAnswers(updatedAnswers);
+
+      // Announce success to screen reader
+      if (isScreenReaderEnabled) {
+        AccessibilityInfo.announceForAccessibility('Answer saved successfully');
+      }
 
       console.log('Answer saved successfully');
     } catch (error) {

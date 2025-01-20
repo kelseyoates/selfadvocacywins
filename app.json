@@ -17,28 +17,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.koates89.SelfAdvocacyWins",
-      "associatedDomains": ["applinks:selfadvocatelink.app"]
+      "associatedDomains": ["applinks:selfadvocatelink.app"],
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.koates89.selfadvocacywins",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.koates89.SelfAdvocacyWins",
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "selfadvocatelink",
-              "host": "win",
-              "pathPrefix": "/"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",

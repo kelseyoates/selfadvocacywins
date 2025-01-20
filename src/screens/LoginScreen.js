@@ -72,7 +72,37 @@ const LoginScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Login Failed', error.message);
+      
+      // Handle specific Firebase auth errors
+      let errorMessage = 'An error occurred during login. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+          errorMessage = 'Invalid email or password. Please try again.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed login attempts. Please try again later.';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled. Please contact support.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection.';
+          break;
+      }
+
+      Alert.alert(
+        'Login Failed',
+        errorMessage,
+        [{ text: 'OK' }]
+      );
+
+      // Announce error to screen reader
+      announceToScreenReader(errorMessage);
     }
   };
 
