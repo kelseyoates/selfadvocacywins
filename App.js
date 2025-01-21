@@ -159,7 +159,7 @@ export default function App() {
                 <Stack.Screen
                 name="Settings"
                 component={SettingsScreen}
-                options={{ title: 'Settings' }}
+                options={{ title: 'Menu' }}
               />
               <Stack.Screen
                 name="People"

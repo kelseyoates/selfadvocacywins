@@ -73,14 +73,31 @@ const CommunityScreen = ({ navigation }) => {
     const fetchGroups = async () => {
       try {
         setLoading(true);
+        // First get all groups
         const groupsRequest = new CometChat.GroupsRequestBuilder()
           .setLimit(30)
           .build();
 
         const groupsList = await groupsRequest.fetchNext();
-        // Filter public groups after fetching
-        const publicGroups = groupsList.filter(group => group.type === 'public');
-        console.log('Fetched public groups:', publicGroups);
+        
+        // Then get user's joined groups
+        const joinedGroupsRequest = new CometChat.GroupsRequestBuilder()
+          .setLimit(30)
+          .joinedOnly(true)
+          .build();
+
+        const joinedGroups = await joinedGroupsRequest.fetchNext();
+        const joinedGroupIds = new Set(joinedGroups.map(group => group.guid));
+
+        // Combine the information
+        const publicGroups = groupsList
+          .filter(group => group.type === 'public')
+          .map(group => ({
+            ...group,
+            hasJoined: joinedGroupIds.has(group.guid)
+          }));
+
+        console.log('Fetched public groups with join status:', publicGroups);
         setGroups(publicGroups);
       } catch (error) {
         console.error('Error fetching groups:', error);
@@ -99,6 +116,17 @@ const CommunityScreen = ({ navigation }) => {
 
   const joinGroup = async (group) => {
     try {
+      // First check if already joined
+      const groupInfo = await CometChat.getGroup(group.guid);
+      if (groupInfo.hasJoined) {
+        navigation.navigate('GroupChat', {
+          uid: group.guid,
+          name: group.name
+        });
+        return;
+      }
+
+      // If not joined, try to join
       const joinedGroup = await CometChat.joinGroup(
         group.guid,
         group.type,
@@ -106,13 +134,33 @@ const CommunityScreen = ({ navigation }) => {
       );
       console.log('Group joined successfully:', joinedGroup);
       
+      // Update the local state to reflect the joined status
+      setGroups(prevGroups => 
+        prevGroups.map(g => 
+          g.guid === group.guid ? { ...g, hasJoined: true } : g
+        )
+      );
+      
       navigation.navigate('GroupChat', {
         uid: group.guid,
         name: group.name
       });
     } catch (error) {
-      console.error('Error joining group:', error);
-      Alert.alert('Error', 'Failed to join group');
+      if (error.code === "ERR_ALREADY_JOINED") {
+        // If already joined, update the local state and navigate
+        setGroups(prevGroups => 
+          prevGroups.map(g => 
+            g.guid === group.guid ? { ...g, hasJoined: true } : g
+          )
+        );
+        navigation.navigate('GroupChat', {
+          uid: group.guid,
+          name: group.name
+        });
+      } else {
+        console.error('Error joining group:', error);
+        Alert.alert('Error', 'Failed to join group');
+      }
     }
   };
 

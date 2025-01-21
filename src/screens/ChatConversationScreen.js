@@ -137,7 +137,6 @@ const ChatConversationScreen = ({ route, navigation }) => {
     }
   };
 
-  // Check block status on mount and periodically
   useEffect(() => {
     let isMounted = true;
     
@@ -147,47 +146,8 @@ const ChatConversationScreen = ({ route, navigation }) => {
       const currentBlockStatus = await getBlockStatus();
       if (isMounted && currentBlockStatus !== isBlocked) {
         setIsBlocked(currentBlockStatus);
-        
-        // Show alert only if blocked and alert hasn't been shown yet
-        if (currentBlockStatus && !hasShownBlockAlert) {
-          setHasShownBlockAlert(true); // Mark alert as shown
-          Alert.alert(
-            'User Blocked',
-            'You have blocked this user. Would you like to unblock them to continue chatting?',
-            [
-              {
-                text: 'Keep Blocked',
-                style: 'cancel',
-                onPress: () => navigation.goBack()
-              },
-              {
-                text: 'Unblock',
-                onPress: async () => {
-                  try {
-                    await CometChat.unblockUsers([uid]);
-                    if (isMounted) {
-                      setIsBlocked(false);
-                      setHasShownBlockAlert(false); // Reset alert state
-                      Alert.alert(
-                        'User Unblocked',
-                        'You can now chat with this user.',
-                        [{ text: 'OK' }]
-                      );
-                    }
-                  } catch (error) {
-                    console.error('Error unblocking user:', error);
-                    Alert.alert('Error', 'Failed to unblock user. Please try again.');
-                  }
-                }
-              }
-            ]
-          );
-        }
       }
     };
-
-    // Initial check
-    checkBlockStatus();
 
     // Set up interval for periodic checks
     const interval = setInterval(checkBlockStatus, 5000);
@@ -197,7 +157,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
       clearInterval(interval);
       setHasShownBlockAlert(false); // Reset alert state on unmount
     };
-  }, [uid, hasShownBlockAlert]); // Add hasShownBlockAlert to dependencies
+  }, [uid]);
 
   useEffect(() => {
     const initializeChat = async () => {
