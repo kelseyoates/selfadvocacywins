@@ -100,6 +100,7 @@ const GroupChatScreen = ({ route, navigation }) => {
   const [smartReplies, setSmartReplies] = useState([]);
   const [isLoadingSmartReplies, setIsLoadingSmartReplies] = useState(false);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState(new Set());
 
   // Add screen reader detection
   useEffect(() => {
@@ -523,116 +524,120 @@ const GroupChatScreen = ({ route, navigation }) => {
     }
   };
 
-  const renderMessage = ({ item }) => {
-    const isMyMessage = item.sender?.uid === currentUser?.uid;
+  // Add this function to check if a user is blocked
+  const isUserInBlockedList = (userId) => {
+    const normalizedUserId = userId.toLowerCase();
+    const isBlocked = Array.from(blockedUsers).some(
+      blockedId => blockedId.toLowerCase() === normalizedUserId
+    );
+    console.log(`Checking if user ${userId} is blocked:`, isBlocked);
+    console.log('Current blocked users:', Array.from(blockedUsers));
+    return isBlocked;
+  };
 
-    const onLongPress = () => {
-      // Don't show report options for own messages
-      if (isMyMessage) return;
+  // Update renderMember function
+  const renderMember = ({ item }) => {
+    const isOwner = groupInfo?.owner === item.uid;
+    const isSelf = item.uid === currentUser?.uid;
+    const isBlocked = isUserInBlockedList(item.uid);
 
-      Alert.alert(
-        "Report Options",
-        "What would you like to report?",
-        [
+    const handleLongPress = () => {
+      if (!isSelf) {
+        console.log('Member long pressed:', item.uid);
+        console.log('Is member blocked:', isBlocked);
+
+        const options = [
+          { text: 'Cancel', style: 'cancel' },
           {
-            text: "Cancel",
-            style: "cancel"
-          },
-          {
-            text: "Report Message",
-            onPress: () => handleReportMessage(item)
-          },
-          {
-            text: "Report User",
-            style: "destructive",
-            onPress: () => handleReportUser(item.sender)
+            text: 'View Profile',
+            onPress: () => {
+              setIsModalVisible(false);
+              navigation.navigate('OtherUserProfile', {
+                profileUserId: item.uid.toLowerCase(),
+                isCurrentUser: false
+              });
+            }
           }
-        ]
-      );
+        ];
+
+        if (isBlocked) {
+          options.push({
+            text: 'Unblock User',
+            onPress: () => handleUnblockUser(item)
+          });
+        } else {
+          options.push({
+            text: 'Block User',
+            style: 'destructive',
+            onPress: () => handleBlockUser(item)
+          });
+        }
+
+        options.push({
+          text: 'Report User',
+          style: 'destructive',
+          onPress: () => handleReportUser(item)
+        });
+
+        Alert.alert(
+          'Member Options',
+          `What would you like to do with ${memberProfiles[item.uid]?.username || item.name}?`,
+          options
+        );
+      }
     };
 
     return (
-      <TouchableOpacity 
-        style={[
-          styles.messageContainer,
-          isMyMessage ? styles.myMessage : styles.otherMessage
-        ]}
-        onLongPress={onLongPress}
-        delayLongPress={500}
+      <TouchableOpacity
+        style={styles.memberCard}
+        onPress={handleLongPress}
+        onLongPress={handleLongPress}
+        accessible={true}
+        accessibilityLabel={`${memberProfiles[item.uid]?.username || item.name}${isOwner ? ', Group Owner' : ''}. ${isBlocked ? 'Blocked user' : ''}`}
+        accessibilityHint="Double tap for options"
       >
-        {!isMyMessage && (
-          <Text style={styles.senderName}>
-            {item.sender?.name || 'Unknown User'}
-          </Text>
-        )}
-        
-        {item.type === 'text' ? (
-          <Text style={[
-            styles.messageText,
-            isMyMessage ? styles.myMessageText : styles.otherMessageText
-          ]}>
-            {item.metadata?.sensitive_data 
-              ? item.data?.text?.replace(/\d/g, '*') 
-              : item.text || item.data?.text}
-          </Text>
-        ) : item.type === 'image' ? (
-          item.metadata?.blocked ? (
-            <View style={styles.blockedImageContainer}>
-              <Text style={styles.blockedImageText}>
-                ⚠️ Image blocked due to inappropriate content
-              </Text>
-            </View>
-          ) : (
-            <Image
-              source={{ uri: item.data?.url }}
-              style={styles.messageImage}
-              resizeMode="contain"
-            />
-          )
-        ) : null}
-        
-        <Text style={[
-          styles.timestamp,
-          isMyMessage ? styles.myTimestamp : styles.otherTimestamp
-        ]}>
-          {new Date(item.sentAt * 1000).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderSmartReplies = () => {
-    if (isLoadingSmartReplies) {
-      return (
-        <View style={styles.smartRepliesContainer}>
-          <ActivityIndicator size="small" color="#007AFF" />
+        <Image
+          source={
+            memberProfiles[item.uid]?.profilePicture
+              ? { uri: memberProfiles[item.uid].profilePicture }
+              : require('../../assets/default-avatar.png')
+          }
+          style={styles.memberAvatar}
+        />
+        <View style={styles.memberInfoContainer}>
+          <View style={styles.memberNameContainer}>
+            <Text style={styles.memberName}>
+              {memberProfiles[item.uid]?.username || item.name}
+            </Text>
+            {isOwner && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>Owner</Text>
+              </View>
+            )}
+            {isSelf && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>You</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.memberStatusContainer}>
+            {isBlocked && (
+              <View style={[styles.badgeContainer, styles.blockedBadge]}>
+                <Text style={[styles.badgeText, styles.blockedText]}>Blocked</Text>
+              </View>
+            )}
+            <Text style={styles.memberRole}>
+              {item.scope === 'admin' ? 'Admin' : 'Member'}
+            </Text>
+          </View>
         </View>
-      );
-    }
-
-    if (smartReplies.length === 0) return null;
-
-    return (
-      <View style={styles.smartRepliesContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.smartRepliesContent}
-        >
-          {smartReplies.map((reply, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.smartReplyButton}
-              onPress={() => handleSmartReplyPress(reply)}
-            >
-              <Text style={styles.smartReplyText}>{reply}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={24}
+          color="#666"
+          style={styles.memberChevron}
+        />
+      </TouchableOpacity>
     );
   };
 
@@ -715,6 +720,217 @@ const GroupChatScreen = ({ route, navigation }) => {
           }
         }
       ]
+    );
+  };
+
+  const handleBlockUser = async (user) => {
+    try {
+      Alert.alert(
+        'Block User',
+        'Are you sure you want to block this user? You will no longer receive messages from them.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const userIdToBlock = user.uid.toLowerCase(); // Ensure consistent casing
+                console.log('Blocking user:', userIdToBlock);
+                await CometChat.blockUsers([userIdToBlock]);
+                
+                setBlockedUsers(prev => {
+                  const newSet = new Set(prev);
+                  newSet.add(userIdToBlock);
+                  console.log('Updated blocked users:', Array.from(newSet));
+                  return newSet;
+                });
+                
+                Alert.alert(
+                  'User Blocked',
+                  'You have successfully blocked this user.'
+                );
+                announceToScreenReader('User blocked successfully');
+              } catch (error) {
+                console.error('Error blocking user:', error);
+                Alert.alert(
+                  'Error',
+                  'Failed to block user. Please try again.'
+                );
+                announceToScreenReader('Failed to block user');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error in handleBlockUser:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process block request. Please try again.'
+      );
+    }
+  };
+
+  // Add this useEffect to fetch blocked users when the component mounts
+  useEffect(() => {
+    const fetchBlockedUsers = async () => {
+      try {
+        console.log('Fetching blocked users...');
+        const blockedUsersRequest = new CometChat.BlockedUsersRequestBuilder()
+          .setLimit(100)
+          .build();
+        
+        const blockedUsersList = await blockedUsersRequest.fetchNext();
+        console.log('Blocked users list:', JSON.stringify(blockedUsersList));
+        
+        if (blockedUsersList && blockedUsersList.length > 0) {
+          const blockedIds = new Set(blockedUsersList.map(user => user.uid.toLowerCase()));
+          console.log('Setting blocked IDs:', Array.from(blockedIds));
+          setBlockedUsers(blockedIds);
+        } else {
+          console.log('No blocked users found');
+        }
+      } catch (error) {
+        console.error('Error fetching blocked users:', error);
+      }
+    };
+
+    fetchBlockedUsers();
+  }, []); // Empty dependency array to run only on mount
+
+  const handleUnblockUser = async (user) => {
+    try {
+      Alert.alert(
+        'Unblock User',
+        'Are you sure you want to unblock this user? You will start receiving their messages again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unblock',
+            onPress: async () => {
+              try {
+                const userIdToUnblock = user.uid.toLowerCase(); // Ensure consistent casing
+                console.log('Unblocking user:', userIdToUnblock);
+                await CometChat.unblockUsers([userIdToUnblock]);
+                
+                setBlockedUsers(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(userIdToUnblock);
+                  console.log('Updated blocked users:', Array.from(newSet));
+                  return newSet;
+                });
+                
+                Alert.alert(
+                  'User Unblocked',
+                  'You have successfully unblocked this user.'
+                );
+                announceToScreenReader('User unblocked successfully');
+              } catch (error) {
+                console.error('Error unblocking user:', error);
+                Alert.alert(
+                  'Error',
+                  'Failed to unblock user. Please try again.'
+                );
+                announceToScreenReader('Failed to unblock user');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error in handleUnblockUser:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process unblock request. Please try again.'
+      );
+    }
+  };
+
+  // Add this function back
+  const renderMessage = ({ item }) => {
+    const isMyMessage = item.sender.uid === currentUser?.uid;
+    const isBlocked = isUserInBlockedList(item.sender.uid);
+    
+    if (isBlocked && !isMyMessage) {
+      return (
+        <View style={[styles.messageContainer, styles.blockedMessageContainer]}>
+          <Text style={styles.blockedMessageText}>
+            Message hidden - user blocked
+          </Text>
+        </View>
+      );
+    }
+
+    if (item.category === 'action') {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <Text style={styles.systemMessageText}>{item.message}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View
+        style={[
+          styles.messageContainer,
+          isMyMessage ? styles.myMessage : styles.otherMessage
+        ]}
+        accessible={true}
+        accessibilityLabel={`Message from ${item.sender.name}: ${item.text}`}
+      >
+        {!isMyMessage && (
+          <Text style={styles.senderName}>
+            {memberProfiles[item.sender.uid]?.username || item.sender.name}
+          </Text>
+        )}
+        <Text style={[
+          styles.messageText,
+          isMyMessage ? styles.myMessageText : styles.otherMessageText
+        ]}>
+          {item.text}
+        </Text>
+        <Text style={styles.messageTime}>
+          {new Date(item.sentAt * 1000).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}
+        </Text>
+      </View>
+    );
+  };
+
+  // Add this function back
+  const renderSmartReplies = () => {
+    if (!smartReplies || smartReplies.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.smartRepliesContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          accessible={true}
+          accessibilityLabel="Quick reply suggestions"
+        >
+          {smartReplies.map((reply, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.smartReplyButton}
+              onPress={() => {
+                setInputText(reply);
+                setSmartReplies([]);
+              }}
+              accessible={true}
+              accessibilityLabel={`Quick reply: ${reply}`}
+              accessibilityHint="Double tap to use this reply"
+            >
+              <Text style={styles.smartReplyText}>{reply}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
     );
   };
 
@@ -895,87 +1111,7 @@ const GroupChatScreen = ({ route, navigation }) => {
             <FlatList
               data={members}
               keyExtractor={item => item.uid}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.memberItem}
-                  onPress={() => {
-                    if (groupInfo?.owner === currentUser?.uid && item.uid !== currentUser?.uid) {
-                      // Show transfer ownership option for other members when current user is owner
-                      Alert.alert(
-                        'Member Options',
-                        `What would you like to do with ${memberProfiles[item.uid]?.username || item.name}?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'View Profile',
-                            onPress: () => {
-                              setIsModalVisible(false);
-                              navigation.navigate('OtherUserProfile', {
-                                profileUserId: item.uid.toLowerCase(),
-                                isCurrentUser: false
-                              });
-                            }
-                          },
-                          {
-                            text: 'Transfer Ownership',
-                            style: 'destructive',
-                            onPress: () => transferOwnership(item.uid)
-                          }
-                        ]
-                      );
-                    } else {
-                      // Regular profile view for non-owners or viewing own profile
-                      announceToScreenReader(`Opening profile for ${memberProfiles[item.uid]?.username || item.name}`);
-                      setIsModalVisible(false);
-                      navigation.navigate('OtherUserProfile', {
-                        profileUserId: item.uid.toLowerCase(),
-                        isCurrentUser: item.uid === currentUser?.uid
-                      });
-                    }
-                  }}
-                  accessible={true}
-                  accessibilityLabel={`${memberProfiles[item.uid]?.username || item.name}, ${
-                    item.uid === groupInfo?.owner 
-                      ? 'Owner' 
-                      : item.scope === 'admin' 
-                        ? 'Admin' 
-                        : 'Member'
-                  }${groupInfo?.owner === currentUser?.uid && item.uid !== currentUser?.uid ? '. Double tap for options' : ''}`}
-                  accessibilityHint={groupInfo?.owner === currentUser?.uid && item.uid !== currentUser?.uid 
-                    ? "Double tap to view options including transfer ownership" 
-                    : "Double tap to view member profile"}
-                  accessibilityRole="button"
-                >
-                  <View style={styles.memberContent}>
-                    <Image
-                      source={
-                        memberProfiles[item.uid]?.profilePicture 
-                          ? { uri: memberProfiles[item.uid].profilePicture }
-                          : require('../../assets/default-profile.png')
-                      }
-                      style={styles.memberAvatar}
-                    />
-                    <View style={styles.memberInfo}>
-                      <Text style={styles.memberName}>
-                        {memberProfiles[item.uid]?.username || item.name || item.uid}
-                      </Text>
-                      <Text style={styles.memberRole}>
-                        {item.uid === groupInfo?.owner 
-                          ? 'Owner' 
-                          : item.scope === 'admin' 
-                            ? 'Admin' 
-                            : 'Member'}
-                      </Text>
-                    </View>
-                    <MaterialCommunityIcons 
-                      name="chevron-right" 
-                      size={24} 
-                      color="#666"
-                      style={styles.memberChevron}
-                    />
-                  </View>
-                </TouchableOpacity>
-              )}
+              renderItem={renderMember}
               style={styles.membersList}
               accessible={true}
               accessibilityLabel="Group members list"
@@ -1143,15 +1279,24 @@ const styles = StyleSheet.create({
   membersList: {
     maxHeight: '50%',
   },
-  memberItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  memberContent: {
+  memberCard: {
     flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    padding: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   memberAvatar: {
     width: 50,
@@ -1159,18 +1304,47 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 12,
   },
-  memberInfo: {
+  memberInfoContainer: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  memberNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   memberName: {
     fontSize: 16,
-    color: '#333',
+    fontWeight: '600',
+    color: '#24269B',
+    marginRight: 8,
+  },
+  memberStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  badgeContainer: {
+    backgroundColor: '#E8E8FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#24269B',
     fontWeight: '500',
+  },
+  blockedBadge: {
+    backgroundColor: '#FFE8E8',
+  },
+  blockedText: {
+    color: '#D42C2C',
   },
   memberRole: {
     fontSize: 14,
     color: '#666',
-    marginTop: 2,
   },
   memberChevron: {
     marginLeft: 8,
@@ -1253,24 +1427,22 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   smartRepliesContainer: {
-    backgroundColor: '#f5f5f5',
+    padding: 10,
+    backgroundColor: '#f8f8f8',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingVertical: 8,
-    minHeight: 56,
-  },
-  smartRepliesContent: {
-    paddingHorizontal: 8,
+    borderTopColor: '#eee',
   },
   smartReplyButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
     paddingVertical: 8,
-    borderRadius: 16,
-    marginHorizontal: 4,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   smartReplyText: {
-    color: '#FFFFFF',
+    color: '#24269B',
     fontSize: 14,
   },
   publicGroupInfo: {
@@ -1283,6 +1455,33 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     textAlign: 'center',
+  },
+  blockedMessageContainer: {
+    backgroundColor: '#f5f5f5',
+    padding: 10,
+    marginVertical: 5,
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  blockedMessageText: {
+    color: '#666',
+    fontStyle: 'italic',
+    fontSize: 14,
+  },
+  systemMessageContainer: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    marginVertical: 4,
+  },
+  systemMessageText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  messageTime: {
+    fontSize: 12,
+    color: '#666',
+    alignSelf: 'flex-end',
   },
 });
 

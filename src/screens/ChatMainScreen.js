@@ -28,6 +28,7 @@ const ChatMainScreen = ({ navigation }) => {
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
   const [userData, setUserData] = useState(null);
   const { showHelpers } = useAccessibility();
+  const [blockedUsers, setBlockedUsers] = useState(new Set());
 
   useEffect(() => {
     navigation.setOptions({
@@ -189,6 +190,24 @@ const ChatMainScreen = ({ navigation }) => {
     });
   }, [navigation]);
 
+  useEffect(() => {
+    const fetchBlockedUsers = async () => {
+      try {
+        const blockedUsersRequest = new CometChat.BlockedUsersRequestBuilder()
+          .setLimit(100)
+          .build();
+        
+        const blockedUsersList = await blockedUsersRequest.fetchNext();
+        const blockedIds = new Set(blockedUsersList.map(user => user.uid));
+        setBlockedUsers(blockedIds);
+      } catch (error) {
+        console.error('Error fetching blocked users:', error);
+      }
+    };
+
+    fetchBlockedUsers();
+  }, []);
+
   const announceToScreenReader = (message) => {
     if (isScreenReaderEnabled) {
       AccessibilityInfo.announceForAccessibility(message);
@@ -253,10 +272,14 @@ const ChatMainScreen = ({ navigation }) => {
     const name = item.conversationWith?.name;
     const groupIcon = isGroup ? item.conversationWith?.icon : null;
     
-    // Handle different message types
+    // Handle different message types and blocking
     let lastMessage = 'Start chatting';
     if (item.lastMessage) {
-      if (item.lastMessage.type === 'text') {
+      const isBlocked = blockedUsers.has(item.lastMessage.sender?.uid);
+      
+      if (isBlocked) {
+        lastMessage = 'Message hidden';
+      } else if (item.lastMessage.type === 'text') {
         lastMessage = item.lastMessage.text;
       } else if (item.lastMessage.type === 'image') {
         lastMessage = '📷 Photo';
@@ -337,7 +360,10 @@ const ChatMainScreen = ({ navigation }) => {
           importantForAccessibility="no-hide-descendants"
         >
           <Text style={styles.userName}>{name || 'Unknown'}</Text>
-          <Text style={styles.lastMessage} numberOfLines={1}>
+          <Text style={[
+            styles.lastMessage, 
+            blockedUsers.has(item.lastMessage?.sender?.uid) && styles.hiddenMessage
+          ]} numberOfLines={1}>
             {lastMessage}
           </Text>
         </View>
@@ -728,7 +754,10 @@ const styles = StyleSheet.create({
   listHeaderSpace: {
     height: 10,
   },
- 
+  hiddenMessage: {
+    fontStyle: 'italic',
+    color: '#999',
+  },
 });
 
 export default ChatMainScreen;
