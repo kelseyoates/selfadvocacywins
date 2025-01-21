@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -137,23 +137,31 @@ const GroupChatScreen = ({ route, navigation }) => {
   // Fetch group info and members
   const fetchGroupInfo = async () => {
     try {
-      // Make sure we're using the correct group ID format
-      const groupId = uid.startsWith('group_') ? uid : `group_${uid}`;
+      // Remove the group_ prefix if it exists, as it's already in the correct format
+      const groupId = uid.replace('group_', '');
       
       const group = await CometChat.getGroup(groupId);
-      setGroupInfo(group);
       
-      // Fetch group members
+      // Fetch group members to get accurate count
       const membersRequest = new CometChat.GroupMembersRequestBuilder(groupId)
         .setLimit(100)
         .build();
       
       const members = await membersRequest.fetchNext();
-      setMembers(members);
       
-      await fetchMemberProfiles(members);
+      // Update group info with accurate member count
+      const updatedGroupInfo = {
+        ...group,
+        membersCount: members ? members.length : 0,
+        members: members || []
+      };
       
-      console.log('Group info:', group);
+      setGroupInfo(updatedGroupInfo);
+      setMembers(members || []);
+      
+      await fetchMemberProfiles(members || []);
+      
+      console.log('Group info with members:', updatedGroupInfo);
     } catch (error) {
       console.log('Error fetching group info:', error);
     }
@@ -203,32 +211,41 @@ const GroupChatScreen = ({ route, navigation }) => {
     initializeChat();
   }, [navigation, name]); // Update dependency array to use name
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
-      console.log('Fetching messages for:', uid);
-      
-      // Make sure we're using the correct group ID format
-      const groupId = uid.startsWith('group_') ? uid : `group_${uid}`;
+      console.log("Fetching messages for:", uid);
+      // Remove the group_ prefix if it exists
+      const groupId = uid.replace('group_', '');
       
       const messagesRequest = new CometChat.MessagesRequestBuilder()
-        .setGUID(groupId)
+        .setGUID(groupId)  // Use setGUID for groups
         .setLimit(50)
         .build();
 
-      const messages = await messagesRequest.fetchPrevious();
-      console.log('Messages fetched:', messages);
+      const fetchedMessages = await messagesRequest.fetchPrevious();
+      console.log("Fetched messages count:", fetchedMessages.length);
       
-      // Filter out any undefined or null messages
-      const validMessages = messages.filter(message => message);
+      // Filter out action, system, and deleted messages
+      const validMessages = fetchedMessages.filter(msg => 
+        msg.category !== 'action' && 
+        msg.category !== 'system' && 
+        msg.senderId !== 'app_system' &&
+        !msg.deletedAt
+      );
+      
+      console.log("Valid messages count:", validMessages.length);
       setMessages(validMessages);
       
+      // Scroll to bottom after fetching
+      requestAnimationFrame(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToEnd({ animated: false });
+        }
+      });
     } catch (error) {
-      console.log('Error fetching messages:', error);
-      // Don't show an error alert as this might be a temporary issue
-      // Just set empty messages array
-      setMessages([]);
+      console.log("Error fetching messages:", error);
     }
-  };
+  }, [uid]);
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
