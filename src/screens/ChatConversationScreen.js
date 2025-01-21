@@ -68,6 +68,10 @@ const ChatConversationScreen = ({ route, navigation }) => {
   const [smartReplies, setSmartReplies] = useState([]);
   const [isLoadingSmartReplies, setIsLoadingSmartReplies] = useState(false);
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
+  const [isUserBlocked, setIsUserBlocked] = useState(false);
+  const [hasShownBlockAlert, setHasShownBlockAlert] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isCheckingBlock, setIsCheckingBlock] = useState(true);
 
   // Fetch initial messages
   const fetchMessages = useCallback(async () => {
@@ -103,42 +107,168 @@ const ChatConversationScreen = ({ route, navigation }) => {
     }
   }, [uid]);
 
-  // Get current user and fetch messages on mount
+  const getBlockStatus = async () => {
+    try {
+      const blockedUsersRequest = new CometChat.BlockedUsersRequestBuilder()
+        .setLimit(100)
+        .build();
+      
+      const blockedUsers = await blockedUsersRequest.fetchNext();
+      console.log('Blocked users list:', blockedUsers);
+      
+      const isUserBlocked = blockedUsers.some(blockedUser => {
+        return blockedUser.uid.toLowerCase() === uid.toLowerCase();
+      });
+      
+      const userObj = await CometChat.getUser(uid);
+      console.log('Current user data:', userObj);
+      
+      const blockStatus = isUserBlocked || userObj.blockedByMe;
+      console.log('Final block status:', {
+        isUserBlocked,
+        blockedByMe: userObj.blockedByMe,
+        finalStatus: blockStatus
+      });
+      
+      return blockStatus;
+    } catch (error) {
+      console.error('Error in getBlockStatus:', error);
+      return false;
+    }
+  };
+
+  // Check block status on mount and periodically
   useEffect(() => {
-    console.log("Component mounted");
+    let isMounted = true;
     
+    const checkBlockStatus = async () => {
+      if (!isMounted) return;
+      
+      const currentBlockStatus = await getBlockStatus();
+      if (isMounted && currentBlockStatus !== isBlocked) {
+        setIsBlocked(currentBlockStatus);
+        
+        // Show alert only if blocked and alert hasn't been shown yet
+        if (currentBlockStatus && !hasShownBlockAlert) {
+          setHasShownBlockAlert(true); // Mark alert as shown
+          Alert.alert(
+            'User Blocked',
+            'You have blocked this user. Would you like to unblock them to continue chatting?',
+            [
+              {
+                text: 'Keep Blocked',
+                style: 'cancel',
+                onPress: () => navigation.goBack()
+              },
+              {
+                text: 'Unblock',
+                onPress: async () => {
+                  try {
+                    await CometChat.unblockUsers([uid]);
+                    if (isMounted) {
+                      setIsBlocked(false);
+                      setHasShownBlockAlert(false); // Reset alert state
+                      Alert.alert(
+                        'User Unblocked',
+                        'You can now chat with this user.',
+                        [{ text: 'OK' }]
+                      );
+                    }
+                  } catch (error) {
+                    console.error('Error unblocking user:', error);
+                    Alert.alert('Error', 'Failed to unblock user. Please try again.');
+                  }
+                }
+              }
+            ]
+          );
+        }
+      }
+    };
+
+    // Initial check
+    checkBlockStatus();
+
+    // Set up interval for periodic checks
+    const interval = setInterval(checkBlockStatus, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      setHasShownBlockAlert(false); // Reset alert state on unmount
+    };
+  }, [uid, hasShownBlockAlert]); // Add hasShownBlockAlert to dependencies
+
+  useEffect(() => {
     const initializeChat = async () => {
       try {
+        setIsCheckingBlock(true);
+        const isUserBlocked = await getBlockStatus();
+        console.log('Initial block status:', isUserBlocked);
+        setIsBlocked(isUserBlocked);
+        
+        if (isUserBlocked) {
+          if (!hasShownBlockAlert) {
+            setHasShownBlockAlert(true);
+            Alert.alert(
+              'User Blocked',
+              'You have blocked this user. Would you like to unblock them to continue chatting?',
+              [
+                {
+                  text: 'Keep Blocked',
+                  style: 'cancel',
+                  onPress: () => navigation.goBack()
+                },
+                {
+                  text: 'Unblock',
+                  onPress: async () => {
+                    try {
+                      await CometChat.unblockUsers([uid]);
+                      const newBlockStatus = await getBlockStatus();
+                      setIsBlocked(newBlockStatus);
+                      setHasShownBlockAlert(false);
+                      
+                      if (!newBlockStatus) {
+                        Alert.alert(
+                          'User Unblocked',
+                          'You can now chat with this user.',
+                          [{ text: 'OK' }]
+                        );
+                        const user = await CometChat.getLoggedinUser();
+                        setCurrentUser(user);
+                        await fetchMessages();
+                      } else {
+                        Alert.alert('Error', 'User is still blocked. Please try again.');
+                      }
+                    } catch (error) {
+                      console.error('Error unblocking user:', error);
+                      Alert.alert('Error', 'Failed to unblock user. Please try again.');
+                    }
+                  }
+                }
+              ]
+            );
+          }
+          return; // Don't load messages if blocked
+        }
+
+        // Only load messages if not blocked
         const user = await CometChat.getLoggedinUser();
-        console.log("Current user:", user?.uid);
         setCurrentUser(user);
         await fetchMessages();
       } catch (error) {
-        console.log("Initialization error:", error);
+        console.error("Initialization error:", error);
+      } finally {
+        setIsCheckingBlock(false);
       }
     };
 
     initializeChat();
-
-    // Set up message listener
-    const messageListener = new CometChat.MessageListener({
-      onTextMessageReceived: message => {
-        console.log("New message received:", message);
-        if (message.sender.uid === uid || message.receiver.uid === uid) {
-          setMessages(prev => [...prev, message]);
-        }
-      }
-    });
-
-    CometChat.addMessageListener(
-      'CHAT_SCREEN_MESSAGE_LISTENER',
-      messageListener
-    );
-
+    
     return () => {
-      CometChat.removeMessageListener('CHAT_SCREEN_MESSAGE_LISTENER');
+      setHasShownBlockAlert(false);
     };
-  }, [uid, fetchMessages]);
+  }, [uid]);
 
   // Initialize message moderation
   useEffect(() => {
@@ -190,6 +320,20 @@ const ChatConversationScreen = ({ route, navigation }) => {
   };
 
   const sendMessage = async () => {
+    const currentBlockStatus = await getBlockStatus();
+    if (currentBlockStatus) {
+      setIsBlocked(true);
+      if (!hasShownBlockAlert) { // Only show alert if it hasn't been shown
+        setHasShownBlockAlert(true);
+        Alert.alert(
+          'Cannot Send Message',
+          'You cannot send messages while this user is blocked.',
+          [{ text: 'OK' }]
+        );
+      }
+      return;
+    }
+
     if (!inputText.trim() || !currentUser) return;
 
     try {
@@ -236,18 +380,6 @@ const ChatConversationScreen = ({ route, navigation }) => {
       const sentMessage = await CometChat.sendMessage(textMessage);
       console.log("Server response:", sentMessage);
 
-      // Only show alert if actually masked
-      if (sentMessage.text !== messageText && 
-          (sentMessage.text.includes('***') || 
-           sentMessage.metadata?.["@injected"]?.extensions?.["data-masking"]?.masked)) {
-        Alert.alert(
-          'Cannot Send Personal Information',
-          'Your message contains personal information (like phone numbers or email addresses) which cannot be shared.'
-        );
-        setInputText(messageText);
-        return;
-      }
-
       setInputText('');
       setMessages(prev => {
         const newMessages = [...prev, sentMessage];
@@ -260,6 +392,9 @@ const ChatConversationScreen = ({ route, navigation }) => {
       });
       announceToScreenReader('Message sent successfully');
     } catch (error) {
+      console.log('Error in sendMessage:', error);
+      
+      // Handle other error cases (profanity, etc)
       switch (error.message) {
         case 'PERSONAL_INFO_EMAIL':
           announceToScreenReader('Message blocked: Contains email address');
@@ -283,7 +418,6 @@ const ChatConversationScreen = ({ route, navigation }) => {
           );
           return;
         default:
-          console.error('Error sending message:', error);
           Alert.alert('Error', 'Failed to send message');
       }
     } finally {
@@ -745,10 +879,57 @@ const ChatConversationScreen = ({ route, navigation }) => {
     };
   }, [uid]);
 
+  const renderInputContainer = () => (
+    <View style={styles.inputContainer}>
+      <TouchableOpacity 
+        style={styles.attachButton} 
+        onPress={handleMediaPicker}
+        disabled={isBlocked || isUploading || isLoading}
+      >
+        <MaterialCommunityIcons 
+          name="attachment" 
+          size={36} 
+          color={(isBlocked || isUploading || isLoading) ? "#999" : "#24269B"} 
+        />
+      </TouchableOpacity>
+
+      <TextInput
+        style={[styles.input, isBlocked && styles.disabledInput]}
+        value={inputText}
+        onChangeText={setInputText}
+        placeholder={isBlocked ? "User is blocked" : "Type a message..."}
+        multiline
+        editable={!isBlocked && !isLoading && !isUploading}
+      />
+
+      <TouchableOpacity 
+        style={styles.sendButton} 
+        onPress={sendMessage}
+        disabled={isBlocked || isLoading || isUploading || !inputText.trim()}
+      >
+        <MaterialCommunityIcons 
+          name="send" 
+          size={36} 
+          color={(isBlocked || isLoading || isUploading || !inputText.trim()) ? "#999" : "#24269B"} 
+        />
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (isBlocked) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.blockedMessage}>
+          This user is blocked. Unblock them to send messages.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { height: screenHeight }]} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 150 : 0}
       accessible={true}
       accessibilityLabel="Chat conversation"
@@ -773,59 +954,7 @@ const ChatConversationScreen = ({ route, navigation }) => {
       
       {renderSmartReplies()}
 
-      <View 
-        style={styles.inputContainer}
-        accessible={true}
-        accessibilityLabel="Message input section"
-      >
-        <TouchableOpacity 
-          style={styles.attachButton} 
-          onPress={handleMediaPicker}
-          disabled={isUploading || isLoading}
-          accessible={true}
-          accessibilityLabel="Attach image"
-          accessibilityHint="Double tap to select an image to send"
-          accessibilityRole="imagebutton"
-          accessibilityState={{ disabled: isUploading || isLoading }}
-        >
-          <MaterialCommunityIcons 
-            name="attachment" 
-            size={36} 
-            color={isUploading || isLoading ? "#999" : "#24269B"} 
-          />
-        </TouchableOpacity>
-
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Type a message..."
-          multiline
-          editable={!isLoading && !isUploading}
-          accessible={true}
-          accessibilityLabel="Message input"
-          accessibilityHint="Enter your message here"
-        />
-
-        <TouchableOpacity 
-          style={styles.sendButton} 
-          onPress={sendMessage}
-          disabled={isLoading || isUploading || !inputText.trim()}
-          accessible={true}
-          accessibilityLabel="Send message"
-          accessibilityHint="Double tap to send your message"
-          accessibilityRole="button"
-          accessibilityState={{ 
-            disabled: isLoading || isUploading || !inputText.trim() 
-          }}
-        >
-          <MaterialCommunityIcons 
-            name="send" 
-            size={36} 
-            color={(isLoading || isUploading || !inputText.trim()) ? "#999" : "#24269B"} 
-          />
-        </TouchableOpacity>
-      </View>
+      {renderInputContainer()}
     </KeyboardAvoidingView>
   );
 };
@@ -969,6 +1098,16 @@ const styles = StyleSheet.create({
   smartReplyText: {
     color: '#FFFFFF',
     fontSize: 14,
+  },
+  disabledInput: {
+    backgroundColor: '#f0f0f0',
+    color: '#999',
+  },
+  blockedMessage: {
+    textAlign: 'center',
+    padding: 20,
+    color: '#666',
+    fontSize: 16,
   },
 });
 
