@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { COMETCHAT_CONSTANTS } from '../config/cometChatConfig';
 
 const containsProfanity = (text) => {
   const profanityList = [
@@ -471,25 +472,118 @@ const GroupChatScreen = ({ route, navigation }) => {
     }
   };
 
+  const submitReport = async (user, reportReason) => {
+    try {
+      console.log('Reporting user:', user.uid, 'for reason:', reportReason);
+
+      // First, notify the reported user
+      const userNotification = new CometChat.TextMessage(
+        user.uid,
+        `Your account has been reported in the group "${groupInfo.name}" for review.`,
+        'user'
+      );
+
+      // Add metadata to user notification
+      userNotification.setMetadata({
+        reportType: 'user',
+        reason: reportReason,
+        groupContext: groupInfo.guid,
+        groupName: groupInfo.name,
+        timestamp: new Date().getTime()
+      });
+      
+      // Send notification to user
+      await CometChat.sendMessage(userNotification);
+
+      // Then create the group report record
+      const groupReport = new CometChat.TextMessage(
+        groupInfo.guid,
+        `[REPORT] A report has been submitted for review.`,
+        'group'
+      );
+
+      // Add full metadata to group report
+      groupReport.setMetadata({
+        reportType: 'user',
+        reportedUser: user.uid,
+        reportedName: user.name,
+        reason: reportReason,
+        reportedBy: currentUser.uid,
+        reportedByName: currentUser.name,
+        timestamp: new Date().getTime(),
+        groupContext: groupInfo.guid,
+        groupName: groupInfo.name
+      });
+
+      // Add tags for filtering
+      groupReport.setTags(['report', 'moderation']);
+      
+      // Send the group report
+      await CometChat.sendMessage(groupReport);
+
+      Alert.alert(
+        'User Reported',
+        'Thank you for your report. We will review it shortly.'
+      );
+      announceToScreenReader('User reported successfully');
+
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      Alert.alert(
+        'Error',
+        'Failed to report user. Please try again.'
+      );
+      announceToScreenReader('Failed to report user');
+    }
+  };
+
+  // Update handleReportUser with clearer categories
   const handleReportUser = async (user) => {
     try {
-      const reportType = "inappropriate";
-      const reportUser = await CometChat.reportUser(
-        user.uid,
-        reportType,
-        { reason: "Inappropriate behavior" }
-      );
-      
-      console.log("User reported successfully:", reportUser);
       Alert.alert(
-        "User Reported",
-        "Thank you for helping keep our community safe."
+        'Report User',
+        `Are you sure you want to report ${user.name}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Harassment',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting harassment report for:', user.uid);
+              submitReport(user, 'Harassment: User is engaging in harassing behavior');
+            }
+          },
+          {
+            text: 'Inappropriate Content',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting inappropriate content report for:', user.uid);
+              submitReport(user, 'Inappropriate Content: User is sharing inappropriate content');
+            }
+          },
+          {
+            text: 'Spam',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting spam report for:', user.uid);
+              submitReport(user, 'Spam: User is sending spam messages');
+            }
+          },
+          {
+            text: 'Threatening Behavior',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting threatening behavior report for:', user.uid);
+              submitReport(user, 'Threatening Behavior: User is making threats');
+            }
+          }
+        ]
       );
     } catch (error) {
-      console.error("Error reporting user:", error);
+      console.error('Error in handleReportUser:', error);
       Alert.alert(
-        "Error",
-        "Failed to report user. Please try again."
+        'Error',
+        'Failed to process report request. Please try again.'
       );
     }
   };
