@@ -214,7 +214,7 @@ const MainScreen = ({ navigation }) => {
     );
   }
 
-  // Add this component to replace the arrow containers
+  // Update the ArrowAnimation component
   const ArrowAnimation = () => {
     const translateY = useRef(new Animated.Value(0)).current;
 
@@ -249,7 +249,7 @@ const MainScreen = ({ navigation }) => {
           accessible={true}
           accessibilityLabel="Scroll down indicator"
         >
-          ↓
+          ⬇️
         </Animated.Text>
       </View>
     );
@@ -606,14 +606,13 @@ const styles = StyleSheet.create({
   },
   arrowContainer: {
     alignItems: 'center',
-    height: 140,
-    width: 40,
-  
+    height: 100,
+    width: '100%',
+    marginVertical: 20,
   },
   arrow: {
-    fontSize: 100,
+    fontSize: 50,
     color: '#24269B',
-    fontWeight: 'bold',
   },
   headerContainer: {
     padding: 20,

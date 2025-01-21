@@ -23,6 +23,8 @@
     "android": {
       "package": "com.koates89.selfadvocacywins",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.koates89.selfadvocacywins",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -45,7 +47,18 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera"
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/app-check",
+      "expo-build-properties"
     ]
   }
 }
