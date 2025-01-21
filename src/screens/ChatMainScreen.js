@@ -261,6 +261,142 @@ const ChatMainScreen = ({ navigation }) => {
     }
   };
 
+  const handleReportMessage = async (message) => {
+    try {
+      const reportType = "inappropriate";
+      const reportMessage = await CometChat.reportMessage(
+        message.id,
+        reportType,
+        { reason: "Inappropriate content" }
+      );
+      
+      console.log("Message reported successfully:", reportMessage);
+      Alert.alert(
+        "Message Reported",
+        "Thank you for helping keep our community safe."
+      );
+      announceToScreenReader('Message reported successfully');
+    } catch (error) {
+      console.error("Error reporting message:", error);
+      Alert.alert(
+        "Error",
+        "Failed to report message. Please try again."
+      );
+      announceToScreenReader('Failed to report message');
+    }
+  };
+
+  const submitReport = async (user, reportReason) => {
+    try {
+      console.log('Reporting user:', user.uid, 'for reason:', reportReason);
+
+      // First, notify the reported user
+      const userNotification = new CometChat.TextMessage(
+        user.uid,
+        `Your account has been reported for review.`,
+        'user'
+      );
+
+      // Add metadata to user notification
+      userNotification.setMetadata({
+        reportType: 'user',
+        reason: reportReason,
+        timestamp: new Date().getTime()
+      });
+      
+      // Send notification to user
+      await CometChat.sendMessage(userNotification);
+
+      // Create the report record
+      const reportMessage = new CometChat.TextMessage(
+        user.uid,
+        `[REPORT] A report has been submitted for review.`,
+        'user'
+      );
+
+      // Add full metadata to report
+      reportMessage.setMetadata({
+        reportType: 'user',
+        reportedUser: user.uid,
+        reportedName: user.name,
+        reason: reportReason,
+        reportedBy: user.uid,
+        reportedByName: user.name,
+        timestamp: new Date().getTime()
+      });
+
+      // Add tags for filtering
+      reportMessage.setTags(['report', 'moderation']);
+      
+      // Send the report
+      await CometChat.sendMessage(reportMessage);
+
+      Alert.alert(
+        'User Reported',
+        'Thank you for your report. We will review it shortly.'
+      );
+      announceToScreenReader('User reported successfully');
+
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      Alert.alert(
+        'Error',
+        'Failed to report user. Please try again.'
+      );
+      announceToScreenReader('Failed to report user');
+    }
+  };
+
+  const handleReportUser = async (user) => {
+    try {
+      Alert.alert(
+        'Report User',
+        `Are you sure you want to report ${user.name}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Harassment',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting harassment report for:', user.uid);
+              submitReport(user, 'Harassment: User is engaging in harassing behavior');
+            }
+          },
+          {
+            text: 'Inappropriate Content',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting inappropriate content report for:', user.uid);
+              submitReport(user, 'Inappropriate Content: User is sharing inappropriate content');
+            }
+          },
+          {
+            text: 'Spam',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting spam report for:', user.uid);
+              submitReport(user, 'Spam: User is sending spam messages');
+            }
+          },
+          {
+            text: 'Threatening Behavior',
+            style: 'destructive',
+            onPress: () => {
+              console.log('Submitting threatening behavior report for:', user.uid);
+              submitReport(user, 'Threatening Behavior: User is making threats');
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error in handleReportUser:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process report request. Please try again.'
+      );
+    }
+  };
+
   const renderConversation = ({ item }) => {
     const isGroup = item.conversationType === CometChat.RECEIVER_TYPE.GROUP;
     
@@ -312,22 +448,62 @@ const ChatMainScreen = ({ navigation }) => {
     }Last message: ${lastMessage}`;
 
     const handleLongPress = () => {
+      if (isGroup) {
+        Alert.alert(
+          'Delete Conversation',
+          'Are you sure you want to delete this conversation?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => deleteConversation(item)
+            }
+          ]
+        );
+        return;
+      }
+
       Alert.alert(
-        'Delete Conversation',
-        'Are you sure you want to delete this conversation?',
+        'Chat Options',
+        'What would you like to do?',
         [
+          { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => announceToScreenReader('Delete cancelled')
-          },
-          {
-            text: 'Delete',
+            text: 'Delete Conversation',
             style: 'destructive',
             onPress: () => deleteConversation(item)
+          },
+          {
+            text: blockedUsers.has(item.conversationWith.uid) ? 'Unblock User' : 'Block User',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                if (blockedUsers.has(item.conversationWith.uid)) {
+                  await CometChat.unblockUsers([item.conversationWith.uid]);
+                  setBlockedUsers(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(item.conversationWith.uid);
+                    return newSet;
+                  });
+                  announceToScreenReader('User unblocked');
+                } else {
+                  await CometChat.blockUsers([item.conversationWith.uid]);
+                  setBlockedUsers(prev => new Set([...prev, item.conversationWith.uid]));
+                  announceToScreenReader('User blocked');
+                }
+              } catch (error) {
+                console.error('Error blocking/unblocking user:', error);
+                Alert.alert('Error', 'Failed to block/unblock user. Please try again.');
+              }
+            }
+          },
+          {
+            text: 'Report User',
+            style: 'destructive',
+            onPress: () => handleReportUser(item.conversationWith)
           }
-        ],
-        { cancelable: true }
+        ]
       );
     };
 
