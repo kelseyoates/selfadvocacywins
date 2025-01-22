@@ -12,17 +12,11 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "android": {
-        "buildType": "app-bundle"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
     "production": {
-      "android": {
-        "track": "internal"
-      }
     }
   }
 }
