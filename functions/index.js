@@ -1,7 +1,7 @@
 const functions = require("firebase-functions");
 const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
-const stripe = require("stripe")("sk_live_y5iqnq60z1CCYuD98ftQeUPw");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Typesense = require("typesense");
 
 
@@ -10,7 +10,7 @@ if (!admin.apps.length) {
 }
 
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
-  const webhookSecret = "whsec_BpV5SCNlIg7w78jKwlJyhXkXubvqCdm0";
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event;
 
@@ -187,14 +187,14 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   }
 });
 
-// Initialize Typesense client with proper credentials
+// Initialize Typesense client with environment variables
 const client = new Typesense.Client({
   nodes: [{
-    host: "e6dqryica24hsu75p-1.a1.typesense.net", // Use your actual host
+    host: process.env.TYPESENSE_HOST,
     port: "443",
     protocol: "https",
   }],
-  apiKey: "vcXv0c4EKrJ6AHFR1nCKQSXGch2EEzE7", // Use your actual API key
+  apiKey: process.env.TYPESENSE_API_KEY,
   connectionTimeoutSeconds: 2,
 });
 

@@ -48,3 +48,8 @@ google-credentials.json
 GoogleService-Info.plist
 google-services.json
 *.jks
+
+node_modules/
+.env
+.env.*
+!.env.example
